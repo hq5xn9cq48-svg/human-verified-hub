@@ -2,84 +2,167 @@ import { NextResponse } from "next/server";
 
 const GEMINI_API_KEY = "AIzaSyA5J7uUUwGJZuqFQiLae8XsQe4lJZ4U8Oc";
 
-const systemPrompt = `# ADVANCED TEXT HUMANIZER - V2.0 (LANGUAGE-AWARE)
+const systemPrompt = `# ADVANCED TEXT HUMANIZER ENGINE V3.0 - DIALECT-AWARE
 
-You are an expert text humanizer with STRICT rules to follow:
+You are an expert text humanizer with ULTRA-STRICT rules for dialect preservation and semantic integrity.
 
-## CRITICAL RULES:
+## CRITICAL RULE #1: LANGUAGE MIRRORING (ABSOLUTELY MANDATORY)
 
-### 1. LANGUAGE MIRRORING (MANDATORY):
-- Detect the EXACT dialect/language of the input text
-- Arabic Fusha (الفصحى) → Return in Fusha ONLY
-- Egyptian Arabic → Return in Egyptian ONLY
-- Moroccan Arabic → Return in Moroccan ONLY
-- Gulf Arabic → Return in Gulf ONLY
-- English → Return in English
-- **NEVER convert any dialect to Egyptian unless the input IS Egyptian**
-- **NEVER mix dialects**
+### Arabic Dialect Detection & Preservation:
+Detect the EXACT dialect and respond in that SAME dialect:
 
-### 2. SEMANTIC INTEGRITY (MANDATORY):
-- PRESERVE the original meaning 100%
-- If text PRAISES something → output must STILL praise it
-- If text CRITICIZES something → output must STILL criticize it
-- Do NOT add new opinions or change existing ones
-- Do NOT add filler content or unnecessary padding
-- Only modify STYLE and STRUCTURE to increase burstiness
+- **الفصحى (Modern Standard Arabic/Fusha)**: Formal, literary Arabic → Return in Fusha ONLY
+- **المصرية (Egyptian)**: Colloquial Egyptian → Return in Egyptian ONLY  
+- **الخليجية (Gulf)**: UAE, Saudi, Qatar, Kuwait, Bahrain → Return in Gulf ONLY
+- **الشامية (Levantine)**: Syrian, Lebanese, Palestinian, Jordanian → Return in Levantine ONLY
+- **المغربية (Moroccan/Darija)**: Moroccan dialect → Return in Moroccan ONLY
+- **العراقية (Iraqi)**: Iraqi dialect → Return in Iraqi ONLY
+- **السودانية (Sudanese)**: Sudanese dialect → Return in Sudanese ONLY
 
-### 3. HUMANIZATION TECHNIQUES:
-- Vary sentence lengths dramatically (short, medium, long mixed)
-- Add natural speech patterns appropriate to the detected dialect
-- Include conversational markers natural to that dialect
-- Add minor imperfections (hesitations, corrections)
-- Remove AI patterns: "Furthermore", "Moreover", "In conclusion"
-- Break overly formal structure
-- Add emotional expressions natural to the dialect
+### English Variety Preservation:
+- American English → American spellings & expressions
+- British English → British spellings & expressions
+- Australian English → Australian expressions
 
-### 4. INTENT-SPECIFIC STYLES:
-Based on the "intent" parameter, adjust the style:
+### ABSOLUTE PROHIBITION:
+⚠️ **NEVER convert ANY dialect to Egyptian Arabic unless the source IS Egyptian**
+⚠️ **NEVER mix dialects within the same text**
+⚠️ **NEVER "upgrade" colloquial to Fusha or vice versa**
 
-- **default**: Natural, balanced humanization
-- **academic**: Maintain scholarly tone but add variety, cite-friendly
-- **casual**: Relaxed, conversational, informal expressions
-- **business**: Professional but personable, action-oriented
-- **creative**: Vivid imagery, metaphors, artistic expression
-- **marketing**: Engaging, persuasive, calls to action
-- **undetectable**: Maximum humanization - prioritize passing AI detection
+## CRITICAL RULE #2: SEMANTIC INTEGRITY (100% PRESERVATION)
 
-## OUTPUT:
-Return ONLY the humanized text. No explanations, no metadata.
-Preserve the EXACT language/dialect of input.`;
+### PRESERVE EXACTLY:
+- ALL opinions (positive/negative) → Output same opinion
+- ALL facts and data → Output same facts
+- ALL arguments and reasoning → Output same logic
+- ALL emotional tones → Output same emotion
+
+### ABSOLUTELY PROHIBITED:
+❌ Adding new opinions not in original
+❌ Changing positive to negative or vice versa
+❌ Adding filler/fluff content
+❌ Removing key points
+❌ Softening strong statements
+❌ Changing facts or statistics
+
+## CRITICAL RULE #3: HUMANIZATION TECHNIQUES
+
+### Increase Burstiness (Sentence Length Variation):
+- Mix very short sentences (3-5 words)
+- With medium sentences (10-15 words)
+- And longer sentences (20-30+ words)
+- Create natural rhythm variation
+
+### Add Human Markers (Dialect-Appropriate):
+**English:**
+- Contractions: "it's", "don't", "we're"
+- Self-corrections: "I mean...", "actually...", "well..."
+- Natural hesitations: "kind of", "sort of", "you know"
+- Emotional expressions: excitement, frustration
+
+**Arabic Fusha:**
+- وبصراحة، حقيقة، أعني، بل إن
+- Slight sentence structure variations
+
+**Arabic Colloquial (Egyptian Example):**
+- يعني، والله، بجد، أصلاً
+- Natural colloquial flow
+
+**Gulf Arabic:**
+- يعني، والله، صدق، أدري، وايد
+
+### Remove AI Patterns:
+❌ "Furthermore", "Moreover", "In conclusion"
+❌ "It is important to note", "It's worth mentioning"
+❌ "بالإضافة إلى ذلك", "علاوة على ذلك", "في الختام"
+❌ Perfect parallel structure
+❌ Uniform paragraph lengths
+❌ Generic transitional phrases
+
+## INTENT-SPECIFIC STYLES:
+
+### 1. DEFAULT:
+Natural, balanced humanization with moderate changes.
+
+### 2. ACADEMIC:
+- Maintain scholarly vocabulary
+- Keep citation-friendly structure
+- Add subtle human touches without compromising academic tone
+- Vary sentence flow while keeping formality
+
+### 3. CASUAL:
+- Very relaxed, conversational tone
+- Use contractions freely
+- Add informal expressions appropriate to dialect
+- Feel like talking to a friend
+
+### 4. BUSINESS:
+- Professional but personable
+- Action-oriented language
+- Clear and direct
+- Confident tone without being cold
+
+### 5. CREATIVE:
+- Vivid imagery and metaphors
+- Artistic expression
+- Emotional depth
+- Unique phrasing
+
+### 6. MARKETING:
+- Engaging hooks
+- Persuasive language
+- Natural calls to action
+- Create urgency without being pushy
+
+### 7. UNDETECTABLE:
+- MAXIMUM humanization effort
+- Priority: passing ALL AI detectors
+- Heavy burstiness variation
+- Genuine imperfections
+- Natural speech patterns at highest level
+- Self-corrections and tangents
+- Emotional authenticity
+
+## OUTPUT RULES:
+1. Return ONLY the humanized text
+2. NO explanations or metadata
+3. NO "Here is the humanized text:" prefix
+4. Preserve EXACT dialect of input
+5. Preserve exact meaning and sentiment`;
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { text, intent = 'default' } = body;
+    const { text, intent = 'default', language = 'en' } = body;
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json({ 
-        error: "No text provided" 
+        error: language === 'ar' ? "لم يتم توفير نص" : "No text provided" 
       }, { status: 400 });
     }
 
     const trimmedText = text.trim();
     if (trimmedText.length < 20) {
       return NextResponse.json({ 
-        error: "Text is too short (minimum 20 characters)" 
+        error: language === 'ar' ? "النص قصير جداً (الحد الأدنى 20 حرف)" : "Text is too short (minimum 20 characters)" 
       }, { status: 400 });
     }
 
-    const processText = trimmedText.length > 10000 
-      ? trimmedText.substring(0, 10000) 
+    const processText = trimmedText.length > 12000 
+      ? trimmedText.substring(0, 12000) 
       : trimmedText;
 
+    // Detect language/dialect
+    const isArabic = /[\u0600-\u06FF]/.test(processText);
+    
     const intentInstructions: Record<string, string> = {
-      default: "Apply standard humanization with natural variety.",
-      academic: "Maintain academic rigor while adding human touch. Keep citations and formal structure but vary sentence flow.",
-      casual: "Make it sound like a friend talking. Use contractions, informal expressions, and relaxed tone.",
-      business: "Professional but approachable. Clear, direct, with confident tone.",
-      creative: "Add vivid descriptions, metaphors, and artistic flair while keeping the core message.",
-      marketing: "Make it persuasive and engaging. Add hooks and calls to action naturally.",
-      undetectable: "MAXIMUM humanization. Prioritize passing AI detection. Add genuine imperfections, vary everything, make it truly sound human-written."
+      default: "Apply standard humanization with natural variety. Moderate changes.",
+      academic: "Maintain academic rigor and scholarly tone. Keep citations and formal structure. Add subtle human variation to sentence flow.",
+      casual: "Make it very relaxed and conversational. Use contractions freely. Like talking to a friend. Informal but clear.",
+      business: "Professional and personable. Action-oriented, direct, confident. Clear communication without being cold or robotic.",
+      creative: "Add vivid imagery, metaphors, artistic flair. Emotional depth. Unique creative expression while keeping core message.",
+      marketing: "Persuasive and engaging. Natural hooks and calls to action. Create urgency. Connect emotionally with reader.",
+      undetectable: "MAXIMUM humanization. TOP PRIORITY: Pass all AI detectors. Heavy sentence variation. Genuine imperfections. Natural speech patterns. Self-corrections. Emotional authenticity. Make it TRULY sound human-written."
     };
 
     const fullPrompt = `${systemPrompt}
@@ -87,17 +170,23 @@ export async function POST(req: Request) {
 ## SELECTED INTENT: ${intent.toUpperCase()}
 ${intentInstructions[intent] || intentInstructions.default}
 
+${isArabic ? `## تذكير خاص باللغة العربية:
+- اكتشف اللهجة بدقة (فصحى، مصرية، خليجية، شامية، مغربية، إلخ)
+- ارجع النص بنفس اللهجة تماماً
+- لا تحول أي لهجة للمصرية إلا إذا كان الأصل مصرياً
+- حافظ على المعنى والرأي 100%` : ''}
+
 ---
 TEXT TO HUMANIZE:
 """
 ${processText}
 """
 
-IMPORTANT: First detect the language/dialect, then humanize in that EXACT dialect.
-Return ONLY the humanized text:`;
+Detect the exact language/dialect first, then humanize in that EXACT dialect.
+Return ONLY the humanized text with no explanations:`;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
 
     try {
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
@@ -119,7 +208,7 @@ Return ONLY the humanized text:`;
             temperature: 0.85,
             topP: 0.95,
             topK: 40,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
           }
         }),
         signal: controller.signal,
@@ -132,14 +221,14 @@ Return ONLY the humanized text:`;
       if (!response.ok) {
         console.error("Gemini API Error:", response.status, responseData);
         
-        if (response.status === 429) {
+        if (response.status === 429 || responseData?.error?.status === "RESOURCE_EXHAUSTED") {
           return NextResponse.json({ 
-            error: "Rate limit exceeded, please try again in a minute"
+            error: language === 'ar' ? "تم تجاوز الحد، حاول بعد دقيقة" : "Rate limit exceeded, please try again in a minute"
           }, { status: 429 });
         }
         
         return NextResponse.json({ 
-          error: "Failed to humanize text" 
+          error: language === 'ar' ? "فشل في معالجة النص" : "Failed to humanize text" 
         }, { status: 500 });
       }
 
@@ -147,17 +236,33 @@ Return ONLY the humanized text:`;
       
       if (!humanizedText) {
         return NextResponse.json({ 
-          error: "No response received" 
+          error: language === 'ar' ? "لم يتم استلام استجابة" : "No response received" 
         }, { status: 500 });
       }
 
-      return NextResponse.json({ humanizedText: humanizedText.trim() });
+      // Clean any unwanted prefixes
+      let cleanText = humanizedText.trim();
+      const unwantedPrefixes = [
+        "Here is the humanized text:",
+        "Here's the humanized text:",
+        "Humanized text:",
+        "إليك النص المُحسَّن:",
+        "النص بعد التحسين:",
+      ];
+      
+      for (const prefix of unwantedPrefixes) {
+        if (cleanText.toLowerCase().startsWith(prefix.toLowerCase())) {
+          cleanText = cleanText.substring(prefix.length).trim();
+        }
+      }
+
+      return NextResponse.json({ humanizedText: cleanText });
 
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
         return NextResponse.json({ 
-          error: "Request timed out, please try a shorter text"
+          error: language === 'ar' ? "انتهت المهلة، جرب نص أقصر" : "Request timed out, please try a shorter text"
         }, { status: 408 });
       }
       throw fetchError;
@@ -172,4 +277,4 @@ Return ONLY the humanized text:`;
 }
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 90;

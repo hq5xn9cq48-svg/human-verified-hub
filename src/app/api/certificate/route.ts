@@ -7,7 +7,10 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { verificationId, score, content, userId } = body;
+    const { verificationId, humanScore, content, userId } = body;
+    
+    // Support both 'humanScore' and 'score' for backwards compatibility
+    const score = humanScore ?? body.score;
 
     if (!verificationId || score === undefined) {
       return NextResponse.json({ 

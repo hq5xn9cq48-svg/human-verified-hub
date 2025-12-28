@@ -35,7 +35,6 @@ body {
 }
 
 @layer base {
-  /* Custom font smoothing */
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -129,6 +128,54 @@ body {
     pointer-events: none;
   }
 
+  /* Neon Border Green */
+  .neon-border-green {
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    box-shadow: 
+      0 0 10px rgba(16, 185, 129, 0.2),
+      inset 0 0 10px rgba(16, 185, 129, 0.1);
+  }
+
+  /* Primary Gradient Button */
+  .btn-gradient {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed, #6d28d9);
+    color: white;
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 14px 28px;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-gradient::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .btn-gradient:hover::before {
+    left: 100%;
+  }
+
+  .btn-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 40px -10px rgba(139, 92, 246, 0.5);
+  }
+
+  .btn-gradient:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
   /* Cyber Forensic Button */
   .btn-cyber {
     background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(16, 185, 129, 0.2));
@@ -205,6 +252,25 @@ body {
       0 0 20px rgba(139, 92, 246, 0.1);
   }
 
+  /* AI Heatmap Styles */
+  .heatmap-ai {
+    background: rgba(239, 68, 68, 0.15);
+    border-left: 3px solid #ef4444;
+    border-radius: 6px;
+  }
+
+  .heatmap-mixed {
+    background: rgba(234, 179, 8, 0.15);
+    border-left: 3px solid #eab308;
+    border-radius: 6px;
+  }
+
+  .heatmap-human {
+    background: rgba(34, 197, 94, 0.15);
+    border-left: 3px solid #22c55e;
+    border-radius: 6px;
+  }
+
   /* Score Gauge */
   .score-gauge {
     position: relative;
@@ -235,6 +301,14 @@ body {
     background-size: 50px 50px;
   }
 
+  /* Grid Background */
+  .grid-bg {
+    background-image: 
+      linear-gradient(rgba(139, 92, 246, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
   /* Scan Line Animation */
   .scan-line {
     position: relative;
@@ -256,6 +330,16 @@ body {
     0%, 100% { top: 0; opacity: 0; }
     50% { opacity: 1; }
     100% { top: 100%; }
+  }
+
+  /* Float Animation */
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
   }
 
   /* Pulse Animation */

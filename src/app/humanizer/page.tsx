@@ -4,15 +4,35 @@ import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { 
+  Wand2, 
+  Clipboard, 
+  Trash2, 
+  Copy, 
+  Check, 
+  Loader2, 
+  AlertCircle,
+  Sparkles,
+  GraduationCap,
+  MessageCircle,
+  Briefcase,
+  Palette,
+  Megaphone,
+  Shield,
+  Globe,
+  FileText,
+  Activity,
+  Eye
+} from 'lucide-react'
 
 const intentOptions = [
-  { id: 'default', label: 'Default', labelAr: 'افتراضي', icon: '✨', description: 'Natural, balanced humanization', descriptionAr: 'تحسين طبيعي ومتوازن' },
-  { id: 'academic', label: 'Academic', labelAr: 'أكاديمي', icon: '🎓', description: 'Scholarly tone with variety', descriptionAr: 'أسلوب علمي مع تنوع' },
-  { id: 'casual', label: 'Casual', labelAr: 'عفوي', icon: '💬', description: 'Relaxed, conversational', descriptionAr: 'مريح وحواري' },
-  { id: 'business', label: 'Business', labelAr: 'تجاري', icon: '💼', description: 'Professional but personable', descriptionAr: 'مهني وودود' },
-  { id: 'creative', label: 'Creative', labelAr: 'إبداعي', icon: '🎨', description: 'Vivid, artistic expression', descriptionAr: 'تعبير فني وحيوي' },
-  { id: 'marketing', label: 'Marketing', labelAr: 'تسويقي', icon: '📢', description: 'Engaging and persuasive', descriptionAr: 'جذاب ومقنع' },
-  { id: 'undetectable', label: 'Undetectable', labelAr: 'مخفي', icon: '🥷', description: 'Maximum humanization - bypass AI detectors', descriptionAr: 'أقصى تحسين - تجاوز كاشفات AI' },
+  { id: 'default', label: 'Default', labelAr: 'افتراضي', icon: Sparkles, description: 'Natural, balanced humanization', descriptionAr: 'تحسين طبيعي ومتوازن' },
+  { id: 'academic', label: 'Academic', labelAr: 'أكاديمي', icon: GraduationCap, description: 'Scholarly tone with variety', descriptionAr: 'أسلوب علمي مع تنوع' },
+  { id: 'casual', label: 'Casual', labelAr: 'عفوي', icon: MessageCircle, description: 'Relaxed, conversational', descriptionAr: 'مريح وحواري' },
+  { id: 'business', label: 'Business', labelAr: 'تجاري', icon: Briefcase, description: 'Professional but personable', descriptionAr: 'مهني وودود' },
+  { id: 'creative', label: 'Creative', labelAr: 'إبداعي', icon: Palette, description: 'Vivid, artistic expression', descriptionAr: 'تعبير فني وحيوي' },
+  { id: 'marketing', label: 'Marketing', labelAr: 'تسويقي', icon: Megaphone, description: 'Engaging and persuasive', descriptionAr: 'جذاب ومقنع' },
+  { id: 'undetectable', label: 'Undetectable', labelAr: 'مخفي', icon: Shield, description: 'Maximum humanization - bypass AI detectors', descriptionAr: 'أقصى تحسين - تجاوز كاشفات AI' },
 ]
 
 const loadingMessages = [
@@ -71,7 +91,6 @@ export default function HumanizerPage() {
     setError(null)
     setOutputText('')
 
-    // Loading message animation
     const messages = language === 'ar' ? loadingMessagesAr : loadingMessages
     let index = 0
     const interval = setInterval(() => {
@@ -121,26 +140,19 @@ export default function HumanizerPage() {
   const selectedIntent = intentOptions.find((o) => o.id === intent)
 
   return (
-    <div className="min-h-screen relative forensic-grid" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 -z-10" />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-5">
-        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-fuchsia-500/10 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/3 left-1/4 w-[400px] h-[400px] bg-violet-500/10 rounded-full blur-[150px]" />
-      </div>
-
+    <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      <main className="relative z-10 max-w-6xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-8 pt-24">
         {/* Hero */}
         <div className="text-center mb-10">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 mb-5"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/20 border border-purple-500/30 mb-5"
           >
-            <span className="text-xl">🎭</span>
-            <span className="text-xs text-slate-300 font-medium">Text Humanization Engine V3.0</span>
+            <Wand2 className="w-4 h-4 text-purple-400" />
+            <span className="text-xs text-gray-300 font-medium">Text Humanization Engine V3.0</span>
           </motion.div>
 
           <motion.h1
@@ -150,7 +162,7 @@ export default function HumanizerPage() {
             className="text-3xl md:text-5xl font-bold text-white mb-4"
           >
             {t.humanizer.title}{' '}
-            <span className="bg-gradient-to-r from-fuchsia-400 to-violet-400 bg-clip-text text-transparent">
+            <span className="text-gradient neon-text-glow">
               {t.humanizer.titleHighlight}
             </span>
           </motion.h1>
@@ -159,7 +171,7 @@ export default function HumanizerPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-slate-400 max-w-2xl mx-auto"
+            className="text-gray-400 max-w-2xl mx-auto"
           >
             {language === 'ar' 
               ? 'حوّل النصوص الآلية لتبدو طبيعية وبشرية مع الحفاظ على المعنى الأصلي واللهجة'
@@ -174,26 +186,29 @@ export default function HumanizerPage() {
           transition={{ delay: 0.3 }}
           className="mb-6"
         >
-          <label className="block text-sm font-medium text-slate-300 mb-3">
+          <label className="block text-sm font-medium text-gray-300 mb-3">
             {language === 'ar' ? 'اختر أسلوب الكتابة' : 'Select Writing Style'}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
-            {intentOptions.map((option) => (
-              <button
-                key={option.id}
-                onClick={() => setIntent(option.id)}
-                className={`p-3 rounded-xl text-center transition-all ${
-                  intent === option.id
-                    ? 'bg-violet-500/20 border-2 border-violet-500/50 text-violet-300'
-                    : 'bg-slate-800/50 border border-slate-700/50 text-slate-400 hover:text-white hover:border-slate-600'
-                }`}
-              >
-                <div className="text-2xl mb-1">{option.icon}</div>
-                <div className="text-xs font-medium">{language === 'ar' ? option.labelAr : option.label}</div>
-              </button>
-            ))}
+            {intentOptions.map((option) => {
+              const Icon = option.icon
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setIntent(option.id)}
+                  className={`p-3 rounded-xl text-center transition-all ${
+                    intent === option.id
+                      ? 'bg-purple-600/20 border-2 border-purple-500/50 text-purple-300 neon-glow'
+                      : 'bg-black/30 border border-purple-900/30 text-gray-400 hover:text-white hover:border-purple-500/30'
+                  }`}
+                >
+                  <Icon className={`w-5 h-5 mx-auto mb-1 ${intent === option.id ? 'icon-glow' : ''}`} />
+                  <div className="text-xs font-medium">{language === 'ar' ? option.labelAr : option.label}</div>
+                </button>
+              )
+            })}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-gray-500">
             {language === 'ar' ? selectedIntent?.descriptionAr : selectedIntent?.description}
           </p>
         </motion.div>
@@ -209,24 +224,27 @@ export default function HumanizerPage() {
           >
             <form onSubmit={handleHumanize} className="h-full flex flex-col">
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-medium text-slate-300">
+                <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-purple-400" />
                   {language === 'ar' ? 'النص المدخل' : 'Input Text'}
                 </label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handlePaste}
-                    className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition-all flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs bg-black/50 hover:bg-purple-900/20 text-gray-400 hover:text-purple-300 rounded-lg transition-all flex items-center gap-1 border border-purple-900/20 hover:border-purple-500/30"
                   >
-                    📋 {language === 'ar' ? 'لصق' : 'Paste'}
+                    <Clipboard className="w-3 h-3" />
+                    {language === 'ar' ? 'لصق' : 'Paste'}
                   </button>
                   {inputText && (
                     <button
                       type="button"
                       onClick={handleClear}
-                      className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all flex items-center gap-1"
+                      className="px-3 py-1.5 text-xs bg-black/50 hover:bg-red-900/20 text-gray-400 hover:text-red-400 rounded-lg transition-all flex items-center gap-1 border border-purple-900/20 hover:border-red-500/30"
                     >
-                      🗑️ {language === 'ar' ? 'مسح' : 'Clear'}
+                      <Trash2 className="w-3 h-3" />
+                      {language === 'ar' ? 'مسح' : 'Clear'}
                     </button>
                   )}
                 </div>
@@ -237,12 +255,12 @@ export default function HumanizerPage() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 rows={14}
-                className="flex-1 w-full px-4 py-4 bg-slate-900/80 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all resize-none font-mono text-sm"
+                className="flex-1 w-full px-4 py-4 bg-black/50 border border-purple-900/30 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all resize-none font-mono text-sm"
                 placeholder={language === 'ar' ? 'الصق النص المُنشأ بالذكاء الاصطناعي هنا...' : 'Paste AI-generated text here...'}
                 dir="auto"
               />
 
-              <div className="flex justify-between mt-3 text-xs text-slate-500">
+              <div className="flex justify-between mt-3 text-xs text-gray-500">
                 <span>{language === 'ar' ? 'الحد الأدنى 20 حرف' : 'Min 20 characters'}</span>
                 <div className="flex gap-4">
                   <span>{wordCount} {language === 'ar' ? 'كلمة' : 'words'}</span>
@@ -256,8 +274,9 @@ export default function HumanizerPage() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+                    className="mt-3 p-3 rounded-lg bg-red-900/20 border border-red-500/30 text-red-400 text-sm flex items-center gap-2"
                   >
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     {error}
                   </motion.div>
                 )}
@@ -266,18 +285,18 @@ export default function HumanizerPage() {
               <button
                 type="submit"
                 disabled={loading || inputText.length < 20}
-                className="mt-4 w-full py-4 px-6 bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-fuchsia-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-4 w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl transition-all hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
+                  <>
+                    <Loader2 className="w-5 h-5 spinner" />
                     {loadingMessage}
-                  </span>
+                  </>
                 ) : (
-                  <>🎭 {t.humanizer.button}</>
+                  <>
+                    <Wand2 className="w-5 h-5" />
+                    {t.humanizer.button}
+                  </>
                 )}
               </button>
             </form>
@@ -292,32 +311,39 @@ export default function HumanizerPage() {
           >
             <div className="h-full flex flex-col">
               <div className="flex justify-between items-center mb-3">
-                <label className="text-sm font-medium text-slate-300">
+                <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
                   {language === 'ar' ? 'النص المُحسَّن' : 'Humanized Output'}
                 </label>
                 {outputText && (
                   <button
                     onClick={copyToClipboard}
-                    className="px-3 py-1.5 text-xs bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 rounded-lg transition-all flex items-center gap-1"
+                    className="px-3 py-1.5 text-xs bg-black/50 hover:bg-green-900/20 text-gray-400 hover:text-green-400 rounded-lg transition-all flex items-center gap-1 border border-purple-900/20 hover:border-green-500/30"
                   >
                     {copied ? (
-                      <>✓ {language === 'ar' ? 'تم النسخ!' : 'Copied!'}</>
+                      <>
+                        <Check className="w-3 h-3" />
+                        {language === 'ar' ? 'تم النسخ!' : 'Copied!'}
+                      </>
                     ) : (
-                      <>📋 {language === 'ar' ? 'نسخ' : 'Copy'}</>
+                      <>
+                        <Copy className="w-3 h-3" />
+                        {language === 'ar' ? 'نسخ' : 'Copy'}
+                      </>
                     )}
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-[350px] px-4 py-4 bg-slate-900/80 border border-slate-700/50 rounded-xl text-white overflow-y-auto">
+              <div className="flex-1 min-h-[350px] px-4 py-4 bg-black/50 border border-purple-900/30 rounded-xl text-white overflow-y-auto">
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-fuchsia-500/20 to-violet-500/20 flex items-center justify-center animate-pulse">
-                        <span className="text-3xl">🎭</span>
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center pulse-neon">
+                        <Wand2 className="w-8 h-8 text-purple-400" />
                       </div>
-                      <p className="text-slate-400">{language === 'ar' ? 'جاري معالجة النص...' : 'Processing your text...'}</p>
-                      <p className="text-slate-500 text-sm mt-1">{language === 'ar' ? 'الحفاظ على المعنى واللهجة' : 'Preserving meaning & dialect'}</p>
+                      <p className="text-gray-400">{language === 'ar' ? 'جاري معالجة النص...' : 'Processing your text...'}</p>
+                      <p className="text-gray-500 text-sm mt-1">{language === 'ar' ? 'الحفاظ على المعنى واللهجة' : 'Preserving meaning & dialect'}</p>
                     </div>
                   </div>
                 ) : outputText ? (
@@ -331,7 +357,7 @@ export default function HumanizerPage() {
                   </motion.div>
                 ) : (
                   <div className="h-full flex items-center justify-center">
-                    <p className="text-slate-500 text-center">
+                    <p className="text-gray-500 text-center">
                       {language === 'ar' ? 'سيظهر النص المُحسَّن هنا...' : 'Humanized text will appear here...'}
                     </p>
                   </div>
@@ -339,8 +365,11 @@ export default function HumanizerPage() {
               </div>
 
               {outputText && (
-                <div className="mt-3 text-xs text-slate-500 flex justify-between">
-                  <span className="text-emerald-400">✓ {language === 'ar' ? 'تم التحسين بنجاح' : 'Humanization complete'}</span>
+                <div className="mt-3 text-xs text-gray-500 flex justify-between">
+                  <span className="text-green-400 flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    {language === 'ar' ? 'تم التحسين بنجاح' : 'Humanization complete'}
+                  </span>
                   <span>{outputWordCount} {language === 'ar' ? 'كلمة' : 'words'} • {outputText.length} {language === 'ar' ? 'حرف' : 'chars'}</span>
                 </div>
               )}
@@ -356,37 +385,38 @@ export default function HumanizerPage() {
           className="mt-8 glass-card p-6"
         >
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <span>💡</span> {language === 'ar' ? 'نصائح للحصول على أفضل النتائج' : 'Tips for Best Results'}
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            {language === 'ar' ? 'نصائح للحصول على أفضل النتائج' : 'Tips for Best Results'}
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-4 bg-slate-800/50 rounded-xl">
-              <div className="text-violet-400 text-lg mb-2">🌍</div>
+            <div className="p-4 bg-black/30 rounded-xl border border-purple-900/20">
+              <Globe className="w-5 h-5 text-purple-400 mb-2" />
               <h4 className="text-white font-medium text-sm mb-1">{language === 'ar' ? 'حفظ اللهجة' : 'Dialect Preservation'}</h4>
-              <p className="text-slate-400 text-xs">{language === 'ar' ? 'الأداة تكتشف وتحافظ على لهجتك الأصلية (فصحى، مصرية، خليجية، إلخ)' : 'The tool detects and preserves your original dialect (Fusha, Egyptian, Gulf, etc.)'}</p>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'الأداة تكتشف وتحافظ على لهجتك الأصلية' : 'The tool detects and preserves your original dialect'}</p>
             </div>
-            <div className="p-4 bg-slate-800/50 rounded-xl">
-              <div className="text-violet-400 text-lg mb-2">💬</div>
+            <div className="p-4 bg-black/30 rounded-xl border border-purple-900/20">
+              <MessageCircle className="w-5 h-5 text-purple-400 mb-2" />
               <h4 className="text-white font-medium text-sm mb-1">{language === 'ar' ? 'المعنى سليم' : 'Meaning Intact'}</h4>
-              <p className="text-slate-400 text-xs">{language === 'ar' ? 'آراؤك وحقائقك تبقى كما هي - فقط الأسلوب يتغير' : 'Your opinions and facts remain unchanged - only style is modified'}</p>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'آراؤك وحقائقك تبقى كما هي' : 'Your opinions and facts remain unchanged'}</p>
             </div>
-            <div className="p-4 bg-slate-800/50 rounded-xl">
-              <div className="text-violet-400 text-lg mb-2">📊</div>
+            <div className="p-4 bg-black/30 rounded-xl border border-purple-900/20">
+              <Activity className="w-5 h-5 text-purple-400 mb-2" />
               <h4 className="text-white font-medium text-sm mb-1">{language === 'ar' ? 'تنوع أعلى' : 'Higher Burstiness'}</h4>
-              <p className="text-slate-400 text-xs">{language === 'ar' ? 'تنويع أطوال الجمل يجعل النص يبدو مكتوباً طبيعياً' : 'Varied sentence lengths make text appear more naturally written'}</p>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'تنويع أطوال الجمل يجعل النص طبيعياً' : 'Varied sentence lengths make text appear natural'}</p>
             </div>
-            <div className="p-4 bg-slate-800/50 rounded-xl">
-              <div className="text-violet-400 text-lg mb-2">🥷</div>
+            <div className="p-4 bg-black/30 rounded-xl border border-purple-900/20">
+              <Eye className="w-5 h-5 text-purple-400 mb-2" />
               <h4 className="text-white font-medium text-sm mb-1">{language === 'ar' ? 'وضع التخفي' : 'Undetectable Mode'}</h4>
-              <p className="text-slate-400 text-xs">{language === 'ar' ? 'لأقصى درجات التحسين، استخدم خيار "مخفي"' : 'For maximum humanization, use the Undetectable style option'}</p>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'لأقصى درجات التحسين، استخدم خيار "مخفي"' : 'For maximum humanization, use the Undetectable option'}</p>
             </div>
           </div>
         </motion.div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-800/50 mt-16">
+      <footer className="border-t border-purple-900/30 mt-16">
         <div className="max-w-5xl mx-auto px-4 py-6 text-center">
-          <p className="text-slate-500 text-xs">{t.footer.copyright}</p>
+          <p className="text-gray-500 text-xs">{t.footer.copyright}</p>
         </div>
       </footer>
     </div>

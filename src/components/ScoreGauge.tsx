@@ -30,8 +30,8 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
   }, [score])
 
   const getColor = (s: number) => {
-    if (s >= 81) return { stroke: '#10b981', glow: 'rgba(16, 185, 129, 0.5)' }
-    if (s >= 61) return { stroke: '#22c55e', glow: 'rgba(34, 197, 94, 0.5)' }
+    if (s >= 81) return { stroke: '#22c55e', glow: 'rgba(34, 197, 94, 0.5)' }
+    if (s >= 61) return { stroke: '#4ade80', glow: 'rgba(74, 222, 128, 0.5)' }
     if (s >= 41) return { stroke: '#eab308', glow: 'rgba(234, 179, 8, 0.5)' }
     if (s >= 21) return { stroke: '#f97316', glow: 'rgba(249, 115, 22, 0.5)' }
     return { stroke: '#ef4444', glow: 'rgba(239, 68, 68, 0.5)' }
@@ -50,7 +50,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
             <stop offset="100%" stopColor={color.stroke} stopOpacity="0.6" />
           </linearGradient>
           <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+            <feGaussianBlur stdDeviation="4" result="coloredBlur" />
             <feMerge>
               <feMergeNode in="coloredBlur" />
               <feMergeNode in="SourceGraphic" />
@@ -64,7 +64,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
           cy="100"
           r="80"
           fill="none"
-          stroke="rgba(148, 163, 184, 0.1)"
+          stroke="rgba(147, 51, 234, 0.1)"
           strokeWidth="12"
         />
 
@@ -82,7 +82,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="rgba(148, 163, 184, 0.3)"
+              stroke="rgba(147, 51, 234, 0.3)"
               strokeWidth="2"
             />
           )
@@ -111,7 +111,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
           cx="100"
           cy="100"
           r="60"
-          fill="rgba(15, 23, 42, 0.8)"
+          fill="rgba(0, 0, 0, 0.8)"
         />
       </svg>
 
@@ -119,7 +119,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <motion.div
           className="text-5xl font-bold"
-          style={{ color: color.stroke }}
+          style={{ color: color.stroke, textShadow: `0 0 20px ${color.glow}` }}
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, duration: 0.5 }}
@@ -127,7 +127,7 @@ export default function ScoreGauge({ score }: ScoreGaugeProps) {
           {animatedScore}%
         </motion.div>
         <motion.div
-          className="text-slate-400 text-sm mt-1"
+          className="text-gray-400 text-sm mt-1"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}

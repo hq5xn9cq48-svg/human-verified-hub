@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA5J7uUUwGJZuqFQiLae8XsQe4lJZ4U8Oc";
+// Use environment variable only - no hardcoded keys
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 const systemPrompt = `You are an expert text humanizer. Your job is to make AI-generated text sound more natural and human-like.
 
@@ -30,6 +31,13 @@ STYLES:
 OUTPUT: Return ONLY the humanized text, nothing else.`;
 
 export async function POST(req: Request) {
+  // Check API key first
+  if (!GEMINI_API_KEY) {
+    return NextResponse.json({ 
+      error: "API key not configured. Please set GEMINI_API_KEY environment variable." 
+    }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     const { text, intent = 'default', language = 'en' } = body;
@@ -79,14 +87,14 @@ export async function POST(req: Request) {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 429) {
-          return NextResponse.json({ 
-            error: language === 'ar' ? "تم تجاوز الحد، حاول لاحقاً" : "Rate limit reached" 
-          }, { status: 429 });
-        }
+        const errData = await response.json().catch(() => ({}));
+        console.error("Gemini API Error:", response.status, errData);
+        
+        // Return actual Google error message for debugging
+        const googleError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
         return NextResponse.json({ 
-          error: language === 'ar' ? "فشل في معالجة النص" : "Failed to process text" 
-        }, { status: 500 });
+          error: `Gemini API Error: ${googleError}` 
+        }, { status: response.status });
       }
 
       const data = await response.json();
@@ -94,7 +102,7 @@ export async function POST(req: Request) {
 
       if (!humanizedText) {
         return NextResponse.json({ 
-          error: language === 'ar' ? "لم يتم استلام رد" : "No response received" 
+          error: language === 'ar' ? "لم يتم استلام رد" : "No response received from AI" 
         }, { status: 500 });
       }
 
@@ -122,7 +130,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Humanize Error:", error);
     return NextResponse.json({ 
-      error: "Humanization failed" 
+      error: `Humanization failed: ${error.message || 'Unknown error'}` 
     }, { status: 500 });
   }
 }

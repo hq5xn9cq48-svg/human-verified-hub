@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
+import { Loader2, CheckCircle, XCircle, Award, ArrowLeft, Calendar, Hash, FileText } from 'lucide-react'
 
 interface CertificateData {
   id: string
@@ -57,11 +59,11 @@ export default function VerifyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-black cyber-grid flex items-center justify-center p-4">
       {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-violet-500/10 rounded-full blur-[120px]" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px]" />
       </div>
 
       <motion.div
@@ -71,35 +73,30 @@ export default function VerifyPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12">
-              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <linearGradient id="verifyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#10b981" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
-                  </linearGradient>
-                </defs>
-                <circle cx="32" cy="32" r="28" stroke="url(#verifyGradient)" strokeWidth="3" fill="none" />
-                <path d="M20 32 L28 40 L44 24" stroke="url(#verifyGradient)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              </svg>
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <div className="w-12 h-12 relative">
+              <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-lg group-hover:bg-purple-600/40 transition-all" />
+              <Image 
+                src="/logo.png" 
+                alt="Human-Verified Hub Logo" 
+                width={48} 
+                height={48} 
+                className="relative z-10 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all"
+              />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-violet-400 bg-clip-text text-transparent">Human-Verified</h1>
-              <p className="text-xs text-slate-400">Certificate Verification</p>
+              <h1 className="text-xl font-bold text-gradient">Human-Verified Hub</h1>
+              <p className="text-xs text-gray-400">Certificate Verification</p>
             </div>
           </Link>
         </div>
 
         {/* Main Card */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+        <div className="glass-card-dark p-8 border border-purple-900/30">
           {loading ? (
             <div className="text-center py-8">
-              <svg className="w-12 h-12 mx-auto mb-4 text-violet-500 animate-spin" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-slate-400">Verifying certificate...</p>
+              <Loader2 className="w-12 h-12 mx-auto mb-4 text-purple-500 animate-spin" />
+              <p className="text-gray-400">Verifying certificate...</p>
             </div>
           ) : valid && certificate ? (
             <motion.div
@@ -108,41 +105,51 @@ export default function VerifyPage() {
               className="text-center"
             >
               {/* Valid Badge */}
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center">
-                <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-500/10 border-2 border-green-500/30 flex items-center justify-center">
+                <CheckCircle className="w-10 h-10 text-green-400" />
               </div>
 
               <h2 className="text-2xl font-bold text-white mb-2">Certificate Valid</h2>
-              <p className="text-emerald-400 mb-6">This certificate is authentic and verified</p>
+              <p className="text-green-400 mb-6">This certificate is authentic and verified</p>
 
               {/* Certificate Details */}
-              <div className="space-y-4 text-left bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
-                <div className="flex justify-between items-center border-b border-slate-700/30 pb-3">
-                  <span className="text-slate-400">Certificate ID</span>
+              <div className="space-y-4 text-left bg-black/50 rounded-xl p-6 border border-purple-900/30">
+                <div className="flex justify-between items-center border-b border-purple-900/30 pb-3">
+                  <span className="text-gray-400 flex items-center gap-2">
+                    <Hash className="w-4 h-4" />
+                    Certificate ID
+                  </span>
                   <span className="text-white font-mono text-sm">{certificate.id}</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-slate-700/30 pb-3">
-                  <span className="text-slate-400">Human Score</span>
-                  <span className="text-emerald-400 font-bold text-xl">{certificate.score}%</span>
+                <div className="flex justify-between items-center border-b border-purple-900/30 pb-3">
+                  <span className="text-gray-400 flex items-center gap-2">
+                    <Award className="w-4 h-4" />
+                    Human Score
+                  </span>
+                  <span className="text-green-400 font-bold text-xl">{certificate.score}%</span>
                 </div>
-                <div className="flex justify-between items-center border-b border-slate-700/30 pb-3">
-                  <span className="text-slate-400">Issued On</span>
+                <div className="flex justify-between items-center border-b border-purple-900/30 pb-3">
+                  <span className="text-gray-400 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Issued On
+                  </span>
                   <span className="text-white text-sm">{formatDate(certificate.issuedAt)}</span>
                 </div>
                 {certificate.contentPreview && (
                   <div className="pt-2">
-                    <span className="text-slate-400 text-sm block mb-2">Content Preview</span>
-                    <p className="text-slate-300 text-sm italic">&ldquo;{certificate.contentPreview}...&rdquo;</p>
+                    <span className="text-gray-400 text-sm flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4" />
+                      Content Preview
+                    </span>
+                    <p className="text-gray-300 text-sm italic">&ldquo;{certificate.contentPreview}...&rdquo;</p>
                   </div>
                 )}
               </div>
 
               {/* Seal */}
-              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500/20 to-violet-500/20 border border-emerald-500/30">
-                <span className="text-lg">🏆</span>
-                <span className="text-sm font-medium text-emerald-300">Verified Human Content</span>
+              <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-900/30 to-green-900/30 border border-purple-500/30">
+                <Award className="w-5 h-5 text-purple-400" />
+                <span className="text-sm font-medium text-gradient">Verified Human Content</span>
               </div>
             </motion.div>
           ) : (
@@ -152,17 +159,15 @@ export default function VerifyPage() {
               className="text-center"
             >
               {/* Invalid Badge */}
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center">
-                <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center">
+                <XCircle className="w-10 h-10 text-red-400" />
               </div>
 
               <h2 className="text-2xl font-bold text-white mb-2">Certificate Not Found</h2>
               <p className="text-red-400 mb-6">{error || 'This certificate does not exist or has been revoked'}</p>
 
-              <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
-                <p className="text-slate-400 text-sm">
+              <div className="bg-black/50 rounded-xl p-4 border border-purple-900/30">
+                <p className="text-gray-400 text-sm">
                   If you believe this is an error, please contact support or request a new verification.
                 </p>
               </div>
@@ -172,8 +177,9 @@ export default function VerifyPage() {
 
         {/* Back Link */}
         <div className="text-center mt-6">
-          <Link href="/" className="text-slate-400 hover:text-white text-sm transition-colors">
-            ← Back to Human-Verified Hub
+          <Link href="/" className="inline-flex items-center gap-1 text-gray-400 hover:text-purple-400 text-sm transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Human-Verified Hub
           </Link>
         </div>
       </motion.div>

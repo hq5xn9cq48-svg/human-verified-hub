@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import * as cheerio from 'cheerio';
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA5J7uUUwGJZuqFQiLae8XsQe4lJZ4U8Oc";
+// Use environment variable only - no hardcoded keys
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-// Simplified but effective system prompt
 const systemPrompt = `You are SENTINEL-AI V5.0, an expert forensic linguistic analyzer.
 
 TASK: Analyze text to determine if it was written by a human or AI.
@@ -89,6 +89,13 @@ async function scrapeUrl(url: string): Promise<string | null> {
 }
 
 export async function POST(req: Request) {
+  // Check API key first
+  if (!GEMINI_API_KEY) {
+    return NextResponse.json({ 
+      error: "API key not configured. Please set GEMINI_API_KEY environment variable." 
+    }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     let { text, url, language = 'en' } = body;
@@ -143,17 +150,13 @@ export async function POST(req: Request) {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        console.error("Gemini Error:", response.status, errData);
+        console.error("Gemini API Error:", response.status, errData);
         
-        if (response.status === 429) {
-          return NextResponse.json({ 
-            error: language === 'ar' ? "تم تجاوز الحد، حاول لاحقاً" : "Rate limit reached, try again later" 
-          }, { status: 429 });
-        }
-        
+        // Return actual Google error message for debugging
+        const googleError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
         return NextResponse.json({ 
-          error: language === 'ar' ? "فشل الاتصال بخدمة التحليل" : "Failed to connect to analysis service" 
-        }, { status: 500 });
+          error: `Gemini API Error: ${googleError}` 
+        }, { status: response.status });
       }
 
       const data = await response.json();
@@ -161,7 +164,7 @@ export async function POST(req: Request) {
 
       if (!responseText) {
         return NextResponse.json({ 
-          error: language === 'ar' ? "لم يتم استلام رد" : "No response received" 
+          error: language === 'ar' ? "لم يتم استلام رد" : "No response received from AI" 
         }, { status: 500 });
       }
 
@@ -172,7 +175,6 @@ export async function POST(req: Request) {
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
         result = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
       } catch {
-        // Return a default response if parsing fails
         result = {
           humanScore: 50,
           verdict: "Uncertain",
@@ -241,7 +243,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Analysis Error:", error);
     return NextResponse.json({ 
-      error: "Analysis failed. Please try again." 
+      error: `Analysis failed: ${error.message || 'Unknown error'}` 
     }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { jsPDF } from 'jspdf'
 import QRCode from 'qrcode'
+import { Award, Download, Loader2, ExternalLink } from 'lucide-react'
 
 interface CertificateGeneratorProps {
   score: number
@@ -67,12 +68,12 @@ export default function CertificateGenerator({
       const width = pdf.internal.pageSize.getWidth()
       const height = pdf.internal.pageSize.getHeight()
 
-      // Background
-      pdf.setFillColor(15, 23, 42)
+      // Background - Black
+      pdf.setFillColor(0, 0, 0)
       pdf.rect(0, 0, width, height, 'F')
 
-      // Gold border
-      pdf.setDrawColor(212, 175, 55)
+      // Purple gradient border effect
+      pdf.setDrawColor(168, 85, 247)
       pdf.setLineWidth(2)
       pdf.rect(10, 10, width - 20, height - 20)
 
@@ -81,7 +82,7 @@ export default function CertificateGenerator({
       pdf.setLineWidth(0.5)
       pdf.rect(15, 15, width - 30, height - 30)
 
-      // Corner decorations
+      // Corner decorations with purple
       const corners = [
         { x: 20, y: 20 },
         { x: width - 20, y: 20 },
@@ -89,13 +90,13 @@ export default function CertificateGenerator({
         { x: width - 20, y: height - 20 },
       ]
 
-      pdf.setFillColor(212, 175, 55)
+      pdf.setFillColor(168, 85, 247)
       corners.forEach(({ x, y }) => {
         pdf.circle(x, y, 3, 'F')
       })
 
       // Title
-      pdf.setTextColor(212, 175, 55)
+      pdf.setTextColor(168, 85, 247)
       pdf.setFontSize(36)
       pdf.setFont('helvetica', 'bold')
       pdf.text('CERTIFICATE OF AUTHENTICITY', width / 2, 45, { align: 'center' })
@@ -153,10 +154,10 @@ export default function CertificateGenerator({
       pdf.text('Scan to verify', width - 38, detailsY + 28, { align: 'center' })
 
       // Seal
-      pdf.setDrawColor(212, 175, 55)
+      pdf.setDrawColor(168, 85, 247)
       pdf.setLineWidth(1)
       pdf.circle(width / 2, height - 35, 15)
-      pdf.setTextColor(212, 175, 55)
+      pdf.setTextColor(168, 85, 247)
       pdf.setFontSize(8)
       pdf.text('VERIFIED', width / 2, height - 35, { align: 'center' })
 
@@ -180,36 +181,31 @@ export default function CertificateGenerator({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-r from-emerald-500/10 to-violet-500/10 rounded-xl p-6 border border-emerald-500/30"
+      className="bg-gradient-to-r from-purple-900/20 to-green-900/20 rounded-xl p-6 border border-purple-500/30"
     >
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center">
-          <span className="text-3xl">🏆</span>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center flex-shrink-0">
+          <Award className="w-8 h-8 text-green-400" />
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-emerald-300">Digital Certificate Available</h3>
-          <p className="text-slate-400 text-sm mt-1">
+          <h3 className="text-lg font-semibold text-green-300">Digital Certificate Available</h3>
+          <p className="text-gray-400 text-sm mt-1">
             Your content scored above 90%! You can generate an official Human-Verified certificate.
           </p>
         </div>
         <button
           onClick={generateCertificate}
           disabled={generating}
-          className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-medium rounded-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center gap-2"
+          className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-green-500/25 transition-all disabled:opacity-50 flex items-center gap-2 w-full sm:w-auto justify-center"
         >
           {generating ? (
             <>
-              <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
+              <Loader2 className="w-5 h-5 animate-spin" />
               Generating...
             </>
           ) : (
             <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <Download className="w-5 h-5" />
               Download Certificate
             </>
           )}
@@ -217,12 +213,19 @@ export default function CertificateGenerator({
       </div>
 
       {certificateId && (
-        <div className="mt-4 p-4 bg-slate-900/50 rounded-lg">
-          <p className="text-slate-400 text-sm">
-            Certificate ID: <span className="text-emerald-400 font-mono">{certificateId}</span>
+        <div className="mt-4 p-4 bg-black/50 rounded-lg border border-purple-900/30">
+          <p className="text-gray-400 text-sm">
+            Certificate ID: <span className="text-green-400 font-mono">{certificateId}</span>
           </p>
-          <p className="text-slate-500 text-xs mt-1">
-            Verification URL: <a href={`/verify/${certificateId}`} className="text-violet-400 hover:underline">{window.location.origin}/verify/{certificateId}</a>
+          <p className="text-gray-500 text-xs mt-1 flex items-center gap-1 flex-wrap">
+            Verification URL: 
+            <a 
+              href={`/verify/${certificateId}`} 
+              className="text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1"
+            >
+              {typeof window !== 'undefined' ? window.location.origin : ''}/verify/{certificateId}
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </p>
         </div>
       )}

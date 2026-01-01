@@ -7,6 +7,19 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { 
+  Scroll, 
+  User, 
+  FileText, 
+  Search, 
+  Loader2, 
+  Trash2, 
+  ChevronDown, 
+  Bot, 
+  Shuffle, 
+  UserCheck,
+  LogIn
+} from 'lucide-react'
 
 interface Verification {
   id: string
@@ -76,15 +89,15 @@ export default function HistoryPage() {
   }
 
   const getScoreBg = (score: number) => {
-    if (score >= 61) return 'bg-green-500/10 border-green-500/20'
-    if (score >= 31) return 'bg-yellow-500/10 border-yellow-500/20'
-    return 'bg-red-500/10 border-red-500/20'
+    if (score >= 61) return 'bg-green-500/10 border-green-500/30'
+    if (score >= 31) return 'bg-yellow-500/10 border-yellow-500/30'
+    return 'bg-red-500/10 border-red-500/30'
   }
 
   const getVerdict = (score: number) => {
-    if (score >= 61) return { text: 'Human', emoji: '👤' }
-    if (score >= 31) return { text: 'Hybrid', emoji: '🔀' }
-    return { text: 'AI', emoji: '🤖' }
+    if (score >= 61) return { text: 'Human', icon: UserCheck, color: 'text-green-400' }
+    if (score >= 31) return { text: 'Hybrid', icon: Shuffle, color: 'text-yellow-400' }
+    return { text: 'AI', icon: Bot, color: 'text-red-400' }
   }
 
   const formatDate = (dateStr: string) => {
@@ -99,26 +112,25 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen relative forensic-grid" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 -z-10" />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-5">
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-violet-500/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-emerald-500/5 rounded-full blur-[100px]" />
+    <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Background Effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px]" />
       </div>
 
       <Navbar />
 
-      <main className="relative z-10 max-w-4xl mx-auto px-4 py-8">
+      <main className="relative z-10 max-w-4xl mx-auto px-4 pt-24 pb-8">
         {/* Hero */}
         <div className="text-center mb-8">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-600/30 mb-4"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/20 border border-purple-500/30 mb-4"
           >
-            <span className="text-xl">📜</span>
-            <span className="text-xs text-slate-300">Verification History</span>
+            <Scroll className="w-4 h-4 text-purple-400" />
+            <span className="text-sm text-purple-300">Verification History</span>
           </motion.div>
 
           <motion.h1
@@ -134,7 +146,7 @@ export default function HistoryPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-slate-400 max-w-lg mx-auto text-sm"
+            className="text-gray-400 max-w-lg mx-auto text-sm"
           >
             {t.history.description}
           </motion.p>
@@ -148,44 +160,39 @@ export default function HistoryPage() {
         >
           {!user && !authLoading ? (
             // Not logged in
-            <div className="glass-card p-8 text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-                <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+            <div className="glass-card-dark p-8 text-center border border-purple-900/30">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-purple-900/30 border border-purple-500/30 flex items-center justify-center">
+                <User className="w-10 h-10 text-purple-400" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Sign in to view history</h3>
-              <p className="text-slate-400 text-sm mb-6">Your verification history is saved when you're signed in</p>
+              <p className="text-gray-400 text-sm mb-6">Your verification history is saved when you're signed in</p>
               <Link
                 href="/auth"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-violet-600 to-emerald-600 text-white font-medium rounded-xl hover:opacity-90 transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all"
               >
+                <LogIn className="w-4 h-4" />
                 {t.nav.signIn}
               </Link>
             </div>
           ) : loading ? (
             // Loading state
-            <div className="glass-card p-8 text-center">
-              <svg className="w-10 h-10 mx-auto mb-4 text-violet-500 animate-spin" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-slate-400">{t.common.loading}</p>
+            <div className="glass-card-dark p-8 text-center border border-purple-900/30">
+              <Loader2 className="w-10 h-10 mx-auto mb-4 text-purple-500 animate-spin" />
+              <p className="text-gray-400">{t.common.loading}</p>
             </div>
           ) : verifications.length === 0 ? (
             // Empty state
-            <div className="glass-card p-8 text-center">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-                <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+            <div className="glass-card-dark p-8 text-center border border-purple-900/30">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-purple-900/30 border border-purple-500/30 flex items-center justify-center">
+                <FileText className="w-10 h-10 text-purple-400" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">{t.history.noHistory}</h3>
-              <p className="text-slate-400 text-sm mb-6">{t.history.noHistoryDesc}</p>
+              <p className="text-gray-400 text-sm mb-6">{t.history.noHistoryDesc}</p>
               <Link
                 href="/"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-violet-600 to-emerald-600 text-white font-medium rounded-xl hover:opacity-90 transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all"
               >
+                <Search className="w-4 h-4" />
                 Start Analyzing
               </Link>
             </div>
@@ -194,11 +201,12 @@ export default function HistoryPage() {
             <div className="space-y-4">
               {/* Header */}
               <div className="flex justify-between items-center">
-                <span className="text-slate-400 text-sm">{verifications.length} verifications</span>
+                <span className="text-gray-400 text-sm">{verifications.length} verifications</span>
                 <button
                   onClick={clearAllHistory}
-                  className="text-xs text-slate-400 hover:text-red-400 transition-colors"
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
                 >
+                  <Trash2 className="w-3 h-3" />
                   {t.history.deleteAll}
                 </button>
               </div>
@@ -208,6 +216,7 @@ export default function HistoryPage() {
                 <AnimatePresence>
                   {verifications.map((item, index) => {
                     const verdict = getVerdict(item.result_score)
+                    const VerdictIcon = verdict.icon
                     const isExpanded = expandedId === item.id
 
                     return (
@@ -217,16 +226,16 @@ export default function HistoryPage() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ delay: index * 0.03 }}
-                        className="glass-card overflow-hidden"
+                        className="glass-card-dark overflow-hidden border border-purple-900/30"
                       >
                         <div
                           onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                          className="p-4 cursor-pointer hover:bg-slate-800/30 transition-colors"
+                          className="p-4 cursor-pointer hover:bg-purple-900/10 transition-colors"
                         >
                           <div className="flex items-center gap-4">
                             {/* Score Badge */}
                             <div className={`flex-shrink-0 w-16 h-16 rounded-xl border flex flex-col items-center justify-center ${getScoreBg(item.result_score)}`}>
-                              <span className="text-xl">{verdict.emoji}</span>
+                              <VerdictIcon className={`w-5 h-5 ${verdict.color}`} />
                               <span className={`text-lg font-bold ${getScoreColor(item.result_score)}`}>
                                 {item.result_score}%
                               </span>
@@ -237,7 +246,7 @@ export default function HistoryPage() {
                               <p className="text-white text-sm line-clamp-2" dir="auto">
                                 {item.content}
                               </p>
-                              <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                                 <span>{formatDate(item.created_at)}</span>
                                 <span className={`px-2 py-0.5 rounded ${getScoreBg(item.result_score)} ${getScoreColor(item.result_score)}`}>
                                   {verdict.text}
@@ -246,14 +255,9 @@ export default function HistoryPage() {
                             </div>
 
                             {/* Expand Icon */}
-                            <svg
-                              className={`w-5 h-5 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
+                            <ChevronDown
+                              className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            />
                           </div>
                         </div>
 
@@ -264,26 +268,27 @@ export default function HistoryPage() {
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
                               exit={{ height: 0, opacity: 0 }}
-                              className="border-t border-slate-700/30"
+                              className="border-t border-purple-900/30"
                             >
-                              <div className="p-4 bg-slate-900/30 space-y-3">
+                              <div className="p-4 bg-black/50 space-y-3">
                                 {item.analysis && (
                                   <div>
-                                    <h4 className="text-xs font-medium text-slate-400 mb-1">Analysis</h4>
-                                    <p className="text-slate-300 text-sm" dir="auto">{item.analysis}</p>
+                                    <h4 className="text-xs font-medium text-gray-400 mb-1">Analysis</h4>
+                                    <p className="text-gray-300 text-sm" dir="auto">{item.analysis}</p>
                                   </div>
                                 )}
                                 <div>
-                                  <h4 className="text-xs font-medium text-slate-400 mb-1">Full Content</h4>
-                                  <p className="text-slate-300 text-sm whitespace-pre-wrap" dir="auto">{item.content}</p>
+                                  <h4 className="text-xs font-medium text-gray-400 mb-1">Full Content</h4>
+                                  <p className="text-gray-300 text-sm whitespace-pre-wrap" dir="auto">{item.content}</p>
                                 </div>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     deleteVerification(item.id)
                                   }}
-                                  className="text-xs text-slate-400 hover:text-red-400 transition-colors"
+                                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-400 transition-colors"
                                 >
+                                  <Trash2 className="w-3 h-3" />
                                   Delete this entry
                                 </button>
                               </div>
@@ -301,9 +306,9 @@ export default function HistoryPage() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-700/30 mt-12">
+      <footer className="relative z-10 border-t border-purple-900/30 mt-12">
         <div className="max-w-5xl mx-auto px-4 py-5 text-center">
-          <p className="text-slate-500 text-xs">{t.footer.copyright}</p>
+          <p className="text-gray-500 text-xs">{t.footer.copyright}</p>
         </div>
       </footer>
     </div>

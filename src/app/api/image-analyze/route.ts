@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyA5J7uUUwGJZuqFQiLae8XsQe4lJZ4U8Oc";
+// Use environment variable only - no hardcoded keys
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
 const systemPrompt = `You are an AI image forensics expert. Analyze images to detect if they are AI-generated.
 
@@ -37,6 +38,13 @@ OUTPUT FORMAT (JSON only):
 Return ONLY valid JSON.`;
 
 export async function POST(req: Request) {
+  // Check API key first
+  if (!GEMINI_API_KEY) {
+    return NextResponse.json({ 
+      error: "API key not configured. Please set GEMINI_API_KEY environment variable." 
+    }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     const { image, language = 'en' } = body;
@@ -97,14 +105,14 @@ export async function POST(req: Request) {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        if (response.status === 429) {
-          return NextResponse.json({ 
-            error: language === 'ar' ? "تم تجاوز الحد" : "Rate limit reached" 
-          }, { status: 429 });
-        }
+        const errData = await response.json().catch(() => ({}));
+        console.error("Gemini API Error:", response.status, errData);
+        
+        // Return actual Google error message for debugging
+        const googleError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
         return NextResponse.json({ 
-          error: language === 'ar' ? "فشل تحليل الصورة" : "Failed to analyze image" 
-        }, { status: 500 });
+          error: `Gemini API Error: ${googleError}` 
+        }, { status: response.status });
       }
 
       const data = await response.json();
@@ -112,7 +120,7 @@ export async function POST(req: Request) {
 
       if (!responseText) {
         return NextResponse.json({ 
-          error: language === 'ar' ? "لم يتم استلام تحليل" : "No analysis received" 
+          error: language === 'ar' ? "لم يتم استلام تحليل" : "No analysis received from AI" 
         }, { status: 500 });
       }
 
@@ -164,7 +172,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Image Analysis Error:", error);
     return NextResponse.json({ 
-      error: "Image analysis failed" 
+      error: `Image analysis failed: ${error.message || 'Unknown error'}` 
     }, { status: 500 });
   }
 }

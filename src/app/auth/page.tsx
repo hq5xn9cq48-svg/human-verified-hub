@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { Loader2, Mail, ArrowLeft, KeyRound } from 'lucide-react'
 
 export default function AuthPage() {
   const { t, isRTL } = useLanguage()
@@ -125,42 +127,39 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 forensic-grid" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 -z-10" />
-      <div className="fixed inset-0 overflow-hidden pointer-events-none -z-5">
-        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-violet-500/15 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-emerald-500/15 rounded-full blur-[150px]" />
+    <div className="min-h-screen bg-black cyber-grid relative flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Background Effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[150px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[150px]" />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md relative z-10"
       >
         {/* Logo */}
-        <Link href="/" className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-14 h-14">
-            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="authLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#8b5cf6" />
-                  <stop offset="50%" stopColor="#a78bfa" />
-                  <stop offset="100%" stopColor="#10b981" />
-                </linearGradient>
-              </defs>
-              <circle cx="32" cy="32" r="28" stroke="url(#authLogoGradient)" strokeWidth="3" fill="none" />
-              <path d="M20 32 L28 40 L44 24" stroke="url(#authLogoGradient)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
+        <Link href="/" className="flex items-center justify-center gap-3 mb-8 group">
+          <div className="w-16 h-16 relative">
+            <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-lg group-hover:bg-purple-600/40 transition-all" />
+            <Image 
+              src="/logo.png" 
+              alt="Human-Verified Hub Logo" 
+              width={64} 
+              height={64} 
+              className="relative z-10 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all"
+              priority
+            />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gradient">Human-Verified</h1>
-            <p className="text-xs text-slate-400">Forensic Linguistic Analyzer V5.0</p>
+            <h1 className="text-2xl font-bold text-gradient">Human-Verified Hub</h1>
+            <p className="text-xs text-gray-400">AI Content Detection System</p>
           </div>
         </Link>
 
         {/* Auth Card */}
-        <div className="glass-card p-8">
+        <div className="glass-card-dark p-8 border border-purple-900/30">
           <AnimatePresence mode="wait">
             {step === 'email' ? (
               <motion.div
@@ -172,20 +171,17 @@ export default function AuthPage() {
               >
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-white">{t.auth.signInTitle}</h2>
-                  <p className="text-slate-400 text-sm mt-2">Sign in to save your verification history</p>
+                  <p className="text-gray-400 text-sm mt-2">Sign in to save your verification history</p>
                 </div>
 
                 {/* Google Sign In Button */}
                 <button
                   onClick={handleGoogleSignIn}
                   disabled={googleLoading}
-                  className="w-full py-3.5 px-6 bg-white hover:bg-slate-100 text-slate-900 font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50"
+                  className="w-full py-3.5 px-6 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-xl transition-all duration-200 flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   {googleLoading ? (
-                    <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -200,17 +196,18 @@ export default function AuthPage() {
                 {/* Divider */}
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-700/50"></div>
+                    <div className="w-full border-t border-purple-900/50"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-slate-900 text-slate-500">or continue with email</span>
+                    <span className="px-4 bg-black text-gray-500">or continue with email</span>
                   </div>
                 </div>
 
                 {/* Email Form */}
                 <form onSubmit={handleSendOTP} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <Mail className="w-4 h-4 inline mr-2" />
                       {t.auth.email}
                     </label>
                     <input
@@ -218,7 +215,7 @@ export default function AuthPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t.auth.emailPlaceholder}
-                      className="w-full px-4 py-3 bg-slate-900/80 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all"
+                      className="w-full px-4 py-3 bg-black/80 border border-purple-900/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
                       required
                       dir="ltr"
                     />
@@ -240,14 +237,11 @@ export default function AuthPage() {
                   <button
                     type="submit"
                     disabled={loading || !email.trim()}
-                    className="w-full py-3.5 px-6 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-medium rounded-xl transition-all duration-200 hover:opacity-90 hover:shadow-lg hover:shadow-violet-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
-                        <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
+                        <Loader2 className="w-5 h-5 animate-spin" />
                         Sending...
                       </span>
                     ) : (
@@ -266,9 +260,12 @@ export default function AuthPage() {
                 className="space-y-6"
               >
                 <div className="text-center">
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-900/30 border border-purple-500/30 flex items-center justify-center">
+                    <KeyRound className="w-6 h-6 text-purple-400" />
+                  </div>
                   <h2 className="text-2xl font-bold text-white">{t.auth.verifyCode}</h2>
-                  <p className="text-slate-400 text-sm mt-2">{t.auth.enterCode}</p>
-                  <p className="text-violet-400 text-sm mt-1">{email}</p>
+                  <p className="text-gray-400 text-sm mt-2">{t.auth.enterCode}</p>
+                  <p className="text-purple-400 text-sm mt-1">{email}</p>
                 </div>
 
                 <AnimatePresence>
@@ -277,7 +274,7 @@ export default function AuthPage() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm text-center"
+                      className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center"
                     >
                       {success}
                     </motion.div>
@@ -296,7 +293,7 @@ export default function AuthPage() {
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
-                      className="w-12 h-14 text-center text-xl font-bold bg-slate-900/80 border border-slate-700/50 rounded-xl text-white focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all"
+                      className="w-12 h-14 text-center text-xl font-bold bg-black/80 border border-purple-900/50 rounded-xl text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
                     />
                   ))}
                 </div>
@@ -317,14 +314,11 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={loading || otp.join('').length !== 6}
-                  className="w-full py-3.5 px-6 bg-gradient-to-r from-violet-600 to-purple-600 text-white font-medium rounded-xl transition-all duration-200 hover:opacity-90 hover:shadow-lg hover:shadow-violet-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       Verifying...
                     </span>
                   ) : (
@@ -335,9 +329,10 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={resetAuth}
-                  className="w-full py-2 text-slate-400 hover:text-white text-sm transition-all"
+                  className="w-full py-2 text-gray-400 hover:text-white text-sm transition-all flex items-center justify-center gap-1"
                 >
-                  ← Use different email
+                  <ArrowLeft className="w-4 h-4" />
+                  Use different email
                 </button>
               </motion.form>
             )}
@@ -346,8 +341,9 @@ export default function AuthPage() {
 
         {/* Back to Home */}
         <div className="text-center mt-6">
-          <Link href="/" className="text-slate-400 hover:text-white text-sm transition-all">
-            ← Back to Home
+          <Link href="/" className="text-gray-400 hover:text-purple-400 text-sm transition-all flex items-center justify-center gap-1">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
           </Link>
         </div>
       </motion.div>

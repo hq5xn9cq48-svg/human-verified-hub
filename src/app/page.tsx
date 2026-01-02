@@ -25,7 +25,18 @@ import {
   RefreshCw,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  Upload,
+  Shield,
+  Check,
+  Eye,
+  EyeOff,
+  Crown,
+  Building2,
+  Sparkles,
+  Lock,
+  FileCheck,
+  Rocket
 } from 'lucide-react'
 
 interface AnalysisResult {
@@ -46,6 +57,7 @@ interface AnalysisResult {
     lexicalRichness: string
     predictability: string
   }
+  smartBreakdown?: string[]
 }
 
 const loadingMessages = [
@@ -69,6 +81,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [certificateLoading, setCertificateLoading] = useState(false)
   const [verificationId, setVerificationId] = useState<string | null>(null)
+  const [privacyMode, setPrivacyMode] = useState(false)
+  const [showPricingModal, setShowPricingModal] = useState(false)
+  const [showCookieConsent, setShowCookieConsent] = useState(true)
   const supabase = createClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -82,6 +97,17 @@ export default function HomePage() {
       return () => clearInterval(interval)
     }
   }, [loading])
+
+  // Check for cookie consent
+  useEffect(() => {
+    const consent = localStorage.getItem('cookieConsent')
+    if (consent) setShowCookieConsent(false)
+  }, [])
+
+  const handleCookieConsent = (accepted: boolean) => {
+    localStorage.setItem('cookieConsent', accepted ? 'accepted' : 'declined')
+    setShowCookieConsent(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,7 +146,8 @@ export default function HomePage() {
 
       setResult(data)
 
-      if (user) {
+      // Only save to history if NOT in privacy mode
+      if (user && !privacyMode) {
         try {
           const { data: insertData } = await supabase.from('verifications').insert({
             user_id: user.id,
@@ -135,6 +162,11 @@ export default function HomePage() {
         } catch (e) {
           // Ignore save errors
         }
+      } else if (privacyMode) {
+        // Show privacy notification
+        setTimeout(() => {
+          alert(language === 'ar' ? 'وضع الخصوصية: لم يتم حفظ البيانات' : 'Privacy Mode: Data not saved to history')
+        }, 500)
       }
     } catch (err: any) {
       setError(err.message || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
@@ -174,47 +206,144 @@ export default function HomePage() {
       
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
       
+      // Black background
       pdf.setFillColor(0, 0, 0)
       pdf.rect(0, 0, 297, 210, 'F')
       
+      // Purple gradient border
       pdf.setDrawColor(147, 51, 234)
       pdf.setLineWidth(3)
       pdf.rect(10, 10, 277, 190)
       pdf.setLineWidth(1)
       pdf.rect(15, 15, 267, 180)
       
+      // Title
       pdf.setTextColor(168, 85, 247)
       pdf.setFontSize(28)
       pdf.setFont('helvetica', 'bold')
       pdf.text('CERTIFICATE OF AUTHENTICITY', 148.5, 40, { align: 'center' })
       
+      // Subtitle
       pdf.setTextColor(148, 163, 184)
       pdf.setFontSize(12)
-      pdf.text('Human-Verified Content Authentication', 148.5, 52, { align: 'center' })
+      pdf.text('Human-Verified Hub | AI Identity Detection', 148.5, 52, { align: 'center' })
       
+      // VERIFIED Stamp
+      pdf.setTextColor(34, 197, 94)
+      pdf.setFontSize(48)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('VERIFIED', 148.5, 85, { align: 'center' })
+      
+      // Score circle
       pdf.setFillColor(34, 197, 94)
-      pdf.circle(148.5, 90, 25, 'F')
+      pdf.circle(148.5, 115, 20, 'F')
       pdf.setTextColor(255, 255, 255)
-      pdf.setFontSize(24)
-      pdf.text(`${result.humanScore}%`, 148.5, 95, { align: 'center' })
-      pdf.setFontSize(8)
-      pdf.text('HUMAN SCORE', 148.5, 103, { align: 'center' })
+      pdf.setFontSize(20)
+      pdf.text(`${result.humanScore}%`, 148.5, 120, { align: 'center' })
+      pdf.setFontSize(7)
+      pdf.text('HUMAN SCORE', 148.5, 127, { align: 'center' })
       
+      // Certificate details
       pdf.setTextColor(226, 232, 240)
-      pdf.setFontSize(11)
-      pdf.text(`Certificate ID: ${certData.certificateId}`, 148.5, 130, { align: 'center' })
-      pdf.text(`Issued: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 148.5, 140, { align: 'center' })
+      pdf.setFontSize(10)
+      pdf.text(`Certificate ID: ${certData.certificateId}`, 148.5, 150, { align: 'center' })
+      pdf.text(`Reference ID: HVH-${Date.now().toString(36).toUpperCase()}`, 148.5, 158, { align: 'center' })
+      pdf.text(`Issued: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 148.5, 166, { align: 'center' })
       
-      pdf.addImage(qrDataUrl, 'PNG', 230, 140, 35, 35)
+      // QR Code
+      pdf.addImage(qrDataUrl, 'PNG', 230, 145, 35, 35)
       pdf.setFontSize(7)
       pdf.setTextColor(148, 163, 184)
-      pdf.text('Scan to verify', 247.5, 180, { align: 'center' })
+      pdf.text('Scan to verify', 247.5, 185, { align: 'center' })
       
-      pdf.save(`Certificate-${certData.certificateId}.pdf`)
+      // Footer
+      pdf.setFontSize(8)
+      pdf.text('This certificate verifies the analyzed content was determined to be human-written.', 148.5, 195, { align: 'center' })
+      
+      pdf.save(`HumanVerified-Certificate-${certData.certificateId}.pdf`)
       
     } catch (err: any) {
       console.error('Certificate error:', err)
       setError(language === 'ar' ? 'فشل إنشاء الشهادة' : 'Failed to generate certificate')
+    } finally {
+      setCertificateLoading(false)
+    }
+  }
+
+  // Download Report PDF for any score
+  const downloadReport = async () => {
+    if (!result) return
+    
+    setCertificateLoading(true)
+    
+    try {
+      const jsPDF = (await import('jspdf')).default
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+      
+      // Background
+      pdf.setFillColor(0, 0, 0)
+      pdf.rect(0, 0, 210, 297, 'F')
+      
+      // Border
+      pdf.setDrawColor(147, 51, 234)
+      pdf.setLineWidth(2)
+      pdf.rect(10, 10, 190, 277)
+      
+      // Header
+      pdf.setTextColor(168, 85, 247)
+      pdf.setFontSize(24)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('ANALYSIS REPORT', 105, 35, { align: 'center' })
+      
+      pdf.setTextColor(148, 163, 184)
+      pdf.setFontSize(10)
+      pdf.text('Human-Verified Hub | AI Identity Detection', 105, 45, { align: 'center' })
+      
+      // Score section
+      const scoreColor = result.humanScore >= 61 ? [34, 197, 94] : result.humanScore >= 31 ? [234, 179, 8] : [239, 68, 68]
+      pdf.setFillColor(scoreColor[0], scoreColor[1], scoreColor[2])
+      pdf.circle(105, 75, 18, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(18)
+      pdf.text(`${result.humanScore}%`, 105, 79, { align: 'center' })
+      
+      // Verdict
+      pdf.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2])
+      pdf.setFontSize(14)
+      pdf.text(result.verdict, 105, 100, { align: 'center' })
+      
+      // Details
+      pdf.setTextColor(226, 232, 240)
+      pdf.setFontSize(10)
+      let yPos = 120
+      
+      pdf.text(`Word Count: ${result.analysisMetadata?.wordCount || 'N/A'}`, 20, yPos)
+      pdf.text(`Perplexity: ${result.analysisMetadata?.perplexityLevel || 'N/A'}`, 110, yPos)
+      yPos += 10
+      pdf.text(`Confidence: ${result.confidence || 'Medium'}`, 20, yPos)
+      pdf.text(`Burstiness: ${result.analysisMetadata?.burstinessScore || 'N/A'}`, 110, yPos)
+      
+      // Summary
+      yPos += 20
+      pdf.setTextColor(168, 85, 247)
+      pdf.setFontSize(12)
+      pdf.text('Summary', 20, yPos)
+      yPos += 8
+      pdf.setTextColor(200, 200, 200)
+      pdf.setFontSize(9)
+      const summaryLines = pdf.splitTextToSize(result.summary, 170)
+      pdf.text(summaryLines, 20, yPos)
+      
+      // Footer
+      pdf.setTextColor(100, 100, 100)
+      pdf.setFontSize(8)
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' })
+      pdf.text('Human-Verified Hub - humanverified.ai', 105, 285, { align: 'center' })
+      
+      pdf.save(`Analysis-Report-${Date.now()}.pdf`)
+      
+    } catch (err: any) {
+      console.error('Report error:', err)
     } finally {
       setCertificateLoading(false)
     }
@@ -265,8 +394,8 @@ export default function HomePage() {
       <Navbar />
 
       {/* Main content with top padding for fixed navbar */}
-      <main className="max-w-4xl mx-auto px-4 py-8 pt-24">
-        {/* Header */}
+      <main className="max-w-5xl mx-auto px-4 py-8 pt-24">
+        {/* Hero Header */}
         <div className="text-center mb-8">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -296,10 +425,46 @@ export default function HomePage() {
           </p>
         </div>
 
+        {/* How It Works Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <h2 className="text-center text-lg font-semibold text-white mb-4">
+            {language === 'ar' ? 'كيف يعمل' : 'How It Works'}
+          </h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="glass-card p-5 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                <Upload className="w-6 h-6 text-purple-400" />
+              </div>
+              <h3 className="text-white font-semibold mb-1">{language === 'ar' ? '١. رفع' : '1. Upload'}</h3>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'ارفع نصك بأمان' : 'Securely upload your text'}</p>
+            </div>
+            <div className="glass-card p-5 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-purple-400" />
+              </div>
+              <h3 className="text-white font-semibold mb-1">{language === 'ar' ? '٢. تحليل' : '2. Analyze'}</h3>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'الذكاء الاصطناعي يفحص المحتوى' : 'Gemini AI scans your content'}</p>
+            </div>
+            <div className="glass-card p-5 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                <Shield className="w-6 h-6 text-purple-400" />
+              </div>
+              <h3 className="text-white font-semibold mb-1">{language === 'ar' ? '٣. تحقق' : '3. Verify'}</h3>
+              <p className="text-gray-400 text-xs">{language === 'ar' ? 'احصل على نتيجتك الموثقة' : 'Get your verified score'}</p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Main Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
           className="glass-card p-6"
         >
           {!result ? (
@@ -403,6 +568,26 @@ export default function HomePage() {
                 )}
               </AnimatePresence>
 
+              {/* Privacy Mode Toggle */}
+              <div className="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-purple-900/20">
+                <div className="flex items-center gap-2">
+                  {privacyMode ? <EyeOff className="w-4 h-4 text-purple-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
+                  <span className="text-sm text-gray-300">
+                    {language === 'ar' ? 'وضع الخصوصية' : 'Privacy Mode'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {language === 'ar' ? '(لا يتم الحفظ)' : '(Not saved)'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPrivacyMode(!privacyMode)}
+                  className={`w-12 h-6 rounded-full transition-all ${privacyMode ? 'bg-purple-600' : 'bg-gray-700'}`}
+                >
+                  <div className={`w-5 h-5 rounded-full bg-white shadow transition-all ${privacyMode ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+
               {/* Error Message */}
               <AnimatePresence>
                 {error && (
@@ -426,7 +611,7 @@ export default function HomePage() {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-5 h-5 spinner" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     {loadingMessage}
                   </>
                 ) : (
@@ -478,7 +663,19 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Certificate Button */}
+              {/* Download Report Button (Always available) */}
+              <div className="flex gap-3">
+                <button
+                  onClick={downloadReport}
+                  disabled={certificateLoading}
+                  className="flex-1 py-3 px-4 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                >
+                  {certificateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {language === 'ar' ? 'تحميل التقرير' : 'Download Report'}
+                </button>
+              </div>
+
+              {/* Certificate Button (Score >= 90) */}
               {result.humanScore >= 90 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -490,7 +687,7 @@ export default function HomePage() {
                       <Award className="w-6 h-6 text-green-400" />
                       <div>
                         <h4 className="text-green-400 font-bold">{language === 'ar' ? 'شهادة متاحة!' : 'Certificate Available!'}</h4>
-                        <p className="text-gray-400 text-sm">{language === 'ar' ? 'محتواك مؤهل للحصول على شهادة' : 'Your content qualifies for a certificate'}</p>
+                        <p className="text-gray-400 text-sm">{language === 'ar' ? 'محتواك مؤهل للحصول على شهادة PDF رسمية' : 'Your content qualifies for an official PDF certificate'}</p>
                       </div>
                     </div>
                     <button
@@ -498,11 +695,29 @@ export default function HomePage() {
                       disabled={certificateLoading}
                       className="px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
                     >
-                      {certificateLoading ? <Loader2 className="w-4 h-4 spinner" /> : <Download className="w-4 h-4" />}
-                      {language === 'ar' ? 'تحميل PDF' : 'Download PDF'}
+                      {certificateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
+                      {language === 'ar' ? 'تحميل الشهادة' : 'Download Certificate'}
                     </button>
                   </div>
                 </motion.div>
+              )}
+
+              {/* Smart Analysis Breakdown */}
+              {result.smartBreakdown && result.smartBreakdown.length > 0 && (
+                <div className="p-4 bg-black/30 rounded-xl border border-purple-500/20">
+                  <h3 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
+                    <Brain className="w-4 h-4" />
+                    {language === 'ar' ? 'تحليل ذكي' : 'Smart Analysis Breakdown'}
+                  </h3>
+                  <ul className="space-y-2">
+                    {result.smartBreakdown.map((item, i) => (
+                      <li key={i} className="text-gray-300 text-sm flex items-start gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
 
               {/* Metadata Grid */}
@@ -628,7 +843,7 @@ export default function HomePage() {
           )}
         </motion.div>
 
-        {/* Guide */}
+        {/* Results Guide - Fixed for mobile */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -639,33 +854,243 @@ export default function HomePage() {
             <Activity className="w-4 h-4 text-purple-400" />
             {t.guide.title}
           </h3>
-          <div className="grid grid-cols-3 gap-3 text-center text-xs">
-            <div className="p-3 bg-red-900/10 rounded-xl border border-red-500/20">
-              <div className="text-red-400 font-bold flex items-center justify-center gap-1">
-                <Bot className="w-3 h-3" /> 0-30%
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="p-2 sm:p-3 bg-red-900/10 rounded-xl border border-red-500/20">
+              <div className="text-red-400 font-bold text-xs sm:text-sm flex items-center justify-center gap-1">
+                <Bot className="w-3 h-3 hidden sm:block" /> 0-30%
               </div>
-              <div className="text-gray-400">{t.guide.aiRange}</div>
+              <div className="text-gray-400 text-[10px] sm:text-xs break-words">{t.guide.aiRange}</div>
             </div>
-            <div className="p-3 bg-yellow-900/10 rounded-xl border border-yellow-500/20">
-              <div className="text-yellow-400 font-bold">31-60%</div>
-              <div className="text-gray-400">{t.guide.hybridRange}</div>
+            <div className="p-2 sm:p-3 bg-yellow-900/10 rounded-xl border border-yellow-500/20">
+              <div className="text-yellow-400 font-bold text-xs sm:text-sm">31-60%</div>
+              <div className="text-gray-400 text-[10px] sm:text-xs break-words">{t.guide.hybridRange}</div>
             </div>
-            <div className="p-3 bg-green-900/10 rounded-xl border border-green-500/20">
-              <div className="text-green-400 font-bold flex items-center justify-center gap-1">
-                <User className="w-3 h-3" /> 61-100%
+            <div className="p-2 sm:p-3 bg-green-900/10 rounded-xl border border-green-500/20">
+              <div className="text-green-400 font-bold text-xs sm:text-sm flex items-center justify-center gap-1">
+                <User className="w-3 h-3 hidden sm:block" /> 61-100%
               </div>
-              <div className="text-gray-400">{t.guide.humanRange}</div>
+              <div className="text-gray-400 text-[10px] sm:text-xs break-words">{t.guide.humanRange}</div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Pricing Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-12"
+        >
+          <h2 className="text-2xl font-bold text-white text-center mb-2">
+            {language === 'ar' ? 'اختر خطتك' : 'Choose Your Plan'}
+          </h2>
+          <p className="text-gray-400 text-center mb-8 text-sm">
+            {language === 'ar' ? 'ابدأ مجاناً واحصل على ميزات احترافية' : 'Start free and unlock professional features'}
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Free Plan */}
+            <div className="glass-card p-6 border border-gray-700/50">
+              <div className="text-center mb-4">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gray-700/30 flex items-center justify-center">
+                  <Rocket className="w-6 h-6 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Free</h3>
+                <div className="text-3xl font-bold text-white mt-2">$0</div>
+                <p className="text-gray-500 text-xs">{language === 'ar' ? 'للأبد' : 'Forever'}</p>
+              </div>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-green-400" />
+                  {language === 'ar' ? '3 فحوصات / يوم' : '3 Scans / day'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-green-400" />
+                  {language === 'ar' ? 'النتيجة الأساسية' : 'Basic Score'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-500">
+                  <X className="w-4 h-4" />
+                  {language === 'ar' ? 'شهادة PDF' : 'PDF Certificate'}
+                </li>
+              </ul>
+              <button className="w-full py-2 rounded-lg bg-gray-700/50 text-gray-400 font-medium cursor-default">
+                {language === 'ar' ? 'نشط' : 'Active'}
+              </button>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="glass-card p-6 border-2 border-purple-500/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-bl-lg">
+                {language === 'ar' ? 'الأكثر شعبية' : 'POPULAR'}
+              </div>
+              <div className="text-center mb-4">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/30 flex items-center justify-center">
+                  <Crown className="w-6 h-6 text-purple-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Pro Analyst</h3>
+                <div className="text-3xl font-bold text-gradient mt-2">$9.99</div>
+                <p className="text-gray-500 text-xs">{language === 'ar' ? '/ شهرياً' : '/ month'}</p>
+              </div>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-purple-400" />
+                  {language === 'ar' ? 'فحوصات غير محدودة' : 'Unlimited Scans'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-purple-400" />
+                  {language === 'ar' ? 'شهادة PDF رسمية' : 'Official PDF Certificate'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-purple-400" />
+                  {language === 'ar' ? 'تحليل ذكي متقدم' : 'Smart Highlights'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-purple-400" />
+                  {language === 'ar' ? 'وضع الخصوصية' : 'Privacy Mode'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-purple-400" />
+                  {language === 'ar' ? 'سرعة أولوية' : 'Priority Speed'}
+                </li>
+              </ul>
+              <button 
+                onClick={() => setShowPricingModal(true)}
+                className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+              >
+                {language === 'ar' ? 'احصل على الشهادة الآن' : 'Get Certified Now'}
+              </button>
+            </div>
+
+            {/* Business Plan */}
+            <div className="glass-card p-6 border border-gray-700/50">
+              <div className="text-center mb-4">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gray-700/30 flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Business</h3>
+                <div className="text-2xl font-bold text-white mt-2">{language === 'ar' ? 'تواصل معنا' : 'Contact Us'}</div>
+                <p className="text-gray-500 text-xs">{language === 'ar' ? 'خطة مخصصة' : 'Custom Plan'}</p>
+              </div>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-green-400" />
+                  {language === 'ar' ? 'وصول API' : 'API Access'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-green-400" />
+                  {language === 'ar' ? 'فحص بالجملة' : 'Bulk Scanning'}
+                </li>
+                <li className="flex items-center gap-2 text-gray-300">
+                  <Check className="w-4 h-4 text-green-400" />
+                  {language === 'ar' ? 'دعم مخصص' : 'Dedicated Support'}
+                </li>
+              </ul>
+              <button className="w-full py-2 rounded-lg border border-gray-600 text-gray-300 font-medium hover:bg-white/5 transition-all">
+                {language === 'ar' ? 'تواصل معنا' : 'Contact Sales'}
+              </button>
             </div>
           </div>
         </motion.div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-purple-900/30 mt-12">
-        <div className="max-w-4xl mx-auto px-4 py-6 text-center">
-          <p className="text-gray-500 text-xs">{t.footer.copyright}</p>
+      <footer className="bg-black border-t border-purple-900/30 mt-16">
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-gray-500 text-sm">© 2026 Human-Verified Hub. All rights reserved.</p>
+            <div className="flex items-center gap-6 text-sm">
+              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
+                {language === 'ar' ? 'الخصوصية' : 'Privacy'}
+              </a>
+              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
+                {language === 'ar' ? 'الشروط' : 'Terms'}
+              </a>
+              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
+                {language === 'ar' ? 'اتصل بنا' : 'Contact'}
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
+
+      {/* Pricing Modal */}
+      <AnimatePresence>
+        {showPricingModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowPricingModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-card p-8 max-w-md w-full text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                {language === 'ar' ? 'قريباً!' : 'Coming Soon!'}
+              </h3>
+              <p className="text-gray-400 mb-6">
+                {language === 'ar' 
+                  ? 'بوابة الدفع قيد التكامل! لقد قمنا بترقيتك إلى ميزات PRO مجاناً خلال فترة البيتا هذه.'
+                  : 'Payment Gateway is being integrated! We have upgraded you to PRO features for free during this Beta period.'}
+              </p>
+              <div className="p-4 bg-green-900/20 border border-green-500/30 rounded-xl mb-6">
+                <div className="flex items-center justify-center gap-2 text-green-400">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-semibold">{language === 'ar' ? 'PRO مُفعّل!' : 'PRO Activated!'}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPricingModal(false)}
+                className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+              >
+                {language === 'ar' ? 'رائع!' : 'Awesome!'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cookie Consent Banner */}
+      <AnimatePresence>
+        {showCookieConsent && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-0 left-0 right-0 z-40 p-4 bg-black/95 border-t border-purple-900/30 backdrop-blur-xl"
+          >
+            <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-gray-400 text-sm text-center sm:text-left">
+                {language === 'ar' 
+                  ? 'نستخدم ملفات تعريف الارتباط لتحسين تجربتك.'
+                  : 'We use cookies to enhance your experience.'}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleCookieConsent(false)}
+                  className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 rounded-lg transition-colors"
+                >
+                  {language === 'ar' ? 'رفض' : 'Decline'}
+                </button>
+                <button
+                  onClick={() => handleCookieConsent(true)}
+                  className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  {language === 'ar' ? 'قبول' : 'Accept'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

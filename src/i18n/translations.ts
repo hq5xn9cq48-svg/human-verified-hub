@@ -13,8 +13,8 @@ export const translations = {
     // Header
     header: {
       title: "Human-Verified",
-      subtitle: "Forensic Linguistic Analyzer V5.0",
-      poweredBy: "Powered by Gemini 2.5 Flash",
+      subtitle: "AI Identity Detection V5.0",
+      poweredBy: "Powered by Gemini 1.5 Pro",
     },
     // Home/Analyzer Page
     analyzer: {
@@ -26,9 +26,9 @@ export const translations = {
       inputPlaceholder: "Paste the text you want to analyze here...",
       minChars: "Minimum 20 characters",
       characters: "characters",
-      analyzeButton: "🔬 Start Forensic Analysis",
+      analyzeButton: "Start Forensic Analysis",
       analyzing: "Performing forensic analysis...",
-      newAnalysis: "🔄 Analyze New Text",
+      newAnalysis: "Analyze New Text",
       errorShortText: "Please enter longer text for accurate analysis (at least 20 characters).",
     },
     // Results
@@ -65,7 +65,7 @@ export const translations = {
       inputLabel: "Enter AI text to humanize",
       inputPlaceholder: "Paste the AI-generated text you want to humanize...",
       button: "Humanize Text",
-      humanizeButton: "🎭 Humanize Text",
+      humanizeButton: "Humanize Text",
       humanizing: "Humanizing text...",
       outputLabel: "Humanized Result",
       copyButton: "Copy to Clipboard",
@@ -82,10 +82,10 @@ export const translations = {
       titleHighlight: "Detector",
       description: "Detect AI-generated images by analyzing visual artifacts and anomalies",
       uploadLabel: "Upload an image to analyze",
-      uploadButton: "📤 Choose Image",
+      uploadButton: "Choose Image",
       dragDrop: "or drag and drop here",
       supportedFormats: "Supported formats: JPG, PNG, WebP (Max 10MB)",
-      analyzeButton: "🔍 Analyze Image",
+      analyzeButton: "Analyze Image",
       analyzing: "Analyzing image...",
       result: "Analysis Result",
       aiProbability: "AI Generation Probability",
@@ -135,14 +135,14 @@ export const translations = {
     },
     // Footer
     footer: {
-      copyright: "© 2024 Human-Verified Hub | Forensic Linguistic Engine V5.0",
+      copyright: "© 2026 Human-Verified Hub. All rights reserved.",
     },
     // Guide
     guide: {
       title: "Results Guide",
       aiRange: "AI Confirmed",
-      hybridRange: "Hybrid/Advanced",
-      humanRange: "Human Original",
+      hybridRange: "Hybrid",
+      humanRange: "Human",
     },
   },
   ar: {
@@ -159,8 +159,8 @@ export const translations = {
     // Header
     header: {
       title: "Human-Verified",
-      subtitle: "المحلل الجنائي اللغوي V5.0",
-      poweredBy: "مدعوم بـ Gemini 2.5 Flash",
+      subtitle: "كشف هوية الذكاء الاصطناعي V5.0",
+      poweredBy: "مدعوم بـ Gemini 1.5 Pro",
     },
     // Home/Analyzer Page
     analyzer: {
@@ -172,9 +172,9 @@ export const translations = {
       inputPlaceholder: "الصق النص المراد تحليله هنا...",
       minChars: "الحد الأدنى 20 حرف",
       characters: "حرف",
-      analyzeButton: "🔬 بدء التحليل الجنائي",
+      analyzeButton: "بدء التحليل الجنائي",
       analyzing: "جاري الفحص الجنائي اللغوي...",
-      newAnalysis: "🔄 تحليل نص جديد",
+      newAnalysis: "تحليل نص جديد",
       errorShortText: "يرجى إدخال نص أطول للحصول على تحليل دقيق (20 حرف على الأقل).",
     },
     // Results
@@ -211,7 +211,7 @@ export const translations = {
       inputLabel: "أدخل نص الذكاء الاصطناعي للأنسنة",
       inputPlaceholder: "الصق النص المولد آلياً الذي تريد أنسنته...",
       button: "أنسنة النص",
-      humanizeButton: "🎭 أنسنة النص",
+      humanizeButton: "أنسنة النص",
       humanizing: "جاري أنسنة النص...",
       outputLabel: "النتيجة المؤنسنة",
       copyButton: "نسخ إلى الحافظة",
@@ -228,10 +228,10 @@ export const translations = {
       titleHighlight: "الذكاء الاصطناعي",
       description: "اكتشف الصور المولدة بالذكاء الاصطناعي من خلال تحليل التشوهات البصرية",
       uploadLabel: "ارفع صورة للتحليل",
-      uploadButton: "📤 اختر صورة",
+      uploadButton: "اختر صورة",
       dragDrop: "أو اسحب وأفلت هنا",
       supportedFormats: "الصيغ المدعومة: JPG, PNG, WebP (الحد الأقصى 10MB)",
-      analyzeButton: "🔍 تحليل الصورة",
+      analyzeButton: "تحليل الصورة",
       analyzing: "جاري تحليل الصورة...",
       result: "نتيجة التحليل",
       aiProbability: "احتمالية التوليد الآلي",
@@ -281,14 +281,14 @@ export const translations = {
     },
     // Footer
     footer: {
-      copyright: "© 2024 Human-Verified Hub | محرك التحليل الجنائي اللغوي V5.0",
+      copyright: "© 2026 Human-Verified Hub. جميع الحقوق محفوظة.",
     },
     // Guide
     guide: {
       title: "دليل النتائج",
-      aiRange: "ذكاء اصطناعي مؤكد",
-      hybridRange: "هجين/متطور",
-      humanRange: "بشري أصيل",
+      aiRange: "ذكاء اصطناعي",
+      hybridRange: "هجين",
+      humanRange: "بشري",
     },
   },
 };

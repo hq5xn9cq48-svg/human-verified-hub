@@ -46,8 +46,11 @@ OUTPUT FORMAT (JSON):
     "syntaxAnalysis": "brief",
     "lexicalRichness": "brief", 
     "predictability": "brief"
-  }
+  },
+  "smartBreakdown": ["Specific reason 1 why score was given", "Specific reason 2", "Specific reason 3"]
 }
+
+IMPORTANT: Include 3-5 specific bullet points in smartBreakdown explaining exactly WHY you gave this score. Be specific about patterns you detected.
 
 Return ONLY valid JSON, no markdown.`;
 
@@ -130,8 +133,9 @@ export async function POST(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
+      // Using gemini-1.5-pro for better analysis
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -139,7 +143,9 @@ export async function POST(req: Request) {
             contents: [{ parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${analysisText}"""` }] }],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 4096,
+              maxOutputTokens: 2048,
+              topP: 0.8,
+              topK: 40,
             }
           }),
           signal: controller.signal,
@@ -192,7 +198,8 @@ export async function POST(req: Request) {
             syntaxAnalysis: "N/A",
             lexicalRichness: "N/A",
             predictability: "N/A"
-          }
+          },
+          smartBreakdown: ["Analysis parsing failed - result uncertain"]
         };
       }
 
@@ -207,6 +214,7 @@ export async function POST(req: Request) {
 
       result.aiIndicators = Array.isArray(result.aiIndicators) ? result.aiIndicators : [];
       result.humanIndicators = Array.isArray(result.humanIndicators) ? result.humanIndicators : [];
+      result.smartBreakdown = Array.isArray(result.smartBreakdown) ? result.smartBreakdown : [];
       result.confidence = result.confidence || "medium";
       result.summary = result.summary || "Analysis completed.";
       

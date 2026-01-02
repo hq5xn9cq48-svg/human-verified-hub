@@ -34,21 +34,18 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 py-3">
+      <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 relative flex items-center justify-center">
-              <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-md group-hover:bg-purple-600/40 transition-all" />
-              <Image 
-                src="/logo.png" 
-                alt="Human-Verified Hub Logo" 
-                width={44} 
-                height={44} 
-                className="relative z-10 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)] group-hover:drop-shadow-[0_0_12px_rgba(168,85,247,0.8)] transition-all"
-                priority
-              />
-            </div>
+          <Link href="/" className="flex items-center gap-2 group">
+            <Image 
+              src="/logo-new.png" 
+              alt="Human-Verified Hub Logo" 
+              width={48} 
+              height={48} 
+              className="h-12 w-auto object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:drop-shadow-[0_0_16px_rgba(168,85,247,0.8)] transition-all"
+              priority
+            />
             <div className="hidden sm:block">
               <h1 className="text-lg font-bold text-gradient">Human-Verified Hub</h1>
               <p className="text-[10px] text-gray-500">{t.header.subtitle}</p>

@@ -133,9 +133,9 @@ export async function POST(req: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
-      // Using gemini-1.5-pro for better analysis
+      // Using gemini-1.5-flash for fast, high-performance analysis
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
             contents: [{ parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${analysisText}"""` }] }],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 2048,
+              maxOutputTokens: 1024,
               topP: 0.8,
               topK: 40,
             }

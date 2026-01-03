@@ -141,14 +141,14 @@ export default function AuthPage() {
       >
         {/* Logo */}
         <Link href="/" className="flex items-center justify-center gap-3 mb-8 group">
-          <div className="w-16 h-16 relative">
+          <div className="h-12 relative">
             <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-lg group-hover:bg-purple-600/40 transition-all" />
             <Image 
-              src="/logo.png" 
+              src="/logo-new.png" 
               alt="Human-Verified Hub Logo" 
-              width={64} 
-              height={64} 
-              className="relative z-10 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all"
+              width={48} 
+              height={48} 
+              className="h-12 w-auto object-contain relative z-10 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all"
               priority
             />
           </div>

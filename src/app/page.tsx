@@ -28,15 +28,8 @@ import {
   Minus,
   Upload,
   Shield,
-  Check,
-  Eye,
-  EyeOff,
-  Crown,
-  Building2,
   Sparkles,
-  Lock,
-  FileCheck,
-  Rocket
+  FileCheck
 } from 'lucide-react'
 
 interface AnalysisResult {
@@ -81,9 +74,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [certificateLoading, setCertificateLoading] = useState(false)
   const [verificationId, setVerificationId] = useState<string | null>(null)
-  const [privacyMode, setPrivacyMode] = useState(false)
-  const [showPricingModal, setShowPricingModal] = useState(false)
   const [showCookieConsent, setShowCookieConsent] = useState(true)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [welcomeStep, setWelcomeStep] = useState(0)
   const supabase = createClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -98,11 +91,28 @@ export default function HomePage() {
     }
   }, [loading])
 
-  // Check for cookie consent
+  // Check for cookie consent and welcome modal
   useEffect(() => {
     const consent = localStorage.getItem('cookieConsent')
     if (consent) setShowCookieConsent(false)
+    
+    // Check if user has seen welcome modal
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
+    if (!hasSeenWelcome) {
+      setShowWelcomeModal(true)
+    }
   }, [])
+
+  const handleCloseWelcome = () => {
+    localStorage.setItem('hasSeenWelcome', 'true')
+    setShowWelcomeModal(false)
+    setWelcomeStep(0)
+  }
+
+  const openWelcomeModal = () => {
+    setWelcomeStep(0)
+    setShowWelcomeModal(true)
+  }
 
   const handleCookieConsent = (accepted: boolean) => {
     localStorage.setItem('cookieConsent', accepted ? 'accepted' : 'declined')
@@ -146,8 +156,8 @@ export default function HomePage() {
 
       setResult(data)
 
-      // Only save to history if NOT in privacy mode
-      if (user && !privacyMode) {
+      // Save to history (all features free in beta)
+      if (user) {
         try {
           const { data: insertData } = await supabase.from('verifications').insert({
             user_id: user.id,
@@ -162,11 +172,6 @@ export default function HomePage() {
         } catch (e) {
           // Ignore save errors
         }
-      } else if (privacyMode) {
-        // Show privacy notification
-        setTimeout(() => {
-          alert(language === 'ar' ? 'وضع الخصوصية: لم يتم حفظ البيانات' : 'Privacy Mode: Data not saved to history')
-        }, 500)
       }
     } catch (err: any) {
       setError(err.message || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
@@ -393,8 +398,30 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Main content with top padding for fixed navbar */}
-      <main className="max-w-5xl mx-auto px-4 py-8 pt-24">
+      {/* Beta Access Banner */}
+      <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-purple-600/90 via-purple-700/90 to-purple-600/90 backdrop-blur-sm border-b border-purple-500/30">
+        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-center gap-2 text-center">
+          <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
+          <span className="text-white text-sm font-medium">
+            {language === 'ar' 
+              ? 'وصول بيتا: جميع الميزات المميزة (فحوصات غير محدودة، تقارير PDF) مجانية لفترة محدودة!' 
+              : 'BETA ACCESS: All Premium Features (Unlimited Scans, PDF Reports) are FREE for a limited time!'}
+          </span>
+          <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
+        </div>
+      </div>
+
+      {/* Help Button */}
+      <button
+        onClick={openWelcomeModal}
+        className="fixed bottom-20 right-4 z-30 w-10 h-10 rounded-full bg-purple-600/80 hover:bg-purple-600 text-white flex items-center justify-center shadow-lg hover:shadow-purple-500/25 transition-all"
+        title={language === 'ar' ? 'كيف يعمل' : 'How it works'}
+      >
+        <span className="text-lg font-bold">?</span>
+      </button>
+
+      {/* Main content with top padding for fixed navbar + banner */}
+      <main className="max-w-5xl mx-auto px-4 py-8 pt-32">
         {/* Hero Header */}
         <div className="text-center mb-8">
           <motion.div
@@ -567,26 +594,6 @@ export default function HomePage() {
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              {/* Privacy Mode Toggle */}
-              <div className="flex items-center justify-between p-3 bg-black/30 rounded-xl border border-purple-900/20">
-                <div className="flex items-center gap-2">
-                  {privacyMode ? <EyeOff className="w-4 h-4 text-purple-400" /> : <Eye className="w-4 h-4 text-gray-400" />}
-                  <span className="text-sm text-gray-300">
-                    {language === 'ar' ? 'وضع الخصوصية' : 'Privacy Mode'}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {language === 'ar' ? '(لا يتم الحفظ)' : '(Not saved)'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPrivacyMode(!privacyMode)}
-                  className={`w-12 h-6 rounded-full transition-all ${privacyMode ? 'bg-purple-600' : 'bg-gray-700'}`}
-                >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow transition-all ${privacyMode ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
 
               {/* Error Message */}
               <AnimatePresence>
@@ -874,123 +881,6 @@ export default function HomePage() {
           </div>
         </motion.div>
 
-        {/* Pricing Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-12"
-        >
-          <h2 className="text-2xl font-bold text-white text-center mb-2">
-            {language === 'ar' ? 'اختر خطتك' : 'Choose Your Plan'}
-          </h2>
-          <p className="text-gray-400 text-center mb-8 text-sm">
-            {language === 'ar' ? 'ابدأ مجاناً واحصل على ميزات احترافية' : 'Start free and unlock professional features'}
-          </p>
-          
-          <div className="grid md:grid-cols-3 gap-4">
-            {/* Free Plan */}
-            <div className="glass-card p-6 border border-gray-700/50">
-              <div className="text-center mb-4">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gray-700/30 flex items-center justify-center">
-                  <Rocket className="w-6 h-6 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white">Free</h3>
-                <div className="text-3xl font-bold text-white mt-2">$0</div>
-                <p className="text-gray-500 text-xs">{language === 'ar' ? 'للأبد' : 'Forever'}</p>
-              </div>
-              <ul className="space-y-2 mb-6 text-sm">
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-green-400" />
-                  {language === 'ar' ? '3 فحوصات / يوم' : '3 Scans / day'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-green-400" />
-                  {language === 'ar' ? 'النتيجة الأساسية' : 'Basic Score'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-500">
-                  <X className="w-4 h-4" />
-                  {language === 'ar' ? 'شهادة PDF' : 'PDF Certificate'}
-                </li>
-              </ul>
-              <button className="w-full py-2 rounded-lg bg-gray-700/50 text-gray-400 font-medium cursor-default">
-                {language === 'ar' ? 'نشط' : 'Active'}
-              </button>
-            </div>
-
-            {/* Pro Plan */}
-            <div className="glass-card p-6 border-2 border-purple-500/50 relative overflow-hidden">
-              <div className="absolute top-0 right-0 px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-bl-lg">
-                {language === 'ar' ? 'الأكثر شعبية' : 'POPULAR'}
-              </div>
-              <div className="text-center mb-4">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/30 flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-purple-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white">Pro Analyst</h3>
-                <div className="text-3xl font-bold text-gradient mt-2">$9.99</div>
-                <p className="text-gray-500 text-xs">{language === 'ar' ? '/ شهرياً' : '/ month'}</p>
-              </div>
-              <ul className="space-y-2 mb-6 text-sm">
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-purple-400" />
-                  {language === 'ar' ? 'فحوصات غير محدودة' : 'Unlimited Scans'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-purple-400" />
-                  {language === 'ar' ? 'شهادة PDF رسمية' : 'Official PDF Certificate'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-purple-400" />
-                  {language === 'ar' ? 'تحليل ذكي متقدم' : 'Smart Highlights'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-purple-400" />
-                  {language === 'ar' ? 'وضع الخصوصية' : 'Privacy Mode'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-purple-400" />
-                  {language === 'ar' ? 'سرعة أولوية' : 'Priority Speed'}
-                </li>
-              </ul>
-              <button 
-                onClick={() => setShowPricingModal(true)}
-                className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
-              >
-                {language === 'ar' ? 'احصل على الشهادة الآن' : 'Get Certified Now'}
-              </button>
-            </div>
-
-            {/* Business Plan */}
-            <div className="glass-card p-6 border border-gray-700/50">
-              <div className="text-center mb-4">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-gray-700/30 flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white">Business</h3>
-                <div className="text-2xl font-bold text-white mt-2">{language === 'ar' ? 'تواصل معنا' : 'Contact Us'}</div>
-                <p className="text-gray-500 text-xs">{language === 'ar' ? 'خطة مخصصة' : 'Custom Plan'}</p>
-              </div>
-              <ul className="space-y-2 mb-6 text-sm">
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-green-400" />
-                  {language === 'ar' ? 'وصول API' : 'API Access'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-green-400" />
-                  {language === 'ar' ? 'فحص بالجملة' : 'Bulk Scanning'}
-                </li>
-                <li className="flex items-center gap-2 text-gray-300">
-                  <Check className="w-4 h-4 text-green-400" />
-                  {language === 'ar' ? 'دعم مخصص' : 'Dedicated Support'}
-                </li>
-              </ul>
-              <button className="w-full py-2 rounded-lg border border-gray-600 text-gray-300 font-medium hover:bg-white/5 transition-all">
-                {language === 'ar' ? 'تواصل معنا' : 'Contact Sales'}
-              </button>
-            </div>
-          </div>
-        </motion.div>
       </main>
 
       {/* Footer */}
@@ -1013,45 +903,132 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Pricing Modal */}
+      {/* Welcome Modal */}
       <AnimatePresence>
-        {showPricingModal && (
+        {showWelcomeModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowPricingModal(false)}
+            onClick={handleCloseWelcome}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card p-8 max-w-md w-full text-center"
+              className="glass-card p-8 max-w-lg w-full text-center border border-purple-500/30"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-purple-400" />
+              {/* Step Indicators */}
+              <div className="flex justify-center gap-2 mb-6">
+                {[0, 1, 2].map((step) => (
+                  <div
+                    key={step}
+                    className={`w-3 h-3 rounded-full transition-all ${
+                      welcomeStep === step ? 'bg-purple-500 scale-125' : 'bg-gray-600'
+                    }`}
+                  />
+                ))}
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">
-                {language === 'ar' ? 'قريباً!' : 'Coming Soon!'}
-              </h3>
-              <p className="text-gray-400 mb-6">
-                {language === 'ar' 
-                  ? 'بوابة الدفع قيد التكامل! لقد قمنا بترقيتك إلى ميزات PRO مجاناً خلال فترة البيتا هذه.'
-                  : 'Payment Gateway is being integrated! We have upgraded you to PRO features for free during this Beta period.'}
-              </p>
-              <div className="p-4 bg-green-900/20 border border-green-500/30 rounded-xl mb-6">
-                <div className="flex items-center justify-center gap-2 text-green-400">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="font-semibold">{language === 'ar' ? 'PRO مُفعّل!' : 'PRO Activated!'}</span>
-                </div>
+
+              {/* Step Content */}
+              <AnimatePresence mode="wait">
+                {welcomeStep === 0 && (
+                  <motion.div
+                    key="step0"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                      <Upload className="w-10 h-10 text-purple-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-3">
+                      {language === 'ar' ? '١. رفع المحتوى' : '1. Upload Content'}
+                    </h3>
+                    <p className="text-gray-400 mb-6">
+                      {language === 'ar' 
+                        ? 'الصق النص أو أدخل رابط المقال الذي تريد تحليله. نحن ندعم أي نوع من المحتوى.'
+                        : 'Paste your text or enter an article URL you want to analyze. We support any type of content.'}
+                    </p>
+                  </motion.div>
+                )}
+                {welcomeStep === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                      <Brain className="w-10 h-10 text-purple-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-3">
+                      {language === 'ar' ? '٢. الفحص بالذكاء الاصطناعي' : '2. AI Scan'}
+                    </h3>
+                    <p className="text-gray-400 mb-6">
+                      {language === 'ar' 
+                        ? 'محركنا المدعوم بـ Gemini يحلل الأنماط اللغوية والتراكيب والمؤشرات السلوكية.'
+                        : 'Our Gemini-powered engine analyzes linguistic patterns, structures, and behavioral indicators.'}
+                    </p>
+                  </motion.div>
+                )}
+                {welcomeStep === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                      <Shield className="w-10 h-10 text-purple-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-3">
+                      {language === 'ar' ? '٣. احصل على التحقق' : '3. Get Verified'}
+                    </h3>
+                    <p className="text-gray-400 mb-6">
+                      {language === 'ar' 
+                        ? 'احصل على نتيجتك الموثقة مع تحليل مفصل. قم بتحميل تقارير PDF وشهادات للمحتوى البشري.'
+                        : 'Receive your verified score with detailed analysis. Download PDF reports and certificates for human content.'}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Navigation Buttons */}
+              <div className="flex gap-3">
+                {welcomeStep > 0 && (
+                  <button
+                    onClick={() => setWelcomeStep(welcomeStep - 1)}
+                    className="flex-1 py-3 rounded-lg border border-purple-500/30 text-gray-300 hover:text-white hover:bg-purple-900/20 transition-all"
+                  >
+                    {language === 'ar' ? 'السابق' : 'Back'}
+                  </button>
+                )}
+                {welcomeStep < 2 ? (
+                  <button
+                    onClick={() => setWelcomeStep(welcomeStep + 1)}
+                    className="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                  >
+                    {language === 'ar' ? 'التالي' : 'Next'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCloseWelcome}
+                    className="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                  >
+                    {language === 'ar' ? 'ابدأ الآن!' : 'Get Started!'}
+                  </button>
+                )}
               </div>
+
+              {/* Skip Button */}
               <button
-                onClick={() => setShowPricingModal(false)}
-                className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                onClick={handleCloseWelcome}
+                className="mt-4 text-sm text-gray-500 hover:text-gray-400 transition-colors"
               >
-                {language === 'ar' ? 'رائع!' : 'Awesome!'}
+                {language === 'ar' ? 'تخطي' : 'Skip'}
               </button>
             </motion.div>
           </motion.div>

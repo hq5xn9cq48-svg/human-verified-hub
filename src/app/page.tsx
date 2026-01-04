@@ -398,16 +398,16 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Beta Access Banner */}
-      <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-purple-600/90 via-purple-700/90 to-purple-600/90 backdrop-blur-sm border-b border-purple-500/30">
-        <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-center gap-2 text-center">
-          <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
-          <span className="text-white text-sm font-medium">
+      {/* Beta Access Banner - Thin & Glassy */}
+      <div className="fixed top-16 left-0 right-0 z-40 h-8 bg-purple-900/40 backdrop-blur-md border-b border-purple-500/20">
+        <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-center gap-2">
+          <Sparkles className="w-3 h-3 text-yellow-300/80" />
+          <span className="text-white/90 text-xs font-medium">
             {language === 'ar' 
-              ? 'وصول بيتا: جميع الميزات المميزة (فحوصات غير محدودة، تقارير PDF) مجانية لفترة محدودة!' 
-              : 'BETA ACCESS: All Premium Features (Unlimited Scans, PDF Reports) are FREE for a limited time!'}
+              ? 'بيتا: جميع الميزات المميزة مجانية!' 
+              : 'BETA: All Premium Features FREE for limited time'}
           </span>
-          <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
+          <Sparkles className="w-3 h-3 text-yellow-300/80" />
         </div>
       </div>
 
@@ -420,8 +420,8 @@ export default function HomePage() {
         <span className="text-lg font-bold">?</span>
       </button>
 
-      {/* Main content with top padding for fixed navbar + banner */}
-      <main className="max-w-5xl mx-auto px-4 py-8 pt-32">
+      {/* Main content with top padding for fixed navbar + thin banner */}
+      <main className="max-w-5xl mx-auto px-4 py-8 pt-28">
         {/* Hero Header */}
         <div className="text-center mb-8">
           <motion.div
@@ -451,41 +451,6 @@ export default function HomePage() {
             {t.analyzer.description}
           </p>
         </div>
-
-        {/* How It Works Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <h2 className="text-center text-lg font-semibold text-white mb-4">
-            {language === 'ar' ? 'كيف يعمل' : 'How It Works'}
-          </h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="glass-card p-5 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                <Upload className="w-6 h-6 text-purple-400" />
-              </div>
-              <h3 className="text-white font-semibold mb-1">{language === 'ar' ? '١. رفع' : '1. Upload'}</h3>
-              <p className="text-gray-400 text-xs">{language === 'ar' ? 'ارفع نصك بأمان' : 'Securely upload your text'}</p>
-            </div>
-            <div className="glass-card p-5 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                <Brain className="w-6 h-6 text-purple-400" />
-              </div>
-              <h3 className="text-white font-semibold mb-1">{language === 'ar' ? '٢. تحليل' : '2. Analyze'}</h3>
-              <p className="text-gray-400 text-xs">{language === 'ar' ? 'الذكاء الاصطناعي يفحص المحتوى' : 'Gemini AI scans your content'}</p>
-            </div>
-            <div className="glass-card p-5 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                <Shield className="w-6 h-6 text-purple-400" />
-              </div>
-              <h3 className="text-white font-semibold mb-1">{language === 'ar' ? '٣. تحقق' : '3. Verify'}</h3>
-              <p className="text-gray-400 text-xs">{language === 'ar' ? 'احصل على نتيجتك الموثقة' : 'Get your verified score'}</p>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Main Card */}
         <motion.div
@@ -903,30 +868,38 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Welcome Modal */}
+      {/* Welcome Modal - Premium Dark Glass Design */}
       <AnimatePresence>
         {showWelcomeModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
             onClick={handleCloseWelcome}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card p-8 max-w-lg w-full text-center border border-purple-500/30"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative max-w-md w-full rounded-2xl bg-gradient-to-b from-gray-900/95 to-black/95 backdrop-blur-xl p-8 text-center border border-purple-500/20 shadow-[0_0_60px_-15px_rgba(168,85,247,0.3)]"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Subtle glow effect */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
+              
               {/* Step Indicators */}
-              <div className="flex justify-center gap-2 mb-6">
+              <div className="relative flex justify-center gap-3 mb-8">
                 {[0, 1, 2].map((step) => (
                   <div
                     key={step}
-                    className={`w-3 h-3 rounded-full transition-all ${
-                      welcomeStep === step ? 'bg-purple-500 scale-125' : 'bg-gray-600'
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      welcomeStep === step 
+                        ? 'w-8 bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]' 
+                        : welcomeStep > step
+                        ? 'w-4 bg-purple-500/50'
+                        : 'w-4 bg-gray-700'
                     }`}
                   />
                 ))}
@@ -937,71 +910,77 @@ export default function HomePage() {
                 {welcomeStep === 0 && (
                   <motion.div
                     key="step0"
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative"
                   >
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                      <Upload className="w-10 h-10 text-purple-400" />
+                    <div className="w-16 h-16 mx-auto mb-5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)]">
+                      <Upload className="w-8 h-8 text-purple-400" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-3">
-                      {language === 'ar' ? '١. رفع المحتوى' : '1. Upload Content'}
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {language === 'ar' ? 'رفع المحتوى' : 'Upload Content'}
                     </h3>
-                    <p className="text-gray-400 mb-6">
+                    <p className="text-gray-400 text-sm leading-relaxed">
                       {language === 'ar' 
-                        ? 'الصق النص أو أدخل رابط المقال الذي تريد تحليله. نحن ندعم أي نوع من المحتوى.'
-                        : 'Paste your text or enter an article URL you want to analyze. We support any type of content.'}
+                        ? 'الصق النص أو أدخل رابط المقال'
+                        : 'Paste text or enter an article URL to analyze'}
                     </p>
                   </motion.div>
                 )}
                 {welcomeStep === 1 && (
                   <motion.div
                     key="step1"
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative"
                   >
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                      <Brain className="w-10 h-10 text-purple-400" />
+                    <div className="w-16 h-16 mx-auto mb-5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)]">
+                      <Brain className="w-8 h-8 text-purple-400" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-3">
-                      {language === 'ar' ? '٢. الفحص بالذكاء الاصطناعي' : '2. AI Scan'}
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {language === 'ar' ? 'فحص ذكي' : 'AI Analysis'}
                     </h3>
-                    <p className="text-gray-400 mb-6">
+                    <p className="text-gray-400 text-sm leading-relaxed">
                       {language === 'ar' 
-                        ? 'محركنا المدعوم بـ Gemini يحلل الأنماط اللغوية والتراكيب والمؤشرات السلوكية.'
-                        : 'Our Gemini-powered engine analyzes linguistic patterns, structures, and behavioral indicators.'}
+                        ? 'محركنا يحلل الأنماط اللغوية'
+                        : 'Our Gemini engine analyzes linguistic patterns'}
                     </p>
                   </motion.div>
                 )}
                 {welcomeStep === 2 && (
                   <motion.div
                     key="step2"
-                    initial={{ opacity: 0, x: 20 }}
+                    initial={{ opacity: 0, x: 30 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
+                    exit={{ opacity: 0, x: -30 }}
+                    transition={{ duration: 0.2 }}
+                    className="relative"
                   >
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
-                      <Shield className="w-10 h-10 text-purple-400" />
+                    <div className="w-16 h-16 mx-auto mb-5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)]">
+                      <Shield className="w-8 h-8 text-purple-400" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-3">
-                      {language === 'ar' ? '٣. احصل على التحقق' : '3. Get Verified'}
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {language === 'ar' ? 'احصل على التحقق' : 'Get Verified'}
                     </h3>
-                    <p className="text-gray-400 mb-6">
+                    <p className="text-gray-400 text-sm leading-relaxed">
                       {language === 'ar' 
-                        ? 'احصل على نتيجتك الموثقة مع تحليل مفصل. قم بتحميل تقارير PDF وشهادات للمحتوى البشري.'
-                        : 'Receive your verified score with detailed analysis. Download PDF reports and certificates for human content.'}
+                        ? 'احصل على نتيجتك وشهادة PDF'
+                        : 'Get your score and download PDF certificates'}
                     </p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
               {/* Navigation Buttons */}
-              <div className="flex gap-3">
+              <div className="relative flex gap-3 mt-8">
                 {welcomeStep > 0 && (
                   <button
                     onClick={() => setWelcomeStep(welcomeStep - 1)}
-                    className="flex-1 py-3 rounded-lg border border-purple-500/30 text-gray-300 hover:text-white hover:bg-purple-900/20 transition-all"
+                    className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 hover:text-white hover:border-gray-600 hover:bg-white/5 transition-all text-sm font-medium"
                   >
                     {language === 'ar' ? 'السابق' : 'Back'}
                   </button>
@@ -1009,26 +988,26 @@ export default function HomePage() {
                 {welcomeStep < 2 ? (
                   <button
                     onClick={() => setWelcomeStep(welcomeStep + 1)}
-                    className="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                    className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]"
                   >
                     {language === 'ar' ? 'التالي' : 'Next'}
                   </button>
                 ) : (
                   <button
                     onClick={handleCloseWelcome}
-                    className="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                    className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]"
                   >
-                    {language === 'ar' ? 'ابدأ الآن!' : 'Get Started!'}
+                    {language === 'ar' ? 'ابدأ!' : 'Get Started'}
                   </button>
                 )}
               </div>
 
-              {/* Skip Button */}
+              {/* Skip Link */}
               <button
                 onClick={handleCloseWelcome}
-                className="mt-4 text-sm text-gray-500 hover:text-gray-400 transition-colors"
+                className="relative mt-4 text-xs text-gray-600 hover:text-gray-400 transition-colors"
               >
-                {language === 'ar' ? 'تخطي' : 'Skip'}
+                {language === 'ar' ? 'تخطي' : 'Skip intro'}
               </button>
             </motion.div>
           </motion.div>

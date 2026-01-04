@@ -129,124 +129,147 @@ export async function POST(req: Request) {
 
     const analysisText = text.trim().substring(0, 8000);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    // Model fallback chain: Try fastest first, then fallback to stable models
+    const modelChain = [
+      'gemini-1.5-flash',      // Fastest - try first
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-pro',        // More capable fallback
+      'gemini-pro',            // Legacy stable fallback
+    ];
 
-    try {
-      // Using gemini-1.5-flash for fast, high-performance analysis
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${analysisText}"""` }] }],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 1024,
-              topP: 0.8,
-              topK: 40,
-            }
-          }),
-          signal: controller.signal,
-        }
-      );
+    let responseText: string | null = null;
+    let lastError: string = '';
 
-      clearTimeout(timeoutId);
+    for (const modelName of modelChain) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        console.error("Gemini API Error:", response.status, errData);
-        
-        // Return actual Google error message for debugging
-        const googleError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
-        return NextResponse.json({ 
-          error: `Gemini API Error: ${googleError}` 
-        }, { status: response.status });
-      }
-
-      const data = await response.json();
-      const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!responseText) {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "لم يتم استلام رد" : "No response received from AI" 
-        }, { status: 500 });
-      }
-
-      // Parse JSON from response
-      let result;
       try {
-        const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-        result = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
-      } catch {
-        result = {
-          humanScore: 50,
-          verdict: "Uncertain",
-          confidence: "low",
-          summary: "Analysis could not be completed properly.",
-          analysisMetadata: {
-            wordCount: analysisText.split(/\s+/).length,
-            sentenceCount: analysisText.split(/[.!?]+/).length,
-            perplexityLevel: "medium",
-            burstinessScore: "medium"
-          },
-          aiIndicators: [],
-          humanIndicators: [],
-          forensicDetails: {
-            syntaxAnalysis: "N/A",
-            lexicalRichness: "N/A",
-            predictability: "N/A"
-          },
-          smartBreakdown: ["Analysis parsing failed - result uncertain"]
-        };
-      }
+        console.log(`Trying model: ${modelName}`);
+        
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${analysisText}"""` }] }],
+              generationConfig: {
+                temperature: 0.1,
+                maxOutputTokens: 1024,
+                topP: 0.8,
+                topK: 40,
+              }
+            }),
+            signal: controller.signal,
+          }
+        );
 
-      // Normalize the result
-      result.humanScore = Math.max(0, Math.min(100, Number(result.humanScore) || 50));
-      
-      if (!result.verdict) {
-        if (result.humanScore <= 30) result.verdict = "AI Generated";
-        else if (result.humanScore <= 60) result.verdict = "Uncertain";
-        else result.verdict = "Likely Human";
-      }
+        clearTimeout(timeoutId);
 
-      result.aiIndicators = Array.isArray(result.aiIndicators) ? result.aiIndicators : [];
-      result.humanIndicators = Array.isArray(result.humanIndicators) ? result.humanIndicators : [];
-      result.smartBreakdown = Array.isArray(result.smartBreakdown) ? result.smartBreakdown : [];
-      result.confidence = result.confidence || "medium";
-      result.summary = result.summary || "Analysis completed.";
-      
-      if (!result.analysisMetadata) {
-        result.analysisMetadata = {
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          lastError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
+          console.error(`Model ${modelName} failed:`, lastError);
+          
+          // If model not found (404), try next model
+          if (response.status === 404 || lastError.includes('not found')) {
+            continue;
+          }
+          
+          // For other errors, also try next model
+          continue;
+        }
+
+        const data = await response.json();
+        responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (responseText) {
+          console.log(`Success with model: ${modelName}`);
+          break; // Success! Exit the loop
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        lastError = fetchError.message || 'Fetch failed';
+        console.error(`Model ${modelName} fetch error:`, lastError);
+        
+        if (fetchError.name === 'AbortError') {
+          lastError = 'Request timed out';
+        }
+        // Continue to next model
+        continue;
+      }
+    }
+
+    // If all models failed
+    if (!responseText) {
+      return NextResponse.json({ 
+        error: language === 'ar' ? 'فشل التحليل' : `Analysis failed: ${lastError}` 
+      }, { status: 500 });
+    }
+
+    // Parse JSON from response
+    let result;
+    try {
+      const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      result = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+    } catch {
+      result = {
+        humanScore: 50,
+        verdict: "Uncertain",
+        confidence: "low",
+        summary: "Analysis could not be completed properly.",
+        analysisMetadata: {
           wordCount: analysisText.split(/\s+/).length,
           sentenceCount: analysisText.split(/[.!?]+/).length,
           perplexityLevel: "medium",
           burstinessScore: "medium"
-        };
-      }
-
-      if (!result.forensicDetails) {
-        result.forensicDetails = {
-          syntaxAnalysis: "Standard",
-          lexicalRichness: "Average",
-          predictability: "Moderate"
-        };
-      }
-
-      return NextResponse.json(result);
-
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      
-      if (fetchError.name === 'AbortError') {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "انتهت المهلة" : "Request timed out" 
-        }, { status: 408 });
-      }
-      throw fetchError;
+        },
+        aiIndicators: [],
+        humanIndicators: [],
+        forensicDetails: {
+          syntaxAnalysis: "N/A",
+          lexicalRichness: "N/A",
+          predictability: "N/A"
+        },
+        smartBreakdown: ["Analysis parsing failed - result uncertain"]
+      };
     }
+
+    // Normalize the result
+    result.humanScore = Math.max(0, Math.min(100, Number(result.humanScore) || 50));
+    
+    if (!result.verdict) {
+      if (result.humanScore <= 30) result.verdict = "AI Generated";
+      else if (result.humanScore <= 60) result.verdict = "Uncertain";
+      else result.verdict = "Likely Human";
+    }
+
+    result.aiIndicators = Array.isArray(result.aiIndicators) ? result.aiIndicators : [];
+    result.humanIndicators = Array.isArray(result.humanIndicators) ? result.humanIndicators : [];
+    result.smartBreakdown = Array.isArray(result.smartBreakdown) ? result.smartBreakdown : [];
+    result.confidence = result.confidence || "medium";
+    result.summary = result.summary || "Analysis completed.";
+    
+    if (!result.analysisMetadata) {
+      result.analysisMetadata = {
+        wordCount: analysisText.split(/\s+/).length,
+        sentenceCount: analysisText.split(/[.!?]+/).length,
+        perplexityLevel: "medium",
+        burstinessScore: "medium"
+      };
+    }
+
+    if (!result.forensicDetails) {
+      result.forensicDetails = {
+        syntaxAnalysis: "Standard",
+        lexicalRichness: "Average",
+        predictability: "Moderate"
+      };
+    }
+
+    return NextResponse.json(result);
 
   } catch (error: any) {
     console.error("Analysis Error:", error);

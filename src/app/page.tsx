@@ -12,7 +12,6 @@ import {
   Clipboard, 
   X, 
   Loader2, 
-  AlertCircle,
   CheckCircle,
   Bot,
   User,
@@ -31,6 +30,10 @@ import {
   Sparkles,
   FileCheck
 } from 'lucide-react'
+import Script from 'next/script'
+
+// Turnstile site key
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
 
 interface AnalysisResult {
   analysisMetadata: {
@@ -77,8 +80,10 @@ export default function HomePage() {
   const [showCookieConsent, setShowCookieConsent] = useState(true)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [welcomeStep, setWelcomeStep] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const supabase = createClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const turnstileRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (loading) {
@@ -144,7 +149,8 @@ export default function HomePage() {
         body: JSON.stringify({ 
           text: inputMode === 'text' ? text : undefined, 
           url: inputMode === 'url' ? url : undefined,
-          language 
+          language,
+          turnstileToken 
         }),
       })
 
@@ -567,13 +573,25 @@ export default function HomePage() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="p-3 rounded-xl bg-red-900/20 border border-red-500/30 text-red-400 text-sm flex items-center gap-2"
+                    className="p-3 rounded-xl bg-red-900/20 border border-red-500/30 text-red-400 text-sm"
                   >
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     {error}
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Turnstile Widget */}
+              {TURNSTILE_SITE_KEY && (
+                <div className="flex justify-center">
+                  <div
+                    ref={turnstileRef}
+                    className="cf-turnstile"
+                    data-sitekey={TURNSTILE_SITE_KEY}
+                    data-callback="onTurnstileSuccess"
+                    data-theme="dark"
+                  />
+                </div>
+              )}
 
               {/* Submit Button */}
               <button
@@ -854,13 +872,13 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">© 2026 Human-Verified Hub. All rights reserved.</p>
             <div className="flex items-center gap-6 text-sm">
-              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <a href="/privacy" className="text-gray-400 hover:text-purple-400 transition-colors">
                 {language === 'ar' ? 'الخصوصية' : 'Privacy'}
               </a>
-              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <a href="/terms" className="text-gray-400 hover:text-purple-400 transition-colors">
                 {language === 'ar' ? 'الشروط' : 'Terms'}
               </a>
-              <a href="#" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <a href="mailto:contact@humanverified.systems" className="text-gray-400 hover:text-purple-400 transition-colors">
                 {language === 'ar' ? 'اتصل بنا' : 'Contact'}
               </a>
             </div>
@@ -1047,6 +1065,20 @@ export default function HomePage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Turnstile Script */}
+      {TURNSTILE_SITE_KEY && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+          onLoad={() => {
+            (window as any).onTurnstileSuccess = (token: string) => {
+              setTurnstileToken(token)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

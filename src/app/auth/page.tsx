@@ -1,28 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Loader2, Mail, ArrowLeft, KeyRound } from 'lucide-react'
+import { Loader2, Mail, ArrowLeft, CheckCircle, Sparkles } from 'lucide-react'
 
 export default function AuthPage() {
-  const { t, isRTL } = useLanguage()
-  const { signInWithOTP, verifyOTP } = useAuth()
-  const router = useRouter()
+  const { t, isRTL, language } = useLanguage()
   const supabase = createClient()
   
   const [email, setEmail] = useState('')
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
-  const [step, setStep] = useState<'email' | 'otp'>('email')
+  const [step, setStep] = useState<'email' | 'sent'>('email')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
@@ -50,80 +44,37 @@ export default function AuthPage() {
     }
   }
 
-  const handleSendOTP = async (e: React.FormEvent) => {
+  const handleSendMagicLink = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim()) return
 
     setLoading(true)
     setError(null)
     
-    const { error } = await signInWithOTP(email)
-    
-    if (error) {
-      setError(error)
-    } else {
-      setSuccess(t.auth.codeSent)
-      setStep('otp')
-    }
-    setLoading(false)
-  }
-
-  const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) {
-      const digits = value.replace(/\D/g, '').slice(0, 6).split('')
-      const newOtp = [...otp]
-      digits.forEach((digit, i) => {
-        if (index + i < 6) {
-          newOtp[index + i] = digit
-        }
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       })
-      setOtp(newOtp)
       
-      const nextIndex = Math.min(index + digits.length, 5)
-      const nextInput = document.getElementById(`otp-${nextIndex}`)
-      nextInput?.focus()
-    } else if (/^\d$/.test(value) || value === '') {
-      const newOtp = [...otp]
-      newOtp[index] = value
-      setOtp(newOtp)
-      
-      if (value && index < 5) {
-        const nextInput = document.getElementById(`otp-${index + 1}`)
-        nextInput?.focus()
+      if (error) {
+        setError(error.message)
+      } else {
+        setStep('sent')
       }
+    } catch (err: any) {
+      setError(err.message || 'Failed to send magic link')
     }
-  }
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`)
-      prevInput?.focus()
-    }
-  }
-
-  const handleVerifyOTP = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const code = otp.join('')
-    if (code.length !== 6) return
-
-    setLoading(true)
-    setError(null)
-
-    const { error } = await verifyOTP(email, code)
     
-    if (error) {
-      setError(t.auth.codeError)
-    } else {
-      router.push('/')
-    }
     setLoading(false)
   }
 
   const resetAuth = () => {
     setStep('email')
-    setOtp(['', '', '', '', '', ''])
     setError(null)
-    setSuccess(null)
+    setEmail('')
   }
 
   return (
@@ -171,7 +122,9 @@ export default function AuthPage() {
               >
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-white">{t.auth.signInTitle}</h2>
-                  <p className="text-gray-400 text-sm mt-2">Sign in to save your verification history</p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    {language === 'ar' ? 'سجل الدخول لحفظ سجل التحقق' : 'Sign in to save your verification history'}
+                  </p>
                 </div>
 
                 {/* Google Sign In Button */}
@@ -190,7 +143,7 @@ export default function AuthPage() {
                       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                     </svg>
                   )}
-                  Continue with Google
+                  {language === 'ar' ? 'المتابعة مع Google' : 'Continue with Google'}
                 </button>
 
                 {/* Divider */}
@@ -199,12 +152,14 @@ export default function AuthPage() {
                     <div className="w-full border-t border-purple-900/50"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-black text-gray-500">or continue with email</span>
+                    <span className="px-4 bg-black text-gray-500">
+                      {language === 'ar' ? 'أو عبر البريد الإلكتروني' : 'or continue with email'}
+                    </span>
                   </div>
                 </div>
 
-                {/* Email Form */}
-                <form onSubmit={handleSendOTP} className="space-y-4">
+                {/* Email Form - Magic Link */}
+                <form onSubmit={handleSendMagicLink} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       <Mail className="w-4 h-4 inline mr-2" />
@@ -237,104 +192,68 @@ export default function AuthPage() {
                   <button
                     type="submit"
                     disabled={loading || !email.trim()}
-                    className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {loading ? (
-                      <span className="flex items-center justify-center gap-2">
+                      <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Sending...
-                      </span>
+                        {language === 'ar' ? 'جارِ الإرسال...' : 'Sending...'}
+                      </>
                     ) : (
-                      t.auth.sendCode
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        {language === 'ar' ? 'إرسال رابط سحري' : 'Send Magic Link'}
+                      </>
                     )}
                   </button>
                 </form>
               </motion.div>
             ) : (
-              <motion.form
-                key="otp-step"
+              <motion.div
+                key="sent-step"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                onSubmit={handleVerifyOTP}
-                className="space-y-6"
+                className="space-y-6 text-center"
               >
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-900/30 border border-purple-500/30 flex items-center justify-center">
-                    <KeyRound className="w-6 h-6 text-purple-400" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-white">{t.auth.verifyCode}</h2>
-                  <p className="text-gray-400 text-sm mt-2">{t.auth.enterCode}</p>
-                  <p className="text-purple-400 text-sm mt-1">{email}</p>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-green-400" />
+                </div>
+                
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    {language === 'ar' ? 'تحقق من بريدك!' : 'Check Your Email!'}
+                  </h2>
+                  <p className="text-gray-400 text-sm">
+                    {language === 'ar' 
+                      ? 'لقد أرسلنا رابطًا سحريًا إلى'
+                      : "We've sent a magic link to"}
+                  </p>
+                  <p className="text-purple-400 font-medium mt-1">{email}</p>
                 </div>
 
-                <AnimatePresence>
-                  {success && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm text-center"
-                    >
-                      {success}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* OTP Input */}
-                <div className="flex justify-center gap-3" dir="ltr">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      id={`otp-${index}`}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(index, e)}
-                      className="w-12 h-14 text-center text-xl font-bold bg-black/80 border border-purple-900/50 rounded-xl text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
-                    />
-                  ))}
+                <div className="p-4 bg-purple-900/20 border border-purple-500/20 rounded-xl">
+                  <p className="text-gray-300 text-sm">
+                    {language === 'ar' 
+                      ? 'انقر على الرابط في البريد الإلكتروني لتسجيل الدخول تلقائيًا. لا حاجة لإدخال أي رمز!'
+                      : 'Click the link in the email to sign in automatically. No code needed!'}
+                  </p>
                 </div>
 
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm text-center"
-                    >
-                      {error}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <div className="text-gray-500 text-xs">
+                  {language === 'ar' 
+                    ? 'لم تستلم البريد؟ تحقق من مجلد الرسائل غير المرغوب فيها.'
+                    : "Didn't receive it? Check your spam folder."}
+                </div>
 
                 <button
-                  type="submit"
-                  disabled={loading || otp.join('').length !== 6}
-                  className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Verifying...
-                    </span>
-                  ) : (
-                    t.auth.verifyCode
-                  )}
-                </button>
-
-                <button
-                  type="button"
                   onClick={resetAuth}
                   className="w-full py-2 text-gray-400 hover:text-white text-sm transition-all flex items-center justify-center gap-1"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Use different email
+                  {language === 'ar' ? 'استخدام بريد إلكتروني مختلف' : 'Use different email'}
                 </button>
-              </motion.form>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -343,7 +262,7 @@ export default function AuthPage() {
         <div className="text-center mt-6">
           <Link href="/" className="text-gray-400 hover:text-purple-400 text-sm transition-all flex items-center justify-center gap-1">
             <ArrowLeft className="w-4 h-4" />
-            Back to Home
+            {language === 'ar' ? 'العودة للرئيسية' : 'Back to Home'}
           </Link>
         </div>
       </motion.div>

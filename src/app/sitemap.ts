@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
  
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://humanverified.ai'
+  const baseUrl = 'https://humanverified.systems'
   
   return [
     {
@@ -11,28 +11,34 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${baseUrl}/humanizer`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
-    {
       url: `${baseUrl}/image-detector`,
       lastModified: new Date(),
-      changeFrequency: 'weekly',
+      changeFrequency: 'daily',
       priority: 0.9,
     },
     {
       url: `${baseUrl}/history`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
-      priority: 0.7,
+      priority: 0.8,
     },
     {
       url: `${baseUrl}/auth`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
-      priority: 0.5,
+      priority: 0.6,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.4,
     },
   ]
 }

@@ -8,33 +8,35 @@ import Script from 'next/script'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Human-Verified Hub | AI Identity Detection',
-  description: 'Professional AI-powered tool to analyze and verify if content is written by humans or AI. Includes text humanizer and AI image detection. Get certified with official PDF certificates.',
-  keywords: 'AI detection, human verification, content analysis, AI checker, GPT detector, text analyzer, humanizer',
-  authors: [{ name: 'Human-Verified Hub' }],
+  metadataBase: new URL('https://humanverified.systems'),
+  title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
+  description: 'Professional AI-powered tool to detect AI-generated content and check for plagiarism. Verify if text is human-written with forensic linguistic analysis. Get certified PDF reports.',
+  keywords: 'AI detection, AI text detector, GPT detector, ChatGPT detector, plagiarism checker, human verification, content analysis, AI checker, text analyzer, AI content detector, humanverified',
+  authors: [{ name: 'Human-Verified Hub', url: 'https://humanverified.systems' }],
   creator: 'Human-Verified Hub',
   publisher: 'Human-Verified Hub',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://humanverified.ai',
+    url: 'https://humanverified.systems',
     siteName: 'Human-Verified Hub',
-    title: 'Human-Verified Hub | AI Identity Detection',
-    description: 'Professional AI-powered tool to analyze and verify if content is written by humans or AI.',
+    title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
+    description: 'Professional AI-powered tool to detect AI-generated content. Verify if text is human-written with forensic linguistic analysis.',
     images: [
       {
-        url: '/logo-new.png',
+        url: 'https://humanverified.systems/logo-new.png',
         width: 512,
         height: 512,
-        alt: 'Human-Verified Hub Logo',
+        alt: 'Human-Verified Hub - AI Text Detection',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Human-Verified Hub | AI Identity Detection',
-    description: 'Professional AI-powered tool to analyze and verify if content is written by humans or AI.',
-    images: ['/logo-new.png'],
+    title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
+    description: 'Detect AI-generated content with forensic linguistic analysis. Get certified PDF reports.',
+    images: ['https://humanverified.systems/logo-new.png'],
+    creator: '@humanverified',
   },
   robots: {
     index: true,
@@ -47,8 +49,8 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: 'your-google-verification-code', // Replace with actual verification code
+  alternates: {
+    canonical: 'https://humanverified.systems',
   },
 }
 

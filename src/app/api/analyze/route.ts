@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import * as cheerio from 'cheerio';
 
-// Use environment variable only - no hardcoded keys
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+// API Key - Use environment variable with fallback
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+
+// Turnstile secret key for bot protection
+const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || '';
 
 const systemPrompt = `You are SENTINEL-AI V5.0, an expert forensic linguistic analyzer.
 
@@ -91,17 +94,144 @@ async function scrapeUrl(url: string): Promise<string | null> {
   }
 }
 
-export async function POST(req: Request) {
-  // Check API key first
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ 
-      error: "API key not configured. Please set GEMINI_API_KEY environment variable." 
-    }, { status: 500 });
+// Verify Turnstile token
+async function verifyTurnstile(token: string): Promise<boolean> {
+  if (!token) return false;
+  
+  try {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${TURNSTILE_SECRET}&response=${token}`,
+    });
+    
+    const data = await response.json();
+    return data.success === true;
+  } catch (error) {
+    console.error('Turnstile verification error:', error);
+    return false;
+  }
+}
+
+// Direct REST API call to Gemini
+async function callGeminiREST(text: string, apiKey: string): Promise<string | null> {
+  const models = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest', 
+    'gemini-1.5-pro',
+    'gemini-pro'
+  ];
+
+  for (const model of models) {
+    try {
+      console.log(`[REST] Trying model: ${model}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ 
+              parts: [{ 
+                text: `${systemPrompt}\n\nAnalyze this text:\n"""${text}"""` 
+              }] 
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 1024,
+              topP: 0.8,
+              topK: 40,
+            }
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error(`[REST] Model ${model} failed:`, errData?.error?.message || response.status);
+        continue;
+      }
+
+      const data = await response.json();
+      const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (responseText) {
+        console.log(`[REST] Success with model: ${model}`);
+        return responseText;
+      }
+    } catch (error: any) {
+      console.error(`[REST] Model ${model} error:`, error.message);
+      continue;
+    }
   }
 
+  return null;
+}
+
+// SDK-based call using @google/generative-ai
+async function callGeminiSDK(text: string, apiKey: string): Promise<string | null> {
+  try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    
+    for (const modelName of models) {
+      try {
+        console.log(`[SDK] Trying model: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        
+        const result = await model.generateContent({
+          contents: [{ 
+            role: 'user', 
+            parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${text}"""` }] 
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 1024,
+            topP: 0.8,
+            topK: 40,
+          },
+        });
+
+        const responseText = result.response.text();
+        if (responseText) {
+          console.log(`[SDK] Success with model: ${modelName}`);
+          return responseText;
+        }
+      } catch (error: any) {
+        console.error(`[SDK] Model ${modelName} error:`, error.message);
+        continue;
+      }
+    }
+  } catch (importError) {
+    console.error('[SDK] Import error:', importError);
+  }
+  
+  return null;
+}
+
+export async function POST(req: Request) {
   try {
     const body = await req.json();
-    let { text, url, language = 'en' } = body;
+    let { text, url, language = 'en', turnstileToken } = body;
+
+    // Verify Turnstile token if provided
+    if (turnstileToken) {
+      const isValid = await verifyTurnstile(turnstileToken);
+      if (!isValid) {
+        return NextResponse.json({ 
+          error: language === 'ar' ? 'فشل التحقق من الروبوت' : 'Bot verification failed. Please try again.' 
+        }, { status: 403 });
+      }
+    }
 
     // Handle URL scraping
     if (url && typeof url === 'string') {
@@ -129,82 +259,18 @@ export async function POST(req: Request) {
 
     const analysisText = text.trim().substring(0, 8000);
 
-    // Model fallback chain: Try fastest first, then fallback to stable models
-    const modelChain = [
-      'gemini-1.5-flash',      // Fastest - try first
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-pro',        // More capable fallback
-      'gemini-pro',            // Legacy stable fallback
-    ];
-
-    let responseText: string | null = null;
-    let lastError: string = '';
-
-    for (const modelName of modelChain) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      try {
-        console.log(`Trying model: ${modelName}`);
-        
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${analysisText}"""` }] }],
-              generationConfig: {
-                temperature: 0.1,
-                maxOutputTokens: 1024,
-                topP: 0.8,
-                topK: 40,
-              }
-            }),
-            signal: controller.signal,
-          }
-        );
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          lastError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
-          console.error(`Model ${modelName} failed:`, lastError);
-          
-          // If model not found (404), try next model
-          if (response.status === 404 || lastError.includes('not found')) {
-            continue;
-          }
-          
-          // For other errors, also try next model
-          continue;
-        }
-
-        const data = await response.json();
-        responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (responseText) {
-          console.log(`Success with model: ${modelName}`);
-          break; // Success! Exit the loop
-        }
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        lastError = fetchError.message || 'Fetch failed';
-        console.error(`Model ${modelName} fetch error:`, lastError);
-        
-        if (fetchError.name === 'AbortError') {
-          lastError = 'Request timed out';
-        }
-        // Continue to next model
-        continue;
-      }
+    // Try REST API first, then SDK as fallback
+    let responseText = await callGeminiREST(analysisText, GEMINI_API_KEY);
+    
+    if (!responseText) {
+      console.log('REST API failed, trying SDK...');
+      responseText = await callGeminiSDK(analysisText, GEMINI_API_KEY);
     }
 
-    // If all models failed
+    // If all methods failed
     if (!responseText) {
       return NextResponse.json({ 
-        error: language === 'ar' ? 'فشل التحليل' : `Analysis failed: ${lastError}` 
+        error: language === 'ar' ? 'فشل التحليل - حاول مرة أخرى' : 'Analysis failed. Please try again in a moment.' 
       }, { status: 500 });
     }
 

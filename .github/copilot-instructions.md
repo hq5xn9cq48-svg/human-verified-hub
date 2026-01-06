@@ -1,5 +1,17 @@
 # Copilot Instructions for Human-Verified Hub
 
+## Quick Start
+
+To get started with this project:
+
+1. **Clone the repository** and navigate to the project directory
+2. **Install dependencies:** `npm install`
+3. **Set up environment variables:** Create `.env.local` with required keys (see Environment Variables section)
+4. **Run development server:** `npm run dev`
+5. **Open browser:** Navigate to `http://localhost:3000`
+
+For detailed setup and configuration, see the sections below.
+
 ## Project Overview
 
 Human-Verified Hub is a professional AI-powered tool for detecting AI-generated content and checking for plagiarism. The application provides forensic linguistic analysis to verify if text is human-written, with the ability to generate certified PDF reports and certificates.
@@ -115,10 +127,31 @@ Human-Verified Hub is a professional AI-powered tool for detecting AI-generated 
 - Middleware: Use client from `@/lib/supabase/middleware`
 - Never expose service role keys in client-side code
 
+## Code Quality Standards
+
+### Code Review Guidelines
+- **Readability:** Code should be self-documenting with clear variable/function names
+- **Consistency:** Follow existing patterns and conventions in the codebase
+- **Type Safety:** Use TypeScript types and interfaces, avoid `any` unless absolutely necessary
+- **Error Handling:** Always include proper error handling with try-catch blocks
+- **Performance:** Optimize for performance, especially in animations and API calls
+- **Security:** Validate user input, sanitize data, use environment variables for secrets
+
+### Before Committing
+1. Review your changes with `git diff`
+2. Test the functionality manually
+3. Check for console errors and warnings
+4. Verify TypeScript compilation succeeds
+5. Ensure no sensitive data is committed
+6. Update related documentation if needed
+
 ## Build and Development
 
 ### Commands
 ```bash
+# Install dependencies
+npm install
+
 # Development server
 npm run dev
 
@@ -128,9 +161,23 @@ npm run build
 # Start production server
 npm start
 
-# Lint code
+# Lint code (requires ESLint setup)
 npm run lint
 ```
+
+### Package Management
+- Use `npm` for package management (lock file is `package-lock.json`)
+- When adding new dependencies:
+  - Prefer stable, well-maintained packages
+  - Check for security vulnerabilities before adding
+  - Use `--save` for runtime dependencies, `--save-dev` for development dependencies
+  - Update documentation if adding new tools or libraries
+
+### Development Server
+- Development server runs on `http://localhost:3000` by default
+- Hot reload is enabled - changes will reflect automatically
+- API routes are available at `/api/*` endpoints
+- Check console for errors and warnings during development
 
 ### Environment Variables Required
 Create a `.env.local` file with:
@@ -152,15 +199,45 @@ TURNSTILE_SECRET=your_turnstile_secret
 
 ## Security Considerations
 
-### Important Security Rules
+### Critical Security Rules
 1. **Never commit API keys or secrets** to the repository
+   - Always use environment variables
+   - Add sensitive files to `.gitignore`
+   - Use `.env.local` for local development (not tracked in git)
 2. **Use environment variables** for all sensitive configuration
+   - Prefix client-side variables with `NEXT_PUBLIC_`
+   - Server-side variables should NOT have this prefix
 3. **Validate and sanitize user input** in API routes before processing
+   - Check input length and format
+   - Sanitize HTML content to prevent XSS
+   - Validate file uploads (type, size, content)
 4. **Use Turnstile verification** to prevent bot abuse on analysis endpoints
-5. **Implement rate limiting** on API routes (if not already present)
-6. **Sanitize HTML** when scraping URLs using Cheerio - remove scripts, iframes
+   - Verify tokens server-side before processing requests
+5. **Implement rate limiting** on API routes
+   - Consider adding rate limiting middleware for production
+6. **Sanitize HTML** when scraping URLs using Cheerio
+   - Remove `script`, `style`, `iframe`, `noscript` tags
+   - Strip event handlers and dangerous attributes
 7. **Use HTTPS** for all external API calls
-8. **Validate file uploads** for image detection (check file types, sizes)
+   - Verify SSL certificates
+   - Handle connection errors gracefully
+8. **Validate file uploads** for image detection
+   - Check file types (accept only images)
+   - Limit file size (prevent DoS)
+   - Scan for malicious content if possible
+
+### API Security Best Practices
+- Validate all request parameters before processing
+- Return appropriate HTTP status codes (400, 401, 403, 500, etc.)
+- Don't expose internal error messages to users
+- Use proper CORS configuration if needed
+- Log security-relevant events (failed auth, suspicious requests)
+
+### Client-Side Security
+- Never store sensitive data in localStorage or sessionStorage
+- Use secure cookies with appropriate flags
+- Implement CSRF protection for state-changing operations
+- Validate data received from APIs before using
 
 ### Content Security
 - The `poweredByHeader: false` setting in Next.js config removes framework fingerprinting
@@ -212,11 +289,29 @@ const handleSubmit = async (e: React.FormEvent) => {
 
 ## Testing and Quality
 
-- Run `npm run lint` before committing changes
-- Test responsive design at mobile (375px), tablet (768px), and desktop (1024px+) breakpoints
-- Verify dark mode appearance (the app uses dark theme by default)
-- Test both English and Arabic language modes
-- Verify RTL layout works correctly for Arabic
+### Manual Testing
+Since this project does not have automated tests yet, thorough manual testing is essential:
+
+- **Linting:** Run `npm run lint` before committing changes (Note: ESLint needs to be configured first)
+- **Build:** Run `npm run build` to ensure the project builds successfully
+- **Responsive Design:** Test at mobile (375px), tablet (768px), and desktop (1024px+) breakpoints
+- **Dark Theme:** Verify appearance since the app uses dark theme by default
+- **Language Support:** Test both English and Arabic language modes
+- **RTL Layout:** Verify RTL layout works correctly for Arabic
+- **Authentication:** Test sign-up, sign-in, and sign-out flows
+- **API Endpoints:** Test all analysis features (text, URL, image)
+- **PDF Generation:** Verify certificate and report generation work correctly
+- **Error Handling:** Test error states and edge cases
+
+### Testing Checklist for New Features
+- [ ] Feature works in both English and Arabic
+- [ ] UI is responsive on mobile, tablet, and desktop
+- [ ] Error states are handled gracefully
+- [ ] Loading states provide feedback to users
+- [ ] Animations are smooth and performant
+- [ ] API calls include proper error handling
+- [ ] Environment variables are used for sensitive data
+- [ ] TypeScript types are properly defined
 
 ## Important Notes
 
@@ -243,3 +338,84 @@ const handleSubmit = async (e: React.FormEvent) => {
 5. **Keep animations smooth:** Use Framer Motion best practices
 6. **Mobile-first:** Ensure responsive design works on small screens
 7. **Accessibility:** Include proper ARIA labels where needed, especially for modals and forms
+
+## Git Workflow
+
+### Branch Naming
+- Feature branches: `feature/short-description`
+- Bug fixes: `fix/short-description`
+- Copilot tasks: `copilot/task-description`
+
+### Commit Messages
+- Use clear, descriptive commit messages
+- Start with a verb in present tense (e.g., "Add", "Fix", "Update", "Remove")
+- Keep the first line under 72 characters
+- Example: "Add certificate verification endpoint"
+
+### Pull Requests
+- Ensure all changes are tested before creating a PR
+- Run `npm run lint` to check for linting issues
+- Update documentation if changing public APIs or user-facing features
+- Include screenshots for UI changes
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: `next: not found` when running npm scripts**
+- Solution: Run `npm install` to install dependencies
+
+**Issue: ESLint configuration not found**
+- Solution: ESLint is not yet configured. If you need to add it:
+  ```bash
+  npm install --save-dev eslint eslint-config-next@latest --legacy-peer-deps
+  ```
+  Then create `.eslintrc.json` with Next.js recommended config
+
+**Issue: TypeScript errors in components**
+- Solution: Check that you're using the correct import paths with `@/` prefix
+- Ensure all props are properly typed with interfaces
+
+**Issue: Supabase client errors**
+- Solution: Verify environment variables are set in `.env.local`
+- Use the correct Supabase client for the context (client vs server components)
+
+**Issue: Gemini API rate limits**
+- Solution: Implement exponential backoff or request queuing
+- Consider caching results for identical text inputs
+
+**Issue: RTL layout issues with Arabic**
+- Solution: Use `dir={isRTL ? 'rtl' : 'ltr'}` on container elements
+- Test with actual Arabic content, not just placeholder text
+- Check Tailwind classes have proper RTL support
+
+**Issue: Build failures**
+- Solution: Check for client-side only code in server components
+- Ensure all `'use client'` directives are at the top of files that need them
+- Verify all imports are correctly resolved
+
+## Project-Specific Guidelines
+
+### Working with Gemini API
+- Always use environment variables for API keys
+- Never expose API keys in client-side code
+- The system prompt in `/api/analyze/route.ts` defines the AI behavior - modify carefully
+- Handle rate limiting and API errors gracefully
+
+### Supabase Best Practices
+- Use `createClient()` from appropriate location (`@/lib/supabase/client` or `@/lib/supabase/server`)
+- Row Level Security (RLS) policies should be configured in Supabase dashboard
+- Never use the service role key in client-side code
+- Test authentication flows in incognito/private browsing mode
+
+### PDF Generation
+- PDF generation happens server-side using jsPDF
+- Certificates are only generated for scores >= 90%
+- Reports include QR codes for verification
+- Use the dark/purple theme consistent with the app design
+
+### Internationalization
+- All user-facing text must be in both English and Arabic
+- Translation keys are in `/src/i18n/translations.ts`
+- Use the `useLanguage()` hook to access translations
+- Test both languages and verify RTL layout for Arabic

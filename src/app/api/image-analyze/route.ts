@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-// Use environment variable only - no hardcoded keys
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+// Use environment variable only (server-side)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const systemPrompt = `You are an AI image forensics expert. Analyze images to detect if they are AI-generated.
 
@@ -40,8 +40,9 @@ Return ONLY valid JSON.`;
 export async function POST(req: Request) {
   // Check API key first
   if (!GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY environment variable is not set');
     return NextResponse.json({ 
-      error: "API key not configured. Please set GEMINI_API_KEY environment variable." 
+      error: 'API configuration error. Please contact support.' 
     }, { status: 500 });
   }
 

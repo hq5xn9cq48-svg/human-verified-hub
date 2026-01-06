@@ -114,13 +114,18 @@ async function verifyTurnstile(token: string): Promise<boolean> {
 }
 
 // Direct REST API call to Gemini
-async function callGeminiREST(text: string, apiKey: string): Promise<string | null> {
+async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
   const models = [
     'gemini-1.5-flash',
     'gemini-1.5-flash-latest', 
     'gemini-1.5-pro',
     'gemini-pro'
   ];
+
+  // Construct language-specific instruction
+  const langInstruction = language === 'ar' 
+    ? "IMPORTANT: Output the values for 'summary', 'smartBreakdown', 'forensicDetails', and 'descriptions' in Arabic language." 
+    : "Output the analysis in English.";
 
   for (const model of models) {
     try {
@@ -137,7 +142,7 @@ async function callGeminiREST(text: string, apiKey: string): Promise<string | nu
           body: JSON.stringify({
             contents: [{ 
               parts: [{ 
-                text: `${systemPrompt}\n\nAnalyze this text:\n"""${text}"""` 
+                text: `${systemPrompt}\n\n${langInstruction}\n\nAnalyze this text:\n"""${text}"""` 
               }] 
             }],
             generationConfig: {
@@ -176,12 +181,17 @@ async function callGeminiREST(text: string, apiKey: string): Promise<string | nu
 }
 
 // SDK-based call using @google/generative-ai
-async function callGeminiSDK(text: string, apiKey: string): Promise<string | null> {
+async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     
     const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    
+    // Construct language-specific instruction
+    const langInstruction = language === 'ar' 
+      ? "IMPORTANT: Output the values for 'summary', 'smartBreakdown', 'forensicDetails', and 'descriptions' in Arabic language." 
+      : "Output the analysis in English.";
     
     for (const modelName of models) {
       try {
@@ -191,7 +201,7 @@ async function callGeminiSDK(text: string, apiKey: string): Promise<string | nul
         const result = await model.generateContent({
           contents: [{ 
             role: 'user', 
-            parts: [{ text: `${systemPrompt}\n\nAnalyze this text:\n"""${text}"""` }] 
+            parts: [{ text: `${systemPrompt}\n\n${langInstruction}\n\nAnalyze this text:\n"""${text}"""` }] 
           }],
           generationConfig: {
             temperature: 0.1,
@@ -260,11 +270,11 @@ export async function POST(req: Request) {
     const analysisText = text.trim().substring(0, 8000);
 
     // Try REST API first, then SDK as fallback
-    let responseText = await callGeminiREST(analysisText, GEMINI_API_KEY);
+    let responseText = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
     
     if (!responseText) {
       console.log('REST API failed, trying SDK...');
-      responseText = await callGeminiSDK(analysisText, GEMINI_API_KEY);
+      responseText = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
     }
 
     // If all methods failed

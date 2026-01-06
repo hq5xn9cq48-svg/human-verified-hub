@@ -116,7 +116,7 @@ async function verifyTurnstile(token: string): Promise<boolean> {
 // Get language-specific instruction for AI model
 function getLanguageInstruction(language: string): string {
   if (language === 'ar') {
-    return "IMPORTANT: Output ALL text fields including 'verdict', 'summary', 'smartBreakdown', 'forensicDetails', and all 'description' fields in Arabic language.";
+    return "IMPORTANT: You MUST output ALL text content in Arabic language. This includes but is not limited to: 'verdict', 'summary', 'smartBreakdown', 'forensicDetails', and all 'description' fields.";
   }
   return "Output the analysis in English.";
 }

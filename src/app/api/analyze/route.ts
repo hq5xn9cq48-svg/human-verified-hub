@@ -121,9 +121,16 @@ function getLanguageInstruction(language: string): string {
   return "Output the analysis in English.";
 }
 
+// Result type for API calls
+interface GeminiResult {
+  text: string | null;
+  lastError: string | null;
+}
+
 // Direct REST API call to Gemini
-async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
+async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
   const langInstruction = getLanguageInstruction(language);
+  let lastError: string | null = null;
 
   const models = [
     'gemini-1.5-flash',
@@ -165,7 +172,9 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        console.error(`[REST] Model ${model} failed:`, errData?.error?.message || response.status);
+        const errMessage = errData?.error?.message || `HTTP ${response.status}`;
+        console.error(`[REST] Model ${model} failed:`, errMessage);
+        lastError = errMessage;
         continue;
       }
 
@@ -174,19 +183,29 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
       
       if (responseText) {
         console.log(`[REST] Success with model: ${model}`);
-        return responseText;
+        return { text: responseText, lastError: null };
       }
+      
+      // No response text but request succeeded
+      lastError = 'Empty response from AI model';
     } catch (error: any) {
-      console.error(`[REST] Model ${model} error:`, error.message);
+      if (error.name === 'AbortError') {
+        lastError = 'Request timed out';
+      } else {
+        lastError = error.message || 'Network error';
+      }
+      console.error(`[REST] Model ${model} error:`, lastError);
       continue;
     }
   }
 
-  return null;
+  return { text: null, lastError };
 }
 
 // SDK-based call using @google/generative-ai
-async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
+async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
+  let lastError: string | null = null;
+  
   try {
     const langInstruction = getLanguageInstruction(language);
 
@@ -216,18 +235,22 @@ async function callGeminiSDK(text: string, apiKey: string, language: string = 'e
         const responseText = result.response.text();
         if (responseText) {
           console.log(`[SDK] Success with model: ${modelName}`);
-          return responseText;
+          return { text: responseText, lastError: null };
         }
+        
+        lastError = 'Empty response from AI model';
       } catch (error: any) {
-        console.error(`[SDK] Model ${modelName} error:`, error.message);
+        lastError = error.message || 'SDK error';
+        console.error(`[SDK] Model ${modelName} error:`, lastError);
         continue;
       }
     }
-  } catch (importError) {
-    console.error('[SDK] Import error:', importError);
+  } catch (importError: any) {
+    lastError = importError.message || 'Failed to load SDK';
+    console.error('[SDK] Import error:', lastError);
   }
   
-  return null;
+  return { text: null, lastError };
 }
 
 export async function POST(req: Request) {
@@ -280,18 +303,50 @@ export async function POST(req: Request) {
     const analysisText = text.trim().substring(0, 8000);
 
     // Try REST API first, then SDK as fallback
-    let responseText = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
+    let lastError: string | null = null;
+    const restResult = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
+    let responseText = restResult.text;
+    lastError = restResult.lastError;
     
     if (!responseText) {
       console.log('REST API failed, trying SDK...');
-      responseText = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
+      const sdkResult = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
+      responseText = sdkResult.text;
+      // Prefer SDK error if REST had no specific error
+      if (sdkResult.lastError) {
+        lastError = sdkResult.lastError;
+      }
     }
 
-    // If all methods failed
+    // If all methods failed - provide detailed error message
     if (!responseText) {
-      return NextResponse.json({ 
-        error: language === 'ar' ? 'فشل التحليل - حاول مرة أخرى' : 'Analysis failed. Please try again in a moment.' 
-      }, { status: 500 });
+      // Create user-friendly error messages based on the error type
+      let userError: string;
+      
+      if (lastError?.includes('API key') || lastError?.includes('API_KEY') || lastError?.includes('401') || lastError?.includes('403')) {
+        userError = language === 'ar' 
+          ? 'خطأ في إعدادات الخادم. يرجى التواصل مع الدعم.' 
+          : 'Server configuration error. Please contact support.';
+      } else if (lastError?.includes('timeout') || lastError?.includes('timed out')) {
+        userError = language === 'ar' 
+          ? 'انتهت مهلة الطلب. حاول مرة أخرى.' 
+          : 'Request timed out. Please try again.';
+      } else if (lastError?.includes('quota') || lastError?.includes('429') || lastError?.includes('rate')) {
+        userError = language === 'ar' 
+          ? 'تم تجاوز حد الاستخدام. حاول مرة أخرى لاحقاً.' 
+          : 'Usage limit exceeded. Please try again later.';
+      } else if (lastError?.includes('network') || lastError?.includes('fetch')) {
+        userError = language === 'ar' 
+          ? 'خطأ في الاتصال. تحقق من اتصالك بالإنترنت.' 
+          : 'Connection error. Please check your internet connection.';
+      } else {
+        userError = language === 'ar' 
+          ? `فشل التحليل: ${lastError || 'خطأ غير معروف'}. حاول مرة أخرى.` 
+          : `Analysis failed: ${lastError || 'Unknown error'}. Please try again.`;
+      }
+      
+      console.error('All AI methods failed. Last error:', lastError);
+      return NextResponse.json({ error: userError }, { status: 500 });
     }
 
     // Parse JSON from response

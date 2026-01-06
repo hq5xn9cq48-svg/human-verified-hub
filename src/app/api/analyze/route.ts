@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import * as cheerio from 'cheerio';
 
-// API Key - Use environment variable with fallback
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+// API Key - Use environment variable only (server-side)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Turnstile secret key for bot protection
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || '';
@@ -219,6 +219,14 @@ async function callGeminiSDK(text: string, apiKey: string): Promise<string | nul
 }
 
 export async function POST(req: Request) {
+  // Check API key first
+  if (!GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY environment variable is not set');
+    return NextResponse.json({ 
+      error: 'API configuration error. Please contact support.' 
+    }, { status: 500 });
+  }
+
   try {
     const body = await req.json();
     let { text, url, language = 'en', turnstileToken } = body;

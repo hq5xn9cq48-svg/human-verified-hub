@@ -161,8 +161,8 @@ npm run build
 # Start production server
 npm start
 
-# Lint code (requires ESLint setup)
-npm run lint
+# Lint code (ESLint needs to be configured first - see Troubleshooting section)
+# npm run lint
 ```
 
 ### Package Management
@@ -292,7 +292,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 ### Manual Testing
 Since this project does not have automated tests yet, thorough manual testing is essential:
 
-- **Linting:** Run `npm run lint` before committing changes (Note: ESLint needs to be configured first)
+- **Linting:** Configure ESLint first (see Troubleshooting section), then run `npm run lint` before committing changes
 - **Build:** Run `npm run build` to ensure the project builds successfully
 - **Responsive Design:** Test at mobile (375px), tablet (768px), and desktop (1024px+) breakpoints
 - **Dark Theme:** Verify appearance since the app uses dark theme by default
@@ -354,7 +354,7 @@ Since this project does not have automated tests yet, thorough manual testing is
 
 ### Pull Requests
 - Ensure all changes are tested before creating a PR
-- Run `npm run lint` to check for linting issues
+- Configure and run ESLint (`npm run lint`) to check for linting issues (see Troubleshooting section)
 - Update documentation if changing public APIs or user-facing features
 - Include screenshots for UI changes
 
@@ -366,11 +366,13 @@ Since this project does not have automated tests yet, thorough manual testing is
 - Solution: Run `npm install` to install dependencies
 
 **Issue: ESLint configuration not found**
-- Solution: ESLint is not yet configured. If you need to add it:
-  ```bash
-  npm install --save-dev eslint eslint-config-next@latest --legacy-peer-deps
-  ```
-  Then create `.eslintrc.json` with Next.js recommended config
+- Solution: ESLint is not yet configured. To set it up:
+  1. Install compatible versions:
+     ```bash
+     npm install --save-dev eslint@^9 eslint-config-next@latest
+     ```
+  2. If you encounter peer dependency conflicts, review the error and adjust versions accordingly
+  3. Create `.eslintrc.json` with Next.js recommended config
 
 **Issue: TypeScript errors in components**
 - Solution: Check that you're using the correct import paths with `@/` prefix

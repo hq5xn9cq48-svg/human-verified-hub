@@ -113,11 +113,17 @@ async function verifyTurnstile(token: string): Promise<boolean> {
   }
 }
 
+// Get language-specific instruction for AI model
+function getLanguageInstruction(language: string): string {
+  if (language === 'ar') {
+    return "IMPORTANT: Output ALL text fields including 'verdict', 'summary', 'smartBreakdown', 'forensicDetails', and all 'description' fields in Arabic language.";
+  }
+  return "Output the analysis in English.";
+}
+
 // Direct REST API call to Gemini
 async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
-  const langInstruction = language === 'ar' 
-    ? "IMPORTANT: Output the values for 'summary', 'smartBreakdown', 'forensicDetails', and 'descriptions' in Arabic language." 
-    : "Output the analysis in English.";
+  const langInstruction = getLanguageInstruction(language);
 
   const models = [
     'gemini-1.5-flash',
@@ -182,9 +188,7 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
 // SDK-based call using @google/generative-ai
 async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
   try {
-    const langInstruction = language === 'ar' 
-      ? "IMPORTANT: Output the values for 'summary', 'smartBreakdown', 'forensicDetails', and 'descriptions' in Arabic language." 
-      : "Output the analysis in English.";
+    const langInstruction = getLanguageInstruction(language);
 
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);

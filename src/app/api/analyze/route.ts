@@ -146,21 +146,23 @@ function classifyError(error: string | null): ErrorType {
     return 'timeout';
   }
   
-  // Check for rate limiting
+  // Check for rate limiting - use word boundaries and specific patterns
   if (lowerError.includes('quota') || 
-      lowerError.includes('rate') ||
-      lowerError.includes('limit') ||
-      lowerError.includes('too many') ||
+      lowerError.includes('rate limit') ||
+      lowerError.includes('rate-limit') ||
+      lowerError.includes('too many requests') ||
+      lowerError.includes('resource exhausted') ||
       /\b429\b/.test(error)) {
     return 'rate_limit';
   }
   
   // Check for network issues
   if (lowerError.includes('network') || 
-      lowerError.includes('fetch') ||
+      lowerError.includes('fetch failed') ||
       lowerError.includes('enotfound') ||
       lowerError.includes('econnrefused') ||
-      lowerError.includes('connection')) {
+      lowerError.includes('econnreset') ||
+      lowerError.includes('socket hang up')) {
     return 'network';
   }
   
@@ -261,7 +263,7 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
       }
       
       // No response text but request succeeded
-      lastError = 'Empty response from AI model';
+      lastError = `Empty response from model ${model}`;
     } catch (error: any) {
       if (error.name === 'AbortError') {
         lastError = 'Request timed out';
@@ -312,7 +314,7 @@ async function callGeminiSDK(text: string, apiKey: string, language: string = 'e
           return { text: responseText, lastError: null };
         }
         
-        lastError = 'Empty response from AI model';
+        lastError = `Empty response from model ${modelName}`;
       } catch (error: any) {
         lastError = error.message || 'SDK error';
         console.error(`[SDK] Model ${modelName} error:`, lastError);
@@ -392,13 +394,19 @@ export async function POST(req: Request) {
     // If all methods failed - provide detailed error message
     if (!responseText) {
       // Use the most informative error between REST and SDK
-      // Prefer specific classified errors over generic ones
       const restErrorType = classifyError(restError);
       const sdkErrorType = classifyError(sdkError);
       
-      // Use the error that has a more specific classification
-      // If both are 'unknown' or both are specific, prefer REST (first attempt)
-      const finalErrorType = restErrorType !== 'unknown' ? restErrorType : sdkErrorType;
+      // Prefer REST error if it's specific, otherwise use SDK error if specific, else 'unknown'
+      let finalErrorType: ErrorType;
+      if (restErrorType !== 'unknown') {
+        finalErrorType = restErrorType;
+      } else if (sdkErrorType !== 'unknown') {
+        finalErrorType = sdkErrorType;
+      } else {
+        finalErrorType = 'unknown';
+      }
+      
       const userError = getUserErrorMessage(finalErrorType, language);
       
       console.error('All AI methods failed. REST error:', restError, 'SDK error:', sdkError);

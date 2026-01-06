@@ -223,6 +223,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     let { text, url, language = 'en', turnstileToken } = body;
 
+    // Check API key first
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({ 
+        error: language === 'ar' 
+          ? 'مفتاح API غير مكوّن. يرجى تعيين متغير البيئة GEMINI_API_KEY.' 
+          : 'API key not configured. Please set GEMINI_API_KEY environment variable.' 
+      }, { status: 500 });
+    }
+
     // Verify Turnstile token if provided
     if (turnstileToken) {
       const isValid = await verifyTurnstile(turnstileToken);

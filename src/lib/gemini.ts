@@ -1,4 +1,4 @@
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY
 
 export interface AnalysisResult {
   humanScore: number
@@ -10,6 +10,11 @@ export interface AnalysisResult {
 }
 
 export async function analyzeText(text: string): Promise<AnalysisResult> {
+  // Check API key first
+  if (!GEMINI_API_KEY) {
+    throw new Error('API key not configured. Please set GEMINI_API_KEY or NEXT_PUBLIC_GEMINI_API_KEY environment variable.')
+  }
+
   const prompt = `You are an expert AI content detector. Analyze the following text and determine if it was written by a human or AI.
 
 Provide your analysis in the following JSON format ONLY (no additional text):

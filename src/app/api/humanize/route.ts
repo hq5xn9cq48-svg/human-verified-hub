@@ -31,16 +31,18 @@ STYLES:
 OUTPUT: Return ONLY the humanized text, nothing else.`;
 
 export async function POST(req: Request) {
-  // Check API key first
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ 
-      error: "API key not configured. Please set GEMINI_API_KEY environment variable." 
-    }, { status: 500 });
-  }
-
   try {
     const body = await req.json();
     const { text, intent = 'default', language = 'en' } = body;
+
+    // Check API key first
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({ 
+        error: language === 'ar' 
+          ? 'مفتاح API غير مكوّن. يرجى تعيين متغير البيئة GEMINI_API_KEY.'
+          : 'API key not configured. Please set GEMINI_API_KEY environment variable.' 
+      }, { status: 500 });
+    }
 
     if (!text || typeof text !== 'string' || text.trim().length < 20) {
       return NextResponse.json({ 

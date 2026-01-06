@@ -121,9 +121,92 @@ function getLanguageInstruction(language: string): string {
   return "Output the analysis in English.";
 }
 
+// Error type classification for better user messaging
+type ErrorType = 'config' | 'timeout' | 'rate_limit' | 'network' | 'unknown';
+
+function classifyError(error: string | null): ErrorType {
+  if (!error) return 'unknown';
+  
+  const lowerError = error.toLowerCase();
+  
+  // Check for API key/authentication issues
+  if (lowerError.includes('api key') || 
+      lowerError.includes('api_key') || 
+      lowerError.includes('authentication') ||
+      lowerError.includes('unauthorized') ||
+      lowerError.includes('forbidden') ||
+      /\b(401|403)\b/.test(error)) {
+    return 'config';
+  }
+  
+  // Check for timeout issues
+  if (lowerError.includes('timeout') || 
+      lowerError.includes('timed out') ||
+      lowerError.includes('aborted')) {
+    return 'timeout';
+  }
+  
+  // Check for rate limiting - use word boundaries and specific patterns
+  if (lowerError.includes('quota') || 
+      lowerError.includes('rate limit') ||
+      lowerError.includes('rate-limit') ||
+      lowerError.includes('too many requests') ||
+      lowerError.includes('resource exhausted') ||
+      /\b429\b/.test(error)) {
+    return 'rate_limit';
+  }
+  
+  // Check for network issues
+  if (lowerError.includes('network') || 
+      lowerError.includes('fetch failed') ||
+      lowerError.includes('enotfound') ||
+      lowerError.includes('econnrefused') ||
+      lowerError.includes('econnreset') ||
+      lowerError.includes('socket hang up')) {
+    return 'network';
+  }
+  
+  return 'unknown';
+}
+
+// Get user-friendly error message based on error type
+function getUserErrorMessage(errorType: ErrorType, language: string): string {
+  const messages: Record<ErrorType, { en: string; ar: string }> = {
+    config: {
+      en: 'Server configuration error. Please contact support.',
+      ar: 'خطأ في إعدادات الخادم. يرجى التواصل مع الدعم.'
+    },
+    timeout: {
+      en: 'Request timed out. Please try again.',
+      ar: 'انتهت مهلة الطلب. حاول مرة أخرى.'
+    },
+    rate_limit: {
+      en: 'Usage limit exceeded. Please try again later.',
+      ar: 'تم تجاوز حد الاستخدام. حاول مرة أخرى لاحقاً.'
+    },
+    network: {
+      en: 'Connection error. Please check your internet connection.',
+      ar: 'خطأ في الاتصال. تحقق من اتصالك بالإنترنت.'
+    },
+    unknown: {
+      en: 'Analysis failed. Please try again.',
+      ar: 'فشل التحليل. حاول مرة أخرى.'
+    }
+  };
+  
+  return language === 'ar' ? messages[errorType].ar : messages[errorType].en;
+}
+
+// Result type for API calls
+interface GeminiResult {
+  text: string | null;
+  lastError: string | null;
+}
+
 // Direct REST API call to Gemini
-async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
+async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
   const langInstruction = getLanguageInstruction(language);
+  let lastError: string | null = null;
 
   const models = [
     'gemini-1.5-flash',
@@ -165,7 +248,9 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        console.error(`[REST] Model ${model} failed:`, errData?.error?.message || response.status);
+        const errMessage = errData?.error?.message || `HTTP ${response.status}`;
+        console.error(`[REST] Model ${model} failed:`, errMessage);
+        lastError = errMessage;
         continue;
       }
 
@@ -174,19 +259,29 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
       
       if (responseText) {
         console.log(`[REST] Success with model: ${model}`);
-        return responseText;
+        return { text: responseText, lastError: null };
       }
+      
+      // No response text but request succeeded
+      lastError = `Empty response from model ${model}`;
     } catch (error: any) {
-      console.error(`[REST] Model ${model} error:`, error.message);
+      if (error.name === 'AbortError') {
+        lastError = 'Request timed out';
+      } else {
+        lastError = error.message || 'Network error';
+      }
+      console.error(`[REST] Model ${model} error:`, lastError);
       continue;
     }
   }
 
-  return null;
+  return { text: null, lastError };
 }
 
 // SDK-based call using @google/generative-ai
-async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<string | null> {
+async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
+  let lastError: string | null = null;
+  
   try {
     const langInstruction = getLanguageInstruction(language);
 
@@ -216,18 +311,22 @@ async function callGeminiSDK(text: string, apiKey: string, language: string = 'e
         const responseText = result.response.text();
         if (responseText) {
           console.log(`[SDK] Success with model: ${modelName}`);
-          return responseText;
+          return { text: responseText, lastError: null };
         }
+        
+        lastError = `Empty response from model ${modelName}`;
       } catch (error: any) {
-        console.error(`[SDK] Model ${modelName} error:`, error.message);
+        lastError = error.message || 'SDK error';
+        console.error(`[SDK] Model ${modelName} error:`, lastError);
         continue;
       }
     }
-  } catch (importError) {
-    console.error('[SDK] Import error:', importError);
+  } catch (importError: any) {
+    lastError = importError.message || 'Failed to load SDK';
+    console.error('[SDK] Import error:', lastError);
   }
   
-  return null;
+  return { text: null, lastError };
 }
 
 export async function POST(req: Request) {
@@ -280,18 +379,38 @@ export async function POST(req: Request) {
     const analysisText = text.trim().substring(0, 8000);
 
     // Try REST API first, then SDK as fallback
-    let responseText = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
+    const restResult = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
+    let responseText = restResult.text;
+    const restError = restResult.lastError;
+    let sdkError: string | null = null;
     
     if (!responseText) {
       console.log('REST API failed, trying SDK...');
-      responseText = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
+      const sdkResult = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
+      responseText = sdkResult.text;
+      sdkError = sdkResult.lastError;
     }
 
-    // If all methods failed
+    // If all methods failed - provide detailed error message
     if (!responseText) {
-      return NextResponse.json({ 
-        error: language === 'ar' ? 'فشل التحليل - حاول مرة أخرى' : 'Analysis failed. Please try again in a moment.' 
-      }, { status: 500 });
+      // Use the most informative error between REST and SDK
+      const restErrorType = classifyError(restError);
+      const sdkErrorType = classifyError(sdkError);
+      
+      // Prefer REST error if it's specific, otherwise use SDK error if specific, else 'unknown'
+      let finalErrorType: ErrorType;
+      if (restErrorType !== 'unknown') {
+        finalErrorType = restErrorType;
+      } else if (sdkErrorType !== 'unknown') {
+        finalErrorType = sdkErrorType;
+      } else {
+        finalErrorType = 'unknown';
+      }
+      
+      const userError = getUserErrorMessage(finalErrorType, language);
+      
+      console.error('All AI methods failed. REST error:', restError, 'SDK error:', sdkError);
+      return NextResponse.json({ error: userError }, { status: 500 });
     }
 
     // Parse JSON from response

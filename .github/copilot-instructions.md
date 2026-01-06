@@ -139,7 +139,7 @@ Create a `.env.local` file with:
 GEMINI_API_KEY=your_gemini_api_key
 NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
 
-# Supabase
+# Supabase (use anonymous/public key - safe for client-side)
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
@@ -147,6 +147,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_turnstile_site_key
 TURNSTILE_SECRET=your_turnstile_secret
 ```
+
+**Note:** The `NEXT_PUBLIC_SUPABASE_ANON_KEY` is the anonymous/public key that is safe to expose on the client-side. Never use the service role key in client-side code.
 
 ## Security Considerations
 

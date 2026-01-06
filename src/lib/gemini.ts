@@ -12,7 +12,7 @@ export interface AnalysisResult {
 export async function analyzeText(text: string): Promise<AnalysisResult> {
   // Check API key first
   if (!GEMINI_API_KEY) {
-    throw new Error('API key not configured. Please set GEMINI_API_KEY environment variable.')
+    throw new Error('API key not configured. Please set GEMINI_API_KEY or NEXT_PUBLIC_GEMINI_API_KEY environment variable.')
   }
 
   const prompt = `You are an expert AI content detector. Analyze the following text and determine if it was written by a human or AI.

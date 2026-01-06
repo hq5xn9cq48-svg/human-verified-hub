@@ -121,6 +121,80 @@ function getLanguageInstruction(language: string): string {
   return "Output the analysis in English.";
 }
 
+// Error type classification for better user messaging
+type ErrorType = 'config' | 'timeout' | 'rate_limit' | 'network' | 'unknown';
+
+function classifyError(error: string | null): ErrorType {
+  if (!error) return 'unknown';
+  
+  const lowerError = error.toLowerCase();
+  
+  // Check for API key/authentication issues
+  if (lowerError.includes('api key') || 
+      lowerError.includes('api_key') || 
+      lowerError.includes('authentication') ||
+      lowerError.includes('unauthorized') ||
+      lowerError.includes('forbidden') ||
+      /\b(401|403)\b/.test(error)) {
+    return 'config';
+  }
+  
+  // Check for timeout issues
+  if (lowerError.includes('timeout') || 
+      lowerError.includes('timed out') ||
+      lowerError.includes('aborted')) {
+    return 'timeout';
+  }
+  
+  // Check for rate limiting
+  if (lowerError.includes('quota') || 
+      lowerError.includes('rate') ||
+      lowerError.includes('limit') ||
+      lowerError.includes('too many') ||
+      /\b429\b/.test(error)) {
+    return 'rate_limit';
+  }
+  
+  // Check for network issues
+  if (lowerError.includes('network') || 
+      lowerError.includes('fetch') ||
+      lowerError.includes('enotfound') ||
+      lowerError.includes('econnrefused') ||
+      lowerError.includes('connection')) {
+    return 'network';
+  }
+  
+  return 'unknown';
+}
+
+// Get user-friendly error message based on error type
+function getUserErrorMessage(errorType: ErrorType, language: string): string {
+  const messages: Record<ErrorType, { en: string; ar: string }> = {
+    config: {
+      en: 'Server configuration error. Please contact support.',
+      ar: 'خطأ في إعدادات الخادم. يرجى التواصل مع الدعم.'
+    },
+    timeout: {
+      en: 'Request timed out. Please try again.',
+      ar: 'انتهت مهلة الطلب. حاول مرة أخرى.'
+    },
+    rate_limit: {
+      en: 'Usage limit exceeded. Please try again later.',
+      ar: 'تم تجاوز حد الاستخدام. حاول مرة أخرى لاحقاً.'
+    },
+    network: {
+      en: 'Connection error. Please check your internet connection.',
+      ar: 'خطأ في الاتصال. تحقق من اتصالك بالإنترنت.'
+    },
+    unknown: {
+      en: 'Analysis failed. Please try again.',
+      ar: 'فشل التحليل. حاول مرة أخرى.'
+    }
+  };
+  
+  return language === 'ar' ? messages[errorType].ar : messages[errorType].en;
+}
+
 // Result type for API calls
 interface GeminiResult {
   text: string | null;
@@ -303,49 +377,31 @@ export async function POST(req: Request) {
     const analysisText = text.trim().substring(0, 8000);
 
     // Try REST API first, then SDK as fallback
-    let lastError: string | null = null;
     const restResult = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
     let responseText = restResult.text;
-    lastError = restResult.lastError;
+    const restError = restResult.lastError;
+    let sdkError: string | null = null;
     
     if (!responseText) {
       console.log('REST API failed, trying SDK...');
       const sdkResult = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
       responseText = sdkResult.text;
-      // Prefer SDK error if REST had no specific error
-      if (sdkResult.lastError) {
-        lastError = sdkResult.lastError;
-      }
+      sdkError = sdkResult.lastError;
     }
 
     // If all methods failed - provide detailed error message
     if (!responseText) {
-      // Create user-friendly error messages based on the error type
-      let userError: string;
+      // Use the most informative error between REST and SDK
+      // Prefer specific classified errors over generic ones
+      const restErrorType = classifyError(restError);
+      const sdkErrorType = classifyError(sdkError);
       
-      if (lastError?.includes('API key') || lastError?.includes('API_KEY') || lastError?.includes('401') || lastError?.includes('403')) {
-        userError = language === 'ar' 
-          ? 'خطأ في إعدادات الخادم. يرجى التواصل مع الدعم.' 
-          : 'Server configuration error. Please contact support.';
-      } else if (lastError?.includes('timeout') || lastError?.includes('timed out')) {
-        userError = language === 'ar' 
-          ? 'انتهت مهلة الطلب. حاول مرة أخرى.' 
-          : 'Request timed out. Please try again.';
-      } else if (lastError?.includes('quota') || lastError?.includes('429') || lastError?.includes('rate')) {
-        userError = language === 'ar' 
-          ? 'تم تجاوز حد الاستخدام. حاول مرة أخرى لاحقاً.' 
-          : 'Usage limit exceeded. Please try again later.';
-      } else if (lastError?.includes('network') || lastError?.includes('fetch')) {
-        userError = language === 'ar' 
-          ? 'خطأ في الاتصال. تحقق من اتصالك بالإنترنت.' 
-          : 'Connection error. Please check your internet connection.';
-      } else {
-        userError = language === 'ar' 
-          ? `فشل التحليل: ${lastError || 'خطأ غير معروف'}. حاول مرة أخرى.` 
-          : `Analysis failed: ${lastError || 'Unknown error'}. Please try again.`;
-      }
+      // Use the error that has a more specific classification
+      // If both are 'unknown' or both are specific, prefer REST (first attempt)
+      const finalErrorType = restErrorType !== 'unknown' ? restErrorType : sdkErrorType;
+      const userError = getUserErrorMessage(finalErrorType, language);
       
-      console.error('All AI methods failed. Last error:', lastError);
+      console.error('All AI methods failed. REST error:', restError, 'SDK error:', sdkError);
       return NextResponse.json({ error: userError }, { status: 500 });
     }
 

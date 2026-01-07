@@ -417,14 +417,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Help Button */}
-      <button
-        onClick={openWelcomeModal}
-        className="fixed bottom-20 right-4 z-30 w-10 h-10 rounded-full bg-purple-600/80 hover:bg-purple-600 text-white flex items-center justify-center shadow-lg hover:shadow-purple-500/25 transition-all"
-        title={language === 'ar' ? 'كيف يعمل' : 'How it works'}
-      >
-        <span className="text-lg font-bold">?</span>
-      </button>
+
 
       {/* Main content with top padding for fixed navbar + thin banner */}
       <main className="max-w-5xl mx-auto px-4 py-8 pt-28">

@@ -169,7 +169,7 @@ export default function AuthPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t.auth.emailPlaceholder}
+                      placeholder="أدخل بريدك الإلكتروني"
                       className="w-full px-4 py-3 bg-black/80 border border-purple-900/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
                       required
                       dir="ltr"
@@ -202,7 +202,7 @@ export default function AuthPage() {
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4" />
-                        {language === 'ar' ? 'إرسال رابط سحري' : 'Send Magic Link'}
+                        {language === 'ar' ? 'أرسل رابط تحقق' : 'أرسل رابط تحقق'}
                       </>
                     )}
                   </button>

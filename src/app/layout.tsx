@@ -4,6 +4,7 @@ import './globals.css'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Script from 'next/script'
+import CanonicalTag from '@/components/CanonicalTag'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://humanverified.systems'),
   title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
   description: 'Professional AI-powered tool to detect AI-generated content and check for plagiarism. Verify if text is human-written with forensic linguistic analysis. Get certified PDF reports.',
-  keywords: 'AI detection, AI text detector, GPT detector, ChatGPT detector, plagiarism checker, human verification, content analysis, AI checker, text analyzer, AI content detector, humanverified',
+  keywords: 'AI detection, AI text detector, GPT detector, ChatGPT detector, plagiarism checker, human verification, content analysis, AI checker, text analyzer, AI content detector, humanverified, AI Detector, ChatGPT Checker, Human Text Verifier, Plagiarism Checker, AI Content Detection, كاشف الذكاء الاصطناعي, فحص النص, Human Verified',
   authors: [{ name: 'Human-Verified Hub', url: 'https://humanverified.systems' }],
   creator: 'Human-Verified Hub',
   publisher: 'Human-Verified Hub',
@@ -62,6 +63,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <link rel="icon" href="/logo.png" type="image/png" />
         {/* Google Analytics Placeholder - Replace GA_MEASUREMENT_ID with actual ID */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"
@@ -79,6 +81,7 @@ export default function RootLayout({
       <body className={`${inter.className} antialiased min-h-screen bg-dark-950 w-full overflow-x-hidden`}>
         <LanguageProvider>
           <AuthProvider>
+            <CanonicalTag />
             {children}
           </AuthProvider>
         </LanguageProvider>

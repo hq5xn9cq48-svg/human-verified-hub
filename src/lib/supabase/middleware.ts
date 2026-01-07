@@ -1,6 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Routes that require authentication
+const protectedRoutes = ['/analyze', '/humanizer', '/image-detector']
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -34,7 +37,18 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Check if the current route is protected
+  const pathname = request.nextUrl.pathname
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
+
+  // If protected route and user not authenticated, redirect to auth page
+  if (isProtectedRoute && !user) {
+    const redirectUrl = new URL('/auth', request.url)
+    redirectUrl.searchParams.set('redirectTo', pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
 
   return response
 }

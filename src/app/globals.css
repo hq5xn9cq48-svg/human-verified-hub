@@ -15,10 +15,13 @@
 
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -27,6 +30,8 @@ body {
   min-height: 100vh;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 ::selection {
@@ -345,6 +350,20 @@ body {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
+}
+
+/* Fix layout centering */
+#__next,
+main {
+  width: 100%;
+  max-width: 100%;
+}
+
+.max-w-5xl,
+.max-w-6xl,
+.max-w-7xl {
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Custom scrollbar - Dark Theme */

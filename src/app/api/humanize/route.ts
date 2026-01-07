@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 
-// Use environment variable only (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Use environment variable with fallback (server-side)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+
+// Step-by-step logging utility
+function logStep(step: string, details?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [HUMANIZE] ${step}`, details ? JSON.stringify(details, null, 2) : '');
+}
+
+function logError(step: string, error: any) {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] [HUMANIZE ERROR] ${step}:`, error);
+}
 
 const systemPrompt = `You are an expert text humanizer. Your job is to make AI-generated text sound more natural and human-like.
 
@@ -30,10 +41,81 @@ STYLES:
 
 OUTPUT: Return ONLY the humanized text, nothing else.`;
 
+// Updated model list - using working models
+const MODELS = [
+  'gemini-flash-latest',
+  'gemini-2.5-flash',
+  'gemini-pro-latest',
+  'gemini-2.0-flash-lite'
+];
+
+async function callGeminiAPI(prompt: string, apiKey: string): Promise<{ text: string | null; error: string | null }> {
+  for (const model of MODELS) {
+    try {
+      logStep(`Trying model: ${model}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 4096,
+            },
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMessage = errData?.error?.message || `HTTP ${response.status}`;
+        logError(`Model ${model} failed`, errMessage);
+        continue;
+      }
+
+      const data = await response.json();
+      const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (responseText) {
+        logStep(`Success with model: ${model}`);
+        return { text: responseText, error: null };
+      }
+      
+      logStep(`Empty response from ${model}`);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        logError(`Timeout for ${model}`, 'Request timed out');
+      } else {
+        logError(`Error for ${model}`, error.message);
+      }
+      continue;
+    }
+  }
+
+  return { text: null, error: 'All models failed' };
+}
+
 export async function POST(req: Request) {
+  logStep('=== NEW HUMANIZE REQUEST ===');
+  
   // Check API key first
   if (!GEMINI_API_KEY) {
-    console.error('GEMINI_API_KEY environment variable is not set');
+    logError('API key missing', 'GEMINI_API_KEY not set');
     return NextResponse.json({ 
       error: 'API configuration error. Please contact support.' 
     }, { status: 500 });
@@ -42,6 +124,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { text, intent = 'default', language = 'en' } = body;
+    logStep('Request received', { textLength: text?.length, intent, language });
 
     if (!text || typeof text !== 'string' || text.trim().length < 20) {
       return NextResponse.json({ 
@@ -61,75 +144,31 @@ export async function POST(req: Request) {
       undetectable: "MAXIMUM humanization to bypass AI detectors."
     };
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const prompt = `${systemPrompt}\n\nStyle: ${intent.toUpperCase()}\n${styleInstructions[intent] || styleInstructions.default}\n\nText to humanize:\n"""${processText}"""\n\nReturn ONLY the humanized text:`;
 
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ 
-              parts: [{ 
-                text: `${systemPrompt}\n\nStyle: ${intent.toUpperCase()}\n${styleInstructions[intent] || styleInstructions.default}\n\nText to humanize:\n"""${processText}"""\n\nReturn ONLY the humanized text:` 
-              }] 
-            }],
-            generationConfig: {
-              temperature: 0.8,
-              maxOutputTokens: 4096,
-            }
-          }),
-          signal: controller.signal,
-        }
-      );
+    const result = await callGeminiAPI(prompt, GEMINI_API_KEY);
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        console.error("Gemini API Error:", response.status, errData);
-        
-        // Return actual Google error message for debugging
-        const googleError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
-        return NextResponse.json({ 
-          error: `Gemini API Error: ${googleError}` 
-        }, { status: response.status });
-      }
-
-      const data = await response.json();
-      const humanizedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!humanizedText) {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "لم يتم استلام رد" : "No response received from AI" 
-        }, { status: 500 });
-      }
-
-      // Clean unwanted prefixes
-      let cleaned = humanizedText.trim();
-      const prefixes = ["Here is", "Here's", "Humanized:", "إليك", "النص المحسن:"];
-      for (const p of prefixes) {
-        if (cleaned.toLowerCase().startsWith(p.toLowerCase())) {
-          cleaned = cleaned.substring(p.length).trim();
-        }
-      }
-
-      return NextResponse.json({ humanizedText: cleaned });
-
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "انتهت المهلة" : "Request timed out" 
-        }, { status: 408 });
-      }
-      throw fetchError;
+    if (!result.text) {
+      logError('All API methods failed', result.error);
+      return NextResponse.json({ 
+        error: language === 'ar' ? "فشل التحويل. حاول مرة أخرى." : "Humanization failed. Please try again." 
+      }, { status: 500 });
     }
 
+    // Clean unwanted prefixes
+    let cleaned = result.text.trim();
+    const prefixes = ["Here is", "Here's", "Humanized:", "إليك", "النص المحسن:"];
+    for (const p of prefixes) {
+      if (cleaned.toLowerCase().startsWith(p.toLowerCase())) {
+        cleaned = cleaned.substring(p.length).trim();
+      }
+    }
+
+    logStep('Humanization complete', { outputLength: cleaned.length });
+    return NextResponse.json({ humanizedText: cleaned });
+
   } catch (error: any) {
-    console.error("Humanize Error:", error);
+    logError("Unhandled error", error);
     return NextResponse.json({ 
       error: `Humanization failed: ${error.message || 'Unknown error'}` 
     }, { status: 500 });

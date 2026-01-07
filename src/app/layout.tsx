@@ -76,7 +76,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} antialiased min-h-screen bg-dark-950`}>
+      <body className={`${inter.className} antialiased min-h-screen bg-dark-950 w-full overflow-x-hidden`}>
         <LanguageProvider>
           <AuthProvider>
             {children}

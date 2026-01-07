@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 
-// Use environment variable only (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// Use environment variable with fallback (server-side)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+
+// Step-by-step logging utility
+function logStep(step: string, details?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [IMAGE-ANALYZE] ${step}`, details ? JSON.stringify(details, null, 2) : '');
+}
+
+function logError(step: string, error: any) {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] [IMAGE-ANALYZE ERROR] ${step}:`, error);
+}
 
 const systemPrompt = `You are an AI image forensics expert. Analyze images to detect if they are AI-generated.
 
@@ -35,12 +46,159 @@ OUTPUT FORMAT (JSON only):
   "recommendations": "verification tips"
 }
 
-Return ONLY valid JSON.`;
+Return ONLY valid JSON, no markdown, no code blocks.`;
+
+// Updated model list - using working models that support vision
+const VISION_MODELS = [
+  'gemini-flash-latest',
+  'gemini-2.5-flash',
+  'gemini-pro-latest'
+];
+
+// Validate and parse JSON response with multiple strategies
+function parseGeminiResponse(responseText: string): any {
+  logStep('Parsing response', { responseLength: responseText.length });
+  
+  // Strategy 1: Try direct parsing
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    logStep('Direct parse failed, trying cleanup');
+  }
+  
+  // Strategy 2: Remove markdown code blocks
+  let cleaned = responseText
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/gi, '')
+    .trim();
+  
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    logStep('Cleaned parse failed, extracting JSON object');
+  }
+  
+  // Strategy 3: Extract JSON object using regex
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      logStep('Regex parse failed');
+    }
+  }
+  
+  // Strategy 4: Manual bracket extraction
+  const startIdx = cleaned.indexOf('{');
+  if (startIdx !== -1) {
+    let depth = 0;
+    let endIdx = startIdx;
+    for (let i = startIdx; i < cleaned.length; i++) {
+      if (cleaned[i] === '{') depth++;
+      if (cleaned[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+    }
+    const jsonStr = cleaned.substring(startIdx, endIdx);
+    try {
+      return JSON.parse(jsonStr);
+    } catch (e) {
+      logStep('Manual extraction failed');
+    }
+  }
+  
+  logError('All parsing strategies failed', { preview: responseText.substring(0, 200) });
+  return null;
+}
+
+async function callGeminiVisionAPI(
+  prompt: string, 
+  imageData: string, 
+  mimeType: string,
+  apiKey: string
+): Promise<{ text: string | null; error: string | null }> {
+  
+  for (const model of VISION_MODELS) {
+    try {
+      logStep(`Trying vision model: ${model}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: prompt },
+                { inlineData: { mimeType, data: imageData } }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 4096,
+            },
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+          }),
+          signal: controller.signal,
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const errMessage = errData?.error?.message || `HTTP ${response.status}`;
+        logError(`Model ${model} failed`, errMessage);
+        continue;
+      }
+
+      const data = await response.json();
+      const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (responseText) {
+        logStep(`Success with model: ${model}`);
+        return { text: responseText, error: null };
+      }
+      
+      // Check for blocked content
+      if (data?.candidates?.[0]?.finishReason === 'SAFETY') {
+        logStep(`Content blocked by safety filters for ${model}`);
+        continue;
+      }
+      
+      logStep(`Empty response from ${model}`);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        logError(`Timeout for ${model}`, 'Request timed out');
+      } else {
+        logError(`Error for ${model}`, error.message);
+      }
+      continue;
+    }
+  }
+
+  return { text: null, error: 'All vision models failed' };
+}
 
 export async function POST(req: Request) {
+  logStep('=== NEW IMAGE ANALYZE REQUEST ===');
+  
   // Check API key first
   if (!GEMINI_API_KEY) {
-    console.error('GEMINI_API_KEY environment variable is not set');
+    logError('API key missing', 'GEMINI_API_KEY not set');
     return NextResponse.json({ 
       error: 'API configuration error. Please contact support.' 
     }, { status: 500 });
@@ -49,6 +207,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { image, language = 'en' } = body;
+    logStep('Request received', { hasImage: !!image, language });
 
     if (!image || typeof image !== 'string') {
       return NextResponse.json({ 
@@ -78,100 +237,55 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    logStep('Image data prepared', { mimeType, dataLength: base64Data.length });
 
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: `${systemPrompt}\n\nAnalyze this image for AI generation indicators:` },
-                { inlineData: { mimeType, data: base64Data } }
-              ]
-            }],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 4096,
-            }
-          }),
-          signal: controller.signal,
-        }
-      );
+    const prompt = `${systemPrompt}\n\nAnalyze this image for AI generation indicators:`;
+    const apiResult = await callGeminiVisionAPI(prompt, base64Data, mimeType, GEMINI_API_KEY);
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        console.error("Gemini API Error:", response.status, errData);
-        
-        // Return actual Google error message for debugging
-        const googleError = errData?.error?.message || errData?.error?.status || `HTTP ${response.status}`;
-        return NextResponse.json({ 
-          error: `Gemini API Error: ${googleError}` 
-        }, { status: response.status });
-      }
-
-      const data = await response.json();
-      const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!responseText) {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "لم يتم استلام تحليل" : "No analysis received from AI" 
-        }, { status: 500 });
-      }
-
-      let result;
-      try {
-        const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-        result = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
-      } catch {
-        result = {
-          aiProbability: 50,
-          verdict: "Uncertain",
-          confidenceLevel: "low",
-          summary: "Analysis could not be completed.",
-          artifacts: [],
-          analysisDetails: {},
-          recommendations: "Try with a different image."
-        };
-      }
-
-      // Normalize
-      result.aiProbability = Math.max(0, Math.min(100, Number(result.aiProbability) || 50));
-      
-      if (!result.verdict) {
-        if (result.aiProbability >= 70) result.verdict = "AI Generated";
-        else if (result.aiProbability >= 50) result.verdict = "Likely AI";
-        else if (result.aiProbability >= 30) result.verdict = "Uncertain";
-        else result.verdict = "Likely Authentic";
-      }
-
-      result.artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
-      result.confidenceLevel = result.confidenceLevel || "medium";
-      result.summary = result.summary || "Analysis completed.";
-      result.analysisDetails = result.analysisDetails || {};
-      result.recommendations = result.recommendations || "";
-
-      return NextResponse.json(result);
-
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "انتهت المهلة" : "Request timed out" 
-        }, { status: 408 });
-      }
-      throw fetchError;
+    if (!apiResult.text) {
+      logError('All API methods failed', apiResult.error);
+      return NextResponse.json({ 
+        error: language === 'ar' ? "فشل التحليل. حاول مرة أخرى." : "Image analysis failed. Please try again." 
+      }, { status: 500 });
     }
 
+    // Parse the response
+    let result = parseGeminiResponse(apiResult.text);
+    
+    if (!result) {
+      logStep('Parse failed, creating fallback result');
+      result = {
+        aiProbability: 50,
+        verdict: "Uncertain",
+        confidenceLevel: "low",
+        summary: "Analysis could not be completed properly.",
+        artifacts: [],
+        analysisDetails: {},
+        recommendations: "Try with a different image."
+      };
+    }
+
+    // Normalize result
+    result.aiProbability = Math.max(0, Math.min(100, Number(result.aiProbability) || 50));
+    
+    if (!result.verdict) {
+      if (result.aiProbability >= 70) result.verdict = "AI Generated";
+      else if (result.aiProbability >= 50) result.verdict = "Likely AI";
+      else if (result.aiProbability >= 30) result.verdict = "Uncertain";
+      else result.verdict = "Likely Authentic";
+    }
+
+    result.artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+    result.confidenceLevel = result.confidenceLevel || "medium";
+    result.summary = result.summary || "Analysis completed.";
+    result.analysisDetails = result.analysisDetails || {};
+    result.recommendations = result.recommendations || "";
+
+    logStep('Analysis complete', { aiProbability: result.aiProbability, verdict: result.verdict });
+    return NextResponse.json(result);
+
   } catch (error: any) {
-    console.error("Image Analysis Error:", error);
+    logError("Unhandled error", error);
     return NextResponse.json({ 
       error: `Image analysis failed: ${error.message || 'Unknown error'}` 
     }, { status: 500 });

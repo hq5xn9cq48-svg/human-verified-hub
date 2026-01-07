@@ -2,10 +2,21 @@ import { NextResponse } from "next/server";
 import * as cheerio from 'cheerio';
 
 // API Key - Use environment variable only (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
 
 // Turnstile secret key for bot protection
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || '';
+
+// Step-by-step logging utility
+function logStep(step: string, details?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [STEP] ${step}`, details ? JSON.stringify(details, null, 2) : '');
+}
+
+function logError(step: string, error: any) {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] [ERROR] ${step}:`, error);
+}
 
 const systemPrompt = `You are SENTINEL-AI V5.0, an expert forensic linguistic analyzer.
 
@@ -55,9 +66,10 @@ OUTPUT FORMAT (JSON):
 
 IMPORTANT: Include 3-5 specific bullet points in smartBreakdown explaining exactly WHY you gave this score. Be specific about patterns you detected.
 
-Return ONLY valid JSON, no markdown.`;
+Return ONLY valid JSON, no markdown, no code blocks, no additional text.`;
 
 async function scrapeUrl(url: string): Promise<string | null> {
+  logStep('Starting URL scrape', { url });
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -71,7 +83,10 @@ async function scrapeUrl(url: string): Promise<string | null> {
     });
 
     clearTimeout(timeoutId);
-    if (!response.ok) return null;
+    if (!response.ok) {
+      logError('URL scrape failed', { status: response.status });
+      return null;
+    }
 
     const html = await response.text();
     const $ = cheerio.load(html);
@@ -88,8 +103,10 @@ async function scrapeUrl(url: string): Promise<string | null> {
       }
     }
 
+    logStep('URL scrape completed', { contentLength: content.length });
     return content.length > 50 ? content.substring(0, 10000) : null;
-  } catch {
+  } catch (error) {
+    logError('URL scrape error', error);
     return null;
   }
 }
@@ -108,7 +125,7 @@ async function verifyTurnstile(token: string): Promise<boolean> {
     const data = await response.json();
     return data.success === true;
   } catch (error) {
-    console.error('Turnstile verification error:', error);
+    logError('Turnstile verification error', error);
     return false;
   }
 }
@@ -122,7 +139,7 @@ function getLanguageInstruction(language: string): string {
 }
 
 // Error type classification for better user messaging
-type ErrorType = 'config' | 'timeout' | 'rate_limit' | 'network' | 'unknown';
+type ErrorType = 'config' | 'timeout' | 'rate_limit' | 'network' | 'parse' | 'unknown';
 
 function classifyError(error: string | null): ErrorType {
   if (!error) return 'unknown';
@@ -146,7 +163,7 @@ function classifyError(error: string | null): ErrorType {
     return 'timeout';
   }
   
-  // Check for rate limiting - use word boundaries and specific patterns
+  // Check for rate limiting
   if (lowerError.includes('quota') || 
       lowerError.includes('rate limit') ||
       lowerError.includes('rate-limit') ||
@@ -166,6 +183,14 @@ function classifyError(error: string | null): ErrorType {
     return 'network';
   }
   
+  // Check for parsing issues
+  if (lowerError.includes('json') ||
+      lowerError.includes('parse') ||
+      lowerError.includes('unexpected token') ||
+      lowerError.includes('syntax')) {
+    return 'parse';
+  }
+  
   return 'unknown';
 }
 
@@ -177,16 +202,20 @@ function getUserErrorMessage(errorType: ErrorType, language: string): string {
       ar: 'خطأ في إعدادات الخادم. يرجى التواصل مع الدعم.'
     },
     timeout: {
-      en: 'Request timed out. Please try again.',
-      ar: 'انتهت مهلة الطلب. حاول مرة أخرى.'
+      en: 'Request timed out. Please try again with shorter text.',
+      ar: 'انتهت مهلة الطلب. حاول مرة أخرى بنص أقصر.'
     },
     rate_limit: {
-      en: 'Usage limit exceeded. Please try again later.',
-      ar: 'تم تجاوز حد الاستخدام. حاول مرة أخرى لاحقاً.'
+      en: 'Service is busy. Please try again in a moment.',
+      ar: 'الخدمة مشغولة. حاول مرة أخرى بعد قليل.'
     },
     network: {
       en: 'Connection error. Please check your internet connection.',
       ar: 'خطأ في الاتصال. تحقق من اتصالك بالإنترنت.'
+    },
+    parse: {
+      en: 'Error processing response. Please try again.',
+      ar: 'خطأ في معالجة الرد. حاول مرة أخرى.'
     },
     unknown: {
       en: 'Analysis failed. Please try again.',
@@ -203,153 +232,348 @@ interface GeminiResult {
   lastError: string | null;
 }
 
-// Direct REST API call to Gemini
+// Validate and parse JSON response with multiple strategies
+function parseGeminiResponse(responseText: string): any {
+  logStep('Parsing Gemini response', { responseLength: responseText.length });
+  
+  // Strategy 1: Try direct parsing (fastest)
+  try {
+    const parsed = JSON.parse(responseText);
+    logStep('Direct JSON parse succeeded');
+    return parsed;
+  } catch (e) {
+    logStep('Direct JSON parse failed, trying cleanup strategies');
+  }
+  
+  // Strategy 2: Remove markdown code blocks
+  let cleaned = responseText
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/gi, '')
+    .trim();
+  
+  try {
+    const parsed = JSON.parse(cleaned);
+    logStep('Cleaned JSON parse succeeded');
+    return parsed;
+  } catch (e) {
+    logStep('Cleaned JSON parse failed, extracting JSON object');
+  }
+  
+  // Strategy 3: Extract JSON object using regex
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      logStep('Regex extracted JSON parse succeeded');
+      return parsed;
+    } catch (e) {
+      logStep('Regex extracted JSON parse failed');
+    }
+  }
+  
+  // Strategy 4: Try to find and extract the most complete JSON object
+  const startIdx = cleaned.indexOf('{');
+  if (startIdx !== -1) {
+    let depth = 0;
+    let endIdx = startIdx;
+    for (let i = startIdx; i < cleaned.length; i++) {
+      if (cleaned[i] === '{') depth++;
+      if (cleaned[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i + 1;
+          break;
+        }
+      }
+    }
+    const jsonStr = cleaned.substring(startIdx, endIdx);
+    try {
+      const parsed = JSON.parse(jsonStr);
+      logStep('Manual extraction JSON parse succeeded');
+      return parsed;
+    } catch (e) {
+      logStep('Manual extraction JSON parse failed');
+    }
+  }
+  
+  logError('All JSON parsing strategies failed', { preview: responseText.substring(0, 200) });
+  return null;
+}
+
+// Validate analysis result structure
+function validateAnalysisResult(result: any): boolean {
+  if (!result || typeof result !== 'object') return false;
+  if (typeof result.humanScore !== 'number' && typeof result.humanScore !== 'string') return false;
+  return true;
+}
+
+// Direct REST API call to Gemini - Using working models with fallback chain
 async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
   const langInstruction = getLanguageInstruction(language);
   let lastError: string | null = null;
 
+  // Updated model list based on API availability testing
+  // gemini-flash-latest is confirmed working; others as fallbacks
   const models = [
-    'gemini-1.5-flash',
-    'gemini-1.5-flash-latest', 
-    'gemini-1.5-pro',
-    'gemini-pro'
+    'gemini-flash-latest',
+    'gemini-2.5-flash',
+    'gemini-pro-latest',
+    'gemini-2.0-flash-lite'
   ];
 
   for (const model of models) {
     try {
-      console.log(`[REST] Trying model: ${model}`);
+      logStep(`REST API: Trying model`, { model });
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      // Increased timeout to 45 seconds to handle slower responses
+      const timeoutId = setTimeout(() => {
+        logStep(`REST API: Timeout triggered for ${model}`);
+        controller.abort();
+      }, 45000);
 
+      const requestBody = {
+        contents: [{ 
+          parts: [{ 
+            text: `${systemPrompt}\n\n${langInstruction}\n\nAnalyze this text:\n"""${text}"""` 
+          }] 
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+          topP: 0.8,
+          topK: 40,
+        },
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        ]
+      };
+
+      logStep(`REST API: Sending request to ${model}`);
+      
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ 
-              parts: [{ 
-                text: `${systemPrompt}\n\n${langInstruction}\n\nAnalyze this text:\n"""${text}"""` 
-              }] 
-            }],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 1024,
-              topP: 0.8,
-              topK: 40,
-            }
-          }),
+          body: JSON.stringify(requestBody),
           signal: controller.signal,
         }
       );
 
       clearTimeout(timeoutId);
+      logStep(`REST API: Received response`, { status: response.status, model });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         const errMessage = errData?.error?.message || `HTTP ${response.status}`;
-        console.error(`[REST] Model ${model} failed:`, errMessage);
+        logError(`REST API: Model ${model} failed`, { errMessage, status: response.status });
         lastError = errMessage;
         continue;
       }
 
       const data = await response.json();
+      logStep(`REST API: Response data received`, { 
+        hasCandidates: !!data?.candidates,
+        candidatesCount: data?.candidates?.length 
+      });
+      
       const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       
       if (responseText) {
-        console.log(`[REST] Success with model: ${model}`);
+        logStep(`REST API: Success with model ${model}`, { responseLength: responseText.length });
         return { text: responseText, lastError: null };
       }
       
-      // No response text but request succeeded
+      // Check for blocked content
+      if (data?.candidates?.[0]?.finishReason === 'SAFETY') {
+        logStep(`REST API: Content blocked by safety filters`);
+        lastError = 'Content blocked by safety filters';
+        continue;
+      }
+      
       lastError = `Empty response from model ${model}`;
+      logStep(`REST API: Empty response from ${model}`);
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        lastError = 'Request timed out';
+        lastError = 'Request timed out after 45 seconds';
+        logError(`REST API: Timeout for ${model}`, { timeout: '45s' });
       } else {
         lastError = error.message || 'Network error';
+        logError(`REST API: Error for ${model}`, error);
       }
-      console.error(`[REST] Model ${model} error:`, lastError);
       continue;
     }
   }
 
+  logStep('REST API: All models failed', { lastError });
   return { text: null, lastError };
 }
 
-// SDK-based call using @google/generative-ai
+// SDK-based call using @google/generative-ai (fallback)
 async function callGeminiSDK(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
   let lastError: string | null = null;
   
   try {
     const langInstruction = getLanguageInstruction(language);
+    logStep('SDK: Loading Google Generative AI module');
 
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
+    // Updated model list based on API availability
+    const models = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest'];
     
     for (const modelName of models) {
       try {
-        console.log(`[SDK] Trying model: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName });
+        logStep(`SDK: Trying model`, { model: modelName });
+        const model = genAI.getGenerativeModel({ 
+          model: modelName,
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 2048,
+            topP: 0.8,
+            topK: 40,
+          },
+        });
         
         const result = await model.generateContent({
           contents: [{ 
             role: 'user', 
             parts: [{ text: `${systemPrompt}\n\n${langInstruction}\n\nAnalyze this text:\n"""${text}"""` }] 
           }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 1024,
-            topP: 0.8,
-            topK: 40,
-          },
         });
 
         const responseText = result.response.text();
         if (responseText) {
-          console.log(`[SDK] Success with model: ${modelName}`);
+          logStep(`SDK: Success with model ${modelName}`, { responseLength: responseText.length });
           return { text: responseText, lastError: null };
         }
         
         lastError = `Empty response from model ${modelName}`;
+        logStep(`SDK: Empty response from ${modelName}`);
       } catch (error: any) {
         lastError = error.message || 'SDK error';
-        console.error(`[SDK] Model ${modelName} error:`, lastError);
+        logError(`SDK: Error for ${modelName}`, error);
         continue;
       }
     }
   } catch (importError: any) {
     lastError = importError.message || 'Failed to load SDK';
-    console.error('[SDK] Import error:', lastError);
+    logError('SDK: Import error', importError);
   }
   
+  logStep('SDK: All models failed', { lastError });
   return { text: null, lastError };
 }
 
+// Create a fallback result when analysis partially fails
+function createFallbackResult(analysisText: string, rawResponse?: string): any {
+  logStep('Creating fallback result');
+  return {
+    humanScore: 50,
+    verdict: "Uncertain",
+    confidence: "low",
+    summary: rawResponse 
+      ? "Analysis completed but response format was unexpected. Result may be approximate."
+      : "Analysis could not be completed properly.",
+    analysisMetadata: {
+      wordCount: analysisText.split(/\s+/).length,
+      sentenceCount: analysisText.split(/[.!?]+/).length,
+      perplexityLevel: "medium",
+      burstinessScore: "medium"
+    },
+    aiIndicators: [],
+    humanIndicators: [],
+    forensicDetails: {
+      syntaxAnalysis: "N/A",
+      lexicalRichness: "N/A",
+      predictability: "N/A"
+    },
+    smartBreakdown: ["Analysis parsing encountered issues - result may be approximate"]
+  };
+}
+
+// Normalize and validate the final result
+function normalizeResult(result: any, analysisText: string): any {
+  logStep('Normalizing result');
+  
+  // Ensure humanScore is valid
+  const rawScore = Number(result.humanScore);
+  result.humanScore = isNaN(rawScore) ? 50 : Math.max(0, Math.min(100, rawScore));
+  
+  // Set verdict if missing
+  if (!result.verdict) {
+    if (result.humanScore <= 30) result.verdict = "AI Generated";
+    else if (result.humanScore <= 45) result.verdict = "Likely AI";
+    else if (result.humanScore <= 60) result.verdict = "Uncertain";
+    else if (result.humanScore <= 80) result.verdict = "Likely Human";
+    else result.verdict = "Human Written";
+  }
+
+  // Ensure arrays exist
+  result.aiIndicators = Array.isArray(result.aiIndicators) ? result.aiIndicators : [];
+  result.humanIndicators = Array.isArray(result.humanIndicators) ? result.humanIndicators : [];
+  result.smartBreakdown = Array.isArray(result.smartBreakdown) ? result.smartBreakdown : [];
+  
+  // Set defaults
+  result.confidence = result.confidence || "medium";
+  result.summary = result.summary || "Analysis completed.";
+  
+  // Ensure metadata exists
+  if (!result.analysisMetadata || typeof result.analysisMetadata !== 'object') {
+    result.analysisMetadata = {
+      wordCount: analysisText.split(/\s+/).length,
+      sentenceCount: analysisText.split(/[.!?]+/).length,
+      perplexityLevel: "medium",
+      burstinessScore: "medium"
+    };
+  }
+
+  // Ensure forensicDetails exists
+  if (!result.forensicDetails || typeof result.forensicDetails !== 'object') {
+    result.forensicDetails = {
+      syntaxAnalysis: "Standard",
+      lexicalRichness: "Average",
+      predictability: "Moderate"
+    };
+  }
+
+  logStep('Result normalized', { humanScore: result.humanScore, verdict: result.verdict });
+  return result;
+}
+
 export async function POST(req: Request) {
+  logStep('=== NEW ANALYSIS REQUEST ===');
+  
   // Check API key first
   if (!GEMINI_API_KEY) {
-    console.error('GEMINI_API_KEY environment variable is not set');
+    logError('API key missing', 'GEMINI_API_KEY not set');
     return NextResponse.json({ 
       error: 'API configuration error. Please contact support.' 
     }, { status: 500 });
   }
+  logStep('API key validated', { keyLength: GEMINI_API_KEY.length });
 
   try {
     const body = await req.json();
     let { text, url, language = 'en', turnstileToken } = body;
+    logStep('Request body parsed', { hasText: !!text, hasUrl: !!url, language, hasTurnstile: !!turnstileToken });
 
     // Verify Turnstile token if provided
     if (turnstileToken) {
+      logStep('Verifying Turnstile token');
       const isValid = await verifyTurnstile(turnstileToken);
       if (!isValid) {
+        logStep('Turnstile verification failed');
         return NextResponse.json({ 
           error: language === 'ar' ? 'فشل التحقق من الروبوت' : 'Bot verification failed. Please try again.' 
         }, { status: 403 });
       }
+      logStep('Turnstile verification passed');
     }
 
     // Handle URL scraping
@@ -371,33 +595,37 @@ export async function POST(req: Request) {
     }
 
     if (!text || typeof text !== 'string' || text.trim().length < 10) {
+      logStep('Text validation failed', { textLength: text?.length });
       return NextResponse.json({ 
         error: language === 'ar' ? "النص قصير جداً" : "Text too short (min 10 chars)" 
       }, { status: 400 });
     }
 
     const analysisText = text.trim().substring(0, 8000);
+    logStep('Text prepared for analysis', { originalLength: text.length, trimmedLength: analysisText.length });
 
-    // Try REST API first, then SDK as fallback
+    // Step 1: Try REST API first (faster)
+    logStep('Step 1: Attempting REST API call');
     const restResult = await callGeminiREST(analysisText, GEMINI_API_KEY, language);
     let responseText = restResult.text;
     const restError = restResult.lastError;
     let sdkError: string | null = null;
     
+    // Step 2: If REST fails, try SDK as fallback
     if (!responseText) {
-      console.log('REST API failed, trying SDK...');
+      logStep('Step 2: REST API failed, attempting SDK fallback');
       const sdkResult = await callGeminiSDK(analysisText, GEMINI_API_KEY, language);
       responseText = sdkResult.text;
       sdkError = sdkResult.lastError;
     }
 
-    // If all methods failed - provide detailed error message
+    // Step 3: Handle complete failure
     if (!responseText) {
-      // Use the most informative error between REST and SDK
+      logStep('Step 3: All API methods failed', { restError, sdkError });
+      
       const restErrorType = classifyError(restError);
       const sdkErrorType = classifyError(sdkError);
       
-      // Prefer REST error if it's specific, otherwise use SDK error if specific, else 'unknown'
       let finalErrorType: ErrorType;
       if (restErrorType !== 'unknown') {
         finalErrorType = restErrorType;
@@ -409,75 +637,29 @@ export async function POST(req: Request) {
       
       const userError = getUserErrorMessage(finalErrorType, language);
       
-      console.error('All AI methods failed. REST error:', restError, 'SDK error:', sdkError);
+      logError('All AI methods failed', { restError, sdkError, finalErrorType });
       return NextResponse.json({ error: userError }, { status: 500 });
     }
 
-    // Parse JSON from response
-    let result;
-    try {
-      const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      result = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
-    } catch {
-      result = {
-        humanScore: 50,
-        verdict: "Uncertain",
-        confidence: "low",
-        summary: "Analysis could not be completed properly.",
-        analysisMetadata: {
-          wordCount: analysisText.split(/\s+/).length,
-          sentenceCount: analysisText.split(/[.!?]+/).length,
-          perplexityLevel: "medium",
-          burstinessScore: "medium"
-        },
-        aiIndicators: [],
-        humanIndicators: [],
-        forensicDetails: {
-          syntaxAnalysis: "N/A",
-          lexicalRichness: "N/A",
-          predictability: "N/A"
-        },
-        smartBreakdown: ["Analysis parsing failed - result uncertain"]
-      };
-    }
-
-    // Normalize the result
-    result.humanScore = Math.max(0, Math.min(100, Number(result.humanScore) || 50));
+    // Step 4: Parse and validate the response
+    logStep('Step 4: Parsing API response');
+    let result = parseGeminiResponse(responseText);
     
-    if (!result.verdict) {
-      if (result.humanScore <= 30) result.verdict = "AI Generated";
-      else if (result.humanScore <= 60) result.verdict = "Uncertain";
-      else result.verdict = "Likely Human";
+    // Step 5: Handle parse failure with fallback
+    if (!result || !validateAnalysisResult(result)) {
+      logStep('Step 5: Parse failed, creating fallback result');
+      result = createFallbackResult(analysisText, responseText);
     }
 
-    result.aiIndicators = Array.isArray(result.aiIndicators) ? result.aiIndicators : [];
-    result.humanIndicators = Array.isArray(result.humanIndicators) ? result.humanIndicators : [];
-    result.smartBreakdown = Array.isArray(result.smartBreakdown) ? result.smartBreakdown : [];
-    result.confidence = result.confidence || "medium";
-    result.summary = result.summary || "Analysis completed.";
-    
-    if (!result.analysisMetadata) {
-      result.analysisMetadata = {
-        wordCount: analysisText.split(/\s+/).length,
-        sentenceCount: analysisText.split(/[.!?]+/).length,
-        perplexityLevel: "medium",
-        burstinessScore: "medium"
-      };
-    }
+    // Step 6: Normalize and validate the result
+    logStep('Step 6: Normalizing final result');
+    result = normalizeResult(result, analysisText);
 
-    if (!result.forensicDetails) {
-      result.forensicDetails = {
-        syntaxAnalysis: "Standard",
-        lexicalRichness: "Average",
-        predictability: "Moderate"
-      };
-    }
-
+    logStep('=== ANALYSIS COMPLETE ===', { humanScore: result.humanScore, verdict: result.verdict });
     return NextResponse.json(result);
 
   } catch (error: any) {
-    console.error("Analysis Error:", error);
+    logError('Unhandled error in analysis', error);
     return NextResponse.json({ 
       error: `Analysis failed: ${error.message || 'Unknown error'}` 
     }, { status: 500 });

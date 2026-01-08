@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { analyzeText, type AnalysisResult } from '@/lib/gemini'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Loader2, BarChart3, Check, X, AlertCircle, RefreshCw, FileSearch } from 'lucide-react'
 
 interface VerificationFormProps {
@@ -16,7 +16,6 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,16 +32,21 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
       const analysisResult = await analyzeText(text)
       setResult(analysisResult)
 
-      // Save to database
-      const { error: dbError } = await supabase.from('verifications').insert({
-        user_id: userId,
-        content: text,
-        result_score: analysisResult.humanScore,
-        analysis: analysisResult.analysis,
-      })
+      // Save to database if Supabase is configured
+      if (isSupabaseConfigured()) {
+        const supabase = createClient()
+        const { error: dbError } = await supabase.from('verifications').insert({
+          user_id: userId,
+          content: text,
+          result_score: analysisResult.humanScore,
+          analysis: analysisResult.analysis,
+        })
 
-      if (dbError) {
-        console.error('Failed to save verification:', dbError)
+        if (dbError) {
+          console.error('Failed to save verification:', dbError)
+        } else {
+          onNewVerification?.()
+        }
       } else {
         onNewVerification?.()
       }

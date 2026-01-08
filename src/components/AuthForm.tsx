@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 interface AuthFormProps {
@@ -16,15 +16,21 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!isSupabaseConfigured()) {
+      setError('Authentication service not configured')
+      return
+    }
+    
     setLoading(true)
     setError(null)
     setSuccess(null)
 
     try {
+      const supabase = createClient()
       if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({
           email,

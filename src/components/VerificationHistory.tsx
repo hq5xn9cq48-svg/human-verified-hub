@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Verification } from '@/types/database'
 import { Loader2, FileText, ChevronDown } from 'lucide-react'
 
@@ -15,14 +15,19 @@ export default function VerificationHistory({ userId, refreshTrigger }: Verifica
   const [verifications, setVerifications] = useState<Verification[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     fetchVerifications()
   }, [refreshTrigger])
 
   const fetchVerifications = async () => {
+    if (!isSupabaseConfigured()) {
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
+    const supabase = createClient()
     const { data, error } = await supabase
       .from('verifications')
       .select('*')

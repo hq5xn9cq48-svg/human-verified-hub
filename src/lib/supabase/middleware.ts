@@ -5,6 +5,15 @@ import { NextResponse, type NextRequest } from 'next/server'
 // Note: The main analysis page is at '/', so we protect specific feature pages
 const protectedRoutes = ['/humanizer', '/image-detector', '/image-to-prompt', '/history', '/dashboard']
 
+// Placeholder values for when environment variables are missing
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
+
+// Helper to check if Supabase is properly configured
+function isSupabaseConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -12,9 +21,18 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
+  // Check if the current route is protected
+  const pathname = request.nextUrl.pathname
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
+
+  // If Supabase is not configured, skip auth checks but allow access
+  if (!isSupabaseConfigured()) {
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookies: {
         get(name: string) {
@@ -38,17 +56,17 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
 
-  // Check if the current route is protected
-  const pathname = request.nextUrl.pathname
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-
-  // If protected route and user not authenticated, redirect to auth page
-  if (isProtectedRoute && !user) {
-    const redirectUrl = new URL('/auth', request.url)
-    redirectUrl.searchParams.set('redirectTo', pathname)
-    return NextResponse.redirect(redirectUrl)
+    // If protected route and user not authenticated, redirect to auth page
+    if (isProtectedRoute && !user) {
+      const redirectUrl = new URL('/auth', request.url)
+      redirectUrl.searchParams.set('redirectTo', pathname)
+      return NextResponse.redirect(redirectUrl)
+    }
+  } catch {
+    // If authentication check fails, allow access
   }
 
   return response

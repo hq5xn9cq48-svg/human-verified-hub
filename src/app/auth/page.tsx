@@ -4,13 +4,12 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 
 export default function AuthPage() {
   const { t, isRTL, language, isLoaded } = useLanguage()
-  const supabase = createClient()
   
   const [email, setEmail] = useState('')
   const [step, setStep] = useState<'email' | 'sent'>('email')
@@ -50,10 +49,16 @@ export default function AuthPage() {
   }
 
   const handleGoogleSignIn = async () => {
+    if (!isSupabaseConfigured()) {
+      setError('Authentication service not configured')
+      return
+    }
+    
     setGoogleLoading(true)
     setError(null)
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -79,10 +84,16 @@ export default function AuthPage() {
     e.preventDefault()
     if (!email.trim()) return
 
+    if (!isSupabaseConfigured()) {
+      setError('Authentication service not configured')
+      return
+    }
+
     setLoading(true)
     setError(null)
     
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {

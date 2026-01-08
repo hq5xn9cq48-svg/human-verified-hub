@@ -22,12 +22,35 @@ import {
 } from 'lucide-react'
 
 export default function Navbar() {
-  const { language, setLanguage, t, availableLanguages } = useLanguage()
+  const { language, setLanguage, t, availableLanguages, isLoaded } = useLanguage()
   const { user, signOut } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
   const langMenuRef = useRef<HTMLDivElement>(null)
+
+  // Prevent hydration mismatch by not rendering language-dependent content until loaded
+  if (!isLoaded) {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-12 w-12 bg-purple-900/30 rounded-xl animate-pulse" />
+              <div className="hidden sm:block">
+                <div className="h-5 w-32 bg-purple-900/30 rounded animate-pulse" />
+                <div className="h-3 w-24 bg-purple-900/20 rounded mt-1 animate-pulse" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-20 bg-purple-900/30 rounded-xl animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+      </header>
+    )
+  }
 
   // Close language menu when clicking outside
   useEffect(() => {

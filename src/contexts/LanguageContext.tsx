@@ -9,6 +9,7 @@ interface LanguageContextType {
   t: typeof translations.en
   isRTL: boolean
   availableLanguages: { code: Language; name: string; nativeName: string }[]
+  isLoaded: boolean
 }
 
 const availableLanguages: { code: Language; name: string; nativeName: string }[] = [
@@ -22,13 +23,19 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en')
+  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
     // Check localStorage for saved preference
     const saved = localStorage.getItem('language') as Language
     if (saved && ['en', 'ar', 'fr', 'es'].includes(saved)) {
       setLanguageState(saved)
+      // Update document direction for RTL languages
+      document.documentElement.dir = saved === 'ar' ? 'rtl' : 'ltr'
+      document.documentElement.lang = saved
     }
+    // Mark as loaded after hydration
+    setIsLoaded(true)
   }, [])
 
   const setLanguage = (lang: Language) => {
@@ -46,7 +53,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const isRTL = language === 'ar'
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL, availableLanguages }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL, availableLanguages, isLoaded }}>
       {children}
     </LanguageContext.Provider>
   )

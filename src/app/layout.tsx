@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   authors: [{ name: 'Human-Verified Hub', url: 'https://humanverified.systems' }],
   creator: 'Human-Verified Hub',
   publisher: 'Human-Verified Hub',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',

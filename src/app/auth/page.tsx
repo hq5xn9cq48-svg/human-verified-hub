@@ -6,10 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Loader2, Mail, ArrowLeft, CheckCircle, Send } from 'lucide-react'
+import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 
 export default function AuthPage() {
-  const { t, isRTL, language } = useLanguage()
+  const { t, isRTL, language, isLoaded } = useLanguage()
   const supabase = createClient()
   
   const [email, setEmail] = useState('')
@@ -17,6 +17,37 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Prevent hydration mismatch by showing loading state until client-side
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-black cyber-grid relative flex items-center justify-center p-4">
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[150px]" />
+          <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-purple-500/10 rounded-full blur-[150px]" />
+        </div>
+        <div className="w-full max-w-md relative z-10">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="h-12 w-12 bg-purple-900/30 rounded-full animate-pulse" />
+            <div>
+              <div className="h-6 w-40 bg-purple-900/30 rounded animate-pulse" />
+              <div className="h-3 w-32 bg-purple-900/20 rounded mt-1 animate-pulse" />
+            </div>
+          </div>
+          <div className="glass-card-dark p-8 border border-purple-900/30">
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="h-7 w-32 mx-auto bg-purple-900/30 rounded animate-pulse" />
+                <div className="h-4 w-48 mx-auto bg-purple-900/20 rounded mt-2 animate-pulse" />
+              </div>
+              <div className="h-12 w-full bg-purple-900/20 rounded-xl animate-pulse" />
+              <div className="h-12 w-full bg-purple-900/20 rounded-xl animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
@@ -169,7 +200,7 @@ export default function AuthPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="أدخل بريدك الإلكتروني"
+                      placeholder={language === 'ar' ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
                       className="w-full px-4 py-3 bg-black/80 border border-purple-900/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
                       required
                       dir="ltr"
@@ -201,8 +232,8 @@ export default function AuthPage() {
                       </>
                     ) : (
                       <>
-                        <Send className="w-4 h-4" />
-                        {language === 'ar' ? 'أرسل رابط تحقق' : 'Send Magic Link'}
+                        <Mail className="w-4 h-4" />
+                        {language === 'ar' ? 'أرسل رابط الدخول' : 'Send Login Link'}
                       </>
                     )}
                   </button>

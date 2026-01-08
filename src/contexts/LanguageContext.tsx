@@ -8,7 +8,15 @@ interface LanguageContextType {
   setLanguage: (lang: Language) => void
   t: typeof translations.en
   isRTL: boolean
+  availableLanguages: { code: Language; name: string; nativeName: string }[]
 }
+
+const availableLanguages: { code: Language; name: string; nativeName: string }[] = [
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
+  { code: 'fr', name: 'French', nativeName: 'Francais' },
+  { code: 'es', name: 'Spanish', nativeName: 'Espanol' },
+]
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
@@ -18,7 +26,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check localStorage for saved preference
     const saved = localStorage.getItem('language') as Language
-    if (saved && (saved === 'en' || saved === 'ar')) {
+    if (saved && ['en', 'ar', 'fr', 'es'].includes(saved)) {
       setLanguageState(saved)
     }
   }, [])
@@ -26,13 +34,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     localStorage.setItem('language', lang)
+    
+    // Update document direction for RTL languages
+    if (typeof document !== 'undefined') {
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+      document.documentElement.lang = lang
+    }
   }
 
   const t = translations[language]
   const isRTL = language === 'ar'
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL, availableLanguages }}>
       {children}
     </LanguageContext.Provider>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -16,19 +16,35 @@ import {
   LogOut, 
   Menu, 
   X,
-  Globe
+  Globe,
+  Sparkles,
+  ChevronDown
 } from 'lucide-react'
 
 export default function Navbar() {
-  const { language, setLanguage, t } = useLanguage()
+  const { language, setLanguage, t, availableLanguages } = useLanguage()
   const { user, signOut } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [langMenuOpen, setLangMenuOpen] = useState(false)
+  const langMenuRef = useRef<HTMLDivElement>(null)
+
+  // Close language menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setLangMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const navItems = [
     { href: '/', label: t.nav.analyzer, icon: Search },
     { href: '/humanizer', label: t.nav.humanizer, icon: Wand2 },
     { href: '/image-detector', label: t.nav.imageDetector, icon: ImageIcon },
+    { href: '/image-to-prompt', label: t.nav.imageToPrompt, icon: Sparkles },
     { href: '/history', label: t.nav.history, icon: History },
   ]
 
@@ -76,14 +92,49 @@ export default function Navbar() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-3">
-            {/* Language Toggle */}
-            <button
-              onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-              className="p-2.5 rounded-xl text-gray-400 hover:text-purple-300 bg-white/5 hover:bg-purple-600/10 transition-all border border-transparent hover:border-purple-500/30"
-              title={language === 'en' ? 'عربي' : 'English'}
-            >
-              <Globe className="w-4 h-4" />
-            </button>
+            {/* Language Switcher Dropdown */}
+            <div className="relative" ref={langMenuRef}>
+              <button
+                onClick={() => setLangMenuOpen(!langMenuOpen)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-gray-400 hover:text-purple-300 bg-white/5 hover:bg-purple-600/10 transition-all border border-transparent hover:border-purple-500/30"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="text-xs font-medium uppercase hidden sm:inline">{language}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${langMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {langMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-40 py-2 bg-black/95 backdrop-blur-xl border border-purple-900/50 rounded-xl shadow-lg shadow-purple-500/10 z-50"
+                  >
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          setLanguage(lang.code)
+                          setLangMenuOpen(false)
+                        }}
+                        className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between ${
+                          language === lang.code
+                            ? 'bg-purple-600/20 text-purple-300'
+                            : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <span>{lang.nativeName}</span>
+                        {language === lang.code && (
+                          <span className="w-2 h-2 rounded-full bg-purple-400" />
+                        )}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* Auth Button */}
             {user ? (

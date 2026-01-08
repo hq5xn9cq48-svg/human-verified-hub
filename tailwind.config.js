@@ -107,7 +107,9 @@ module.exports = {
         xs: '2px',
       },
       fontFamily: {
+        sans: ['var(--font-inter)', 'var(--font-arabic)', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        arabic: ['var(--font-arabic)', 'Tahoma', 'Arial', 'sans-serif'],
       },
     },
   },

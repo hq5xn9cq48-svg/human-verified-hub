@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Loader2, Mail, ArrowLeft, CheckCircle, Sparkles } from 'lucide-react'
+import { Loader2, Mail, ArrowLeft, CheckCircle, Send } from 'lucide-react'
 
 export default function AuthPage() {
   const { t, isRTL, language } = useLanguage()
@@ -201,8 +201,8 @@ export default function AuthPage() {
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4" />
-                        {language === 'ar' ? 'أرسل رابط تحقق' : 'أرسل رابط تحقق'}
+                        <Send className="w-4 h-4" />
+                        {language === 'ar' ? 'أرسل رابط تحقق' : 'Send Magic Link'}
                       </>
                     )}
                   </button>

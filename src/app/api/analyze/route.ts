@@ -131,11 +131,18 @@ async function verifyTurnstile(token: string): Promise<boolean> {
 }
 
 // Get language-specific instruction for AI model
-function getLanguageInstruction(language: string): string {
-  if (language === 'ar') {
-    return "IMPORTANT: You MUST output ALL text content in Arabic language. This includes but is not limited to: 'verdict', 'summary', 'smartBreakdown', 'forensicDetails', and all 'description' fields.";
+// Now auto-detects input language and responds accordingly
+function getLanguageInstruction(language: string, inputText: string): string {
+  // Detect if input text is primarily Arabic (contains Arabic characters)
+  const arabicPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+  const arabicChars = (inputText.match(arabicPattern) || []).length;
+  const isArabicInput = arabicChars > inputText.length * 0.3;
+  
+  // If user explicitly selected Arabic OR input is Arabic, respond in Arabic
+  if (language === 'ar' || isArabicInput) {
+    return "IMPORTANT: You MUST output ALL text content in Arabic language. This includes but is not limited to: 'verdict', 'summary', 'smartBreakdown', 'forensicDetails', and all 'description' fields. The input appears to be in Arabic, so ensure your analysis and comments are in Arabic.";
   }
-  return "Output the analysis in English.";
+  return "Output the analysis in English. Match the language of the input text for natural results.";
 }
 
 // Error type classification for better user messaging
@@ -309,7 +316,7 @@ function validateAnalysisResult(result: any): boolean {
 
 // Direct REST API call to Gemini - Using working models with fallback chain
 async function callGeminiREST(text: string, apiKey: string, language: string = 'en'): Promise<GeminiResult> {
-  const langInstruction = getLanguageInstruction(language);
+  const langInstruction = getLanguageInstruction(language, text);
   let lastError: string | null = null;
 
   // Updated model list based on API availability testing
@@ -418,7 +425,7 @@ async function callGeminiSDK(text: string, apiKey: string, language: string = 'e
   let lastError: string | null = null;
   
   try {
-    const langInstruction = getLanguageInstruction(language);
+    const langInstruction = getLanguageInstruction(language, text);
     logStep('SDK: Loading Google Generative AI module');
 
     const { GoogleGenerativeAI } = await import('@google/generative-ai');

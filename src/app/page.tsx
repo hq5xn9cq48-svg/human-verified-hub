@@ -216,60 +216,122 @@ export default function HomePage() {
       const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 100, margin: 1 })
       
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const width = 297
+      const height = 210
       
-      // Black background
-      pdf.setFillColor(0, 0, 0)
-      pdf.rect(0, 0, 297, 210, 'F')
+      // === BACKGROUND ===
+      // Dark gradient background
+      pdf.setFillColor(10, 10, 15)
+      pdf.rect(0, 0, width, height, 'F')
       
-      // Purple gradient border
-      pdf.setDrawColor(147, 51, 234)
-      pdf.setLineWidth(3)
-      pdf.rect(10, 10, 277, 190)
-      pdf.setLineWidth(1)
-      pdf.rect(15, 15, 267, 180)
+      // === DECORATIVE BORDERS ===
+      // Outer gold/purple gradient border effect
+      pdf.setDrawColor(168, 85, 247) // Purple
+      pdf.setLineWidth(4)
+      pdf.rect(8, 8, width - 16, height - 16)
+      
+      // Inner decorative border
+      pdf.setDrawColor(139, 92, 246)
+      pdf.setLineWidth(1.5)
+      pdf.rect(14, 14, width - 28, height - 28)
+      
+      // Corner decorations (ornamental corners)
+      const cornerSize = 15
+      pdf.setLineWidth(2)
+      pdf.setDrawColor(168, 85, 247)
+      // Top-left corner
+      pdf.line(14, 14 + cornerSize, 14, 14); pdf.line(14, 14, 14 + cornerSize, 14)
+      // Top-right corner  
+      pdf.line(width - 14, 14, width - 14 - cornerSize, 14); pdf.line(width - 14, 14, width - 14, 14 + cornerSize)
+      // Bottom-left corner
+      pdf.line(14, height - 14, 14, height - 14 - cornerSize); pdf.line(14, height - 14, 14 + cornerSize, height - 14)
+      // Bottom-right corner
+      pdf.line(width - 14, height - 14, width - 14 - cornerSize, height - 14); pdf.line(width - 14, height - 14, width - 14, height - 14 - cornerSize)
+      
+      // === HEADER SECTION ===
+      // Top ribbon/banner effect
+      pdf.setFillColor(168, 85, 247)
+      pdf.rect(20, 20, width - 40, 8, 'F')
       
       // Title
-      pdf.setTextColor(168, 85, 247)
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(32)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('CERTIFICATE OF AUTHENTICITY', width / 2, 48, { align: 'center' })
+      
+      // Subtitle with decorative lines
+      pdf.setDrawColor(100, 100, 120)
+      pdf.setLineWidth(0.5)
+      pdf.line(60, 55, 120, 55)
+      pdf.line(width - 120, 55, width - 60, 55)
+      
+      pdf.setTextColor(148, 163, 184)
+      pdf.setFontSize(11)
+      pdf.setFont('helvetica', 'normal')
+      pdf.text('Human-Verified Hub | Forensic Linguistic Analysis', width / 2, 60, { align: 'center' })
+      
+      // === MAIN BADGE/SEAL SECTION ===
+      // Large verification badge background
+      pdf.setFillColor(20, 20, 30)
+      pdf.circle(width / 2, 100, 35, 'F')
+      
+      // Badge outer ring
+      pdf.setDrawColor(34, 197, 94)
+      pdf.setLineWidth(3)
+      pdf.circle(width / 2, 100, 35)
+      
+      // Badge inner ring
+      pdf.setLineWidth(1)
+      pdf.circle(width / 2, 100, 30)
+      
+      // Verified checkmark area
+      pdf.setFillColor(34, 197, 94)
+      pdf.circle(width / 2, 92, 12, 'F')
+      
+      // Score display
+      pdf.setTextColor(255, 255, 255)
       pdf.setFontSize(28)
       pdf.setFont('helvetica', 'bold')
-      pdf.text('CERTIFICATE OF AUTHENTICITY', 148.5, 40, { align: 'center' })
+      pdf.text(`${result.humanScore}%`, width / 2, 115, { align: 'center' })
       
-      // Subtitle
-      pdf.setTextColor(148, 163, 184)
-      pdf.setFontSize(12)
-      pdf.text('Human-Verified Hub | AI Identity Detection', 148.5, 52, { align: 'center' })
-      
-      // VERIFIED Stamp
-      pdf.setTextColor(34, 197, 94)
-      pdf.setFontSize(48)
-      pdf.setFont('helvetica', 'bold')
-      pdf.text('VERIFIED', 148.5, 85, { align: 'center' })
-      
-      // Score circle
-      pdf.setFillColor(34, 197, 94)
-      pdf.circle(148.5, 115, 20, 'F')
-      pdf.setTextColor(255, 255, 255)
-      pdf.setFontSize(20)
-      pdf.text(`${result.humanScore}%`, 148.5, 120, { align: 'center' })
-      pdf.setFontSize(7)
-      pdf.text('HUMAN SCORE', 148.5, 127, { align: 'center' })
-      
-      // Certificate details
-      pdf.setTextColor(226, 232, 240)
-      pdf.setFontSize(10)
-      pdf.text(`Certificate ID: ${certData.certificateId}`, 148.5, 150, { align: 'center' })
-      pdf.text(`Reference ID: HVH-${Date.now().toString(36).toUpperCase()}`, 148.5, 158, { align: 'center' })
-      pdf.text(`Issued: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, 148.5, 166, { align: 'center' })
-      
-      // QR Code
-      pdf.addImage(qrDataUrl, 'PNG', 230, 145, 35, 35)
-      pdf.setFontSize(7)
-      pdf.setTextColor(148, 163, 184)
-      pdf.text('Scan to verify', 247.5, 185, { align: 'center' })
-      
-      // Footer
       pdf.setFontSize(8)
-      pdf.text('This certificate verifies the analyzed content was determined to be human-written.', 148.5, 195, { align: 'center' })
+      pdf.setTextColor(34, 197, 94)
+      pdf.text('HUMAN AUTHENTICITY SCORE', width / 2, 125, { align: 'center' })
+      
+      // === VERDICT LABEL ===
+      pdf.setTextColor(34, 197, 94)
+      pdf.setFontSize(18)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('HUMAN ORIGINAL - VERIFIED', width / 2, 145, { align: 'center' })
+      
+      // === CERTIFICATE DETAILS BOX ===
+      pdf.setFillColor(15, 15, 20)
+      pdf.roundedRect(30, 152, width - 60, 28, 3, 3, 'F')
+      pdf.setDrawColor(60, 60, 80)
+      pdf.setLineWidth(0.5)
+      pdf.roundedRect(30, 152, width - 60, 28, 3, 3)
+      
+      pdf.setTextColor(148, 163, 184)
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'normal')
+      pdf.text(`Certificate ID: ${certData.certificateId}`, 40, 162)
+      pdf.text(`Reference: HVH-${Date.now().toString(36).toUpperCase()}`, 40, 170)
+      pdf.text(`Issued: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`, 40, 178)
+      
+      // === QR CODE SECTION ===
+      pdf.addImage(qrDataUrl, 'PNG', width - 78, 154, 32, 32)
+      pdf.setFontSize(7)
+      pdf.setTextColor(100, 100, 120)
+      pdf.text('Scan to verify', width - 62, 188, { align: 'center' })
+      
+      // === FOOTER ===
+      pdf.setFillColor(168, 85, 247)
+      pdf.rect(20, height - 28, width - 40, 8, 'F')
+      
+      pdf.setTextColor(100, 100, 120)
+      pdf.setFontSize(7)
+      pdf.text('This certificate verifies the analyzed content was determined to be human-written by advanced AI detection algorithms.', width / 2, height - 12, { align: 'center' })
+      pdf.text('humanverified.systems', width / 2, height - 8, { align: 'center' })
       
       pdf.save(`HumanVerified-Certificate-${certData.certificateId}.pdf`)
       

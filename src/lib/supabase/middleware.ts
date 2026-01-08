@@ -2,7 +2,8 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Routes that require authentication
-const protectedRoutes = ['/analyze', '/humanizer', '/image-detector']
+// Note: The main analysis page is at '/', so we protect specific feature pages
+const protectedRoutes = ['/humanizer', '/image-detector', '/image-to-prompt', '/history', '/dashboard']
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Noto_Sans_Arabic } from 'next/font/google'
 import './globals.css'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import Script from 'next/script'
 import CanonicalTag from '@/components/CanonicalTag'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const notoArabic = Noto_Sans_Arabic({ subsets: ['arabic'], variable: '--font-arabic', weight: ['400', '500', '600', '700'] })
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://humanverified.systems'),
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     description: 'Professional AI-powered tool to detect AI-generated content. Verify if text is human-written with forensic linguistic analysis.',
     images: [
       {
-        url: 'https://humanverified.systems/logo-new.png',
+        url: 'https://humanverified.systems/logo.png',
         width: 512,
         height: 512,
         alt: 'Human-Verified Hub - AI Text Detection',
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
     description: 'Detect AI-generated content with forensic linguistic analysis. Get certified PDF reports.',
-    images: ['https://humanverified.systems/logo-new.png'],
+    images: ['https://humanverified.systems/logo.png'],
     creator: '@humanverified',
   },
   robots: {
@@ -78,7 +79,7 @@ export default function RootLayout({
           `}
         </Script>
       </head>
-      <body className={`${inter.className} antialiased min-h-screen bg-dark-950 w-full overflow-x-hidden`}>
+      <body className={`${inter.variable} ${notoArabic.variable} font-sans antialiased min-h-screen bg-dark-950 w-full overflow-x-hidden`}>
         <LanguageProvider>
           <AuthProvider>
             <CanonicalTag />

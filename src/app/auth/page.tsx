@@ -49,6 +49,8 @@ export default function AuthPage() {
   }
 
   const handleGoogleSignIn = async () => {
+    if (typeof window === 'undefined') return;
+    
     if (!isSupabaseConfigured()) {
       setError('Authentication service not configured')
       return
@@ -83,6 +85,7 @@ export default function AuthPage() {
   const handleSendMagicLink = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim()) return
+    if (typeof window === 'undefined') return;
 
     if (!isSupabaseConfigured()) {
       setError('Authentication service not configured')

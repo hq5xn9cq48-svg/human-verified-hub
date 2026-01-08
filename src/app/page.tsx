@@ -97,18 +97,30 @@ export default function HomePage() {
 
   // Check for cookie consent and welcome modal
   useEffect(() => {
-    const consent = localStorage.getItem('cookieConsent')
-    if (consent) setShowCookieConsent(false)
+    if (typeof window === 'undefined') return;
     
-    // Check if user has seen welcome modal
-    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
-    if (!hasSeenWelcome) {
-      setShowWelcomeModal(true)
+    try {
+      const consent = localStorage.getItem('cookieConsent')
+      if (consent) setShowCookieConsent(false)
+      
+      // Check if user has seen welcome modal
+      const hasSeenWelcome = localStorage.getItem('hasSeenWelcome')
+      if (!hasSeenWelcome) {
+        setShowWelcomeModal(true)
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error)
     }
   }, [])
 
   const handleCloseWelcome = () => {
-    localStorage.setItem('hasSeenWelcome', 'true')
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('hasSeenWelcome', 'true')
+      }
+    } catch (error) {
+      console.error('Error saving to localStorage:', error)
+    }
     setShowWelcomeModal(false)
     setWelcomeStep(0)
   }
@@ -119,7 +131,13 @@ export default function HomePage() {
   }
 
   const handleCookieConsent = (accepted: boolean) => {
-    localStorage.setItem('cookieConsent', accepted ? 'accepted' : 'declined')
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cookieConsent', accepted ? 'accepted' : 'declined')
+      }
+    } catch (error) {
+      console.error('Error saving to localStorage:', error)
+    }
     setShowCookieConsent(false)
   }
 

@@ -26,13 +26,19 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    // Check localStorage for saved preference
-    const saved = localStorage.getItem('language') as Language
-    if (saved && ['en', 'ar', 'fr', 'es'].includes(saved)) {
-      setLanguageState(saved)
-      // Update document direction for RTL languages
-      document.documentElement.dir = saved === 'ar' ? 'rtl' : 'ltr'
-      document.documentElement.lang = saved
+    if (typeof window === 'undefined') return;
+    
+    try {
+      // Check localStorage for saved preference
+      const saved = localStorage.getItem('language') as Language
+      if (saved && ['en', 'ar', 'fr', 'es'].includes(saved)) {
+        setLanguageState(saved)
+        // Update document direction for RTL languages
+        document.documentElement.dir = saved === 'ar' ? 'rtl' : 'ltr'
+        document.documentElement.lang = saved
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error)
     }
     // Mark as loaded after hydration
     setIsLoaded(true)
@@ -40,7 +46,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
-    localStorage.setItem('language', lang)
+    
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('language', lang)
+      }
+    } catch (error) {
+      console.error('Error saving to localStorage:', error)
+    }
     
     // Update document direction for RTL languages
     if (typeof document !== 'undefined') {

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { 
   Search, 
   Link as LinkIcon, 
@@ -81,7 +81,6 @@ export default function HomePage() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [welcomeStep, setWelcomeStep] = useState(0)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
-  const supabase = createClient()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const turnstileRef = useRef<HTMLDivElement>(null)
 
@@ -163,8 +162,9 @@ export default function HomePage() {
       setResult(data)
 
       // Save to history (all features free in beta)
-      if (user) {
+      if (user && isSupabaseConfigured()) {
         try {
+          const supabase = createClient()
           const { data: insertData } = await supabase.from('verifications').insert({
             user_id: user.id,
             content: (inputMode === 'text' ? text : url).substring(0, 500),

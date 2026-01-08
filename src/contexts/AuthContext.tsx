@@ -1,8 +1,8 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 
 interface AuthContextType {
   user: User | null
@@ -17,17 +17,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
+    // Skip auth initialization if Supabase is not configured
+    if (!isSupabaseConfigured()) {
+      setLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+    
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
+      setUser(data.session?.user ?? null)
+      setLoading(false)
+    }).catch(() => {
+      // Handle any errors gracefully
       setLoading(false)
     })
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       setUser(session?.user ?? null)
     })
 
@@ -35,7 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithOTP = async (email: string) => {
+    if (!isSupabaseConfigured()) {
+      return { error: 'Authentication service not configured' }
+    }
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
@@ -50,7 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const verifyOTP = async (email: string, token: string) => {
+    if (!isSupabaseConfigured()) {
+      return { error: 'Authentication service not configured' }
+    }
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.verifyOtp({
         email,
         token,
@@ -64,8 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
+    if (!isSupabaseConfigured()) {
+      setUser(null)
+      return
+    }
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      setUser(null)
+    } catch {
+      setUser(null)
+    }
   }
 
   return (

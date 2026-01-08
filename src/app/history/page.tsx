@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { 
   Scroll, 
@@ -35,10 +35,9 @@ export default function HistoryPage() {
   const [verifications, setVerifications] = useState<Verification[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
-    if (user) {
+    if (user && isSupabaseConfigured()) {
       fetchHistory()
     } else if (!authLoading) {
       setLoading(false)
@@ -46,7 +45,12 @@ export default function HistoryPage() {
   }, [user, authLoading])
 
   const fetchHistory = async () => {
+    if (!isSupabaseConfigured()) {
+      setLoading(false)
+      return
+    }
     try {
+      const supabase = createClient()
       const { data, error } = await supabase
         .from('verifications')
         .select('*')
@@ -64,7 +68,9 @@ export default function HistoryPage() {
   }
 
   const deleteVerification = async (id: string) => {
+    if (!isSupabaseConfigured()) return
     try {
+      const supabase = createClient()
       await supabase.from('verifications').delete().eq('id', id)
       setVerifications(verifications.filter(v => v.id !== id))
     } catch (err) {
@@ -74,7 +80,9 @@ export default function HistoryPage() {
 
   const clearAllHistory = async () => {
     if (!confirm('Are you sure you want to delete all history?')) return
+    if (!isSupabaseConfigured()) return
     try {
+      const supabase = createClient()
       await supabase.from('verifications').delete().eq('user_id', user?.id)
       setVerifications([])
     } catch (err) {

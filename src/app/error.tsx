@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function Error({
   error,
@@ -9,9 +9,42 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const [errorMessage, setErrorMessage] = useState<string>('An unexpected error occurred. Please try again.')
+  
   useEffect(() => {
+    // Log the error for debugging
     console.error('Application error:', error)
+    
+    // Set user-friendly error message
+    if (error.message) {
+      // Check for common error patterns and provide better messages
+      if (error.message.includes('pattern') || error.message.includes('match')) {
+        setErrorMessage('There was an issue processing the image. Please try a different image format (JPG, PNG, or WebP).')
+      } else if (error.message.includes('hydration') || error.message.includes('Hydration')) {
+        setErrorMessage('Page loading error. Please refresh the page.')
+      } else if (error.message.includes('network') || error.message.includes('fetch')) {
+        setErrorMessage('Network error. Please check your connection and try again.')
+      } else if (error.message.includes('timeout')) {
+        setErrorMessage('Request timed out. Please try again.')
+      } else {
+        setErrorMessage(error.message.length < 200 ? error.message : 'An unexpected error occurred. Please try again.')
+      }
+    }
   }, [error])
+
+  const handleReset = () => {
+    // Clear any cached state before resetting
+    try {
+      reset()
+    } catch (e) {
+      // If reset fails, reload the page
+      window.location.reload()
+    }
+  }
+
+  const handleReload = () => {
+    window.location.reload()
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -22,13 +55,24 @@ export default function Error({
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-white mb-3">Something went wrong!</h2>
-        <p className="text-gray-400 mb-6">An unexpected error occurred. Please try again.</p>
-        <button
-          onClick={() => reset()}
-          className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-colors"
-        >
-          Try Again
-        </button>
+        <p className="text-gray-400 mb-6">{errorMessage}</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            onClick={handleReset}
+            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-xl transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={handleReload}
+            className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl transition-colors border border-gray-700"
+          >
+            Reload Page
+          </button>
+        </div>
+        {error.digest && (
+          <p className="mt-4 text-gray-600 text-xs">Error ID: {error.digest}</p>
+        )}
       </div>
     </div>
   )

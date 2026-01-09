@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -48,7 +48,13 @@ interface AnalysisResult {
 }
 
 export default function ImageDetectorPage() {
-  const { t, isRTL } = useLanguage()
+  const { t, isRTL, isLoaded } = useLanguage()
+  const [mounted, setMounted] = useState(false)
+  
+  // Ensure component is mounted before rendering to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -143,6 +149,20 @@ export default function ImageDetectorPage() {
       case 'physics': return Lightbulb
       default: return Microscope
     }
+  }
+
+  // Show loading state until mounted and language is loaded
+  if (!mounted || !isLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Microscope className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

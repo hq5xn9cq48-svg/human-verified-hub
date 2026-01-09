@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -29,7 +29,13 @@ interface PromptResult {
 }
 
 export default function ImageToPromptPage() {
-  const { language, isRTL } = useLanguage()
+  const { language, isRTL, isLoaded } = useLanguage()
+  const [mounted, setMounted] = useState(false)
+  
+  // Ensure component is mounted before rendering to prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -112,15 +118,33 @@ export default function ImageToPromptPage() {
       setCopiedField(field)
       setTimeout(() => setCopiedField(null), 2000)
     } catch {
-      const textarea = document.createElement('textarea')
-      textarea.value = text
-      document.body.appendChild(textarea)
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-      setCopiedField(field)
-      setTimeout(() => setCopiedField(null), 2000)
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+        setCopiedField(field)
+        setTimeout(() => setCopiedField(null), 2000)
+      } catch (e) {
+        console.error('Failed to copy:', e)
+      }
     }
+  }
+
+  // Show loading state until mounted and language is loaded
+  if (!mounted || !isLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Wand2 className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

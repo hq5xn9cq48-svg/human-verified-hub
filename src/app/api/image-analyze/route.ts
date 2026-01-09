@@ -50,9 +50,9 @@ Return ONLY valid JSON, no markdown, no code blocks.`;
 
 // Updated model list - using working models that support vision
 const VISION_MODELS = [
-  'gemini-flash-latest',
-  'gemini-2.5-flash',
-  'gemini-pro-latest'
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro'
 ];
 
 // Validate and parse JSON response with multiple strategies
@@ -219,14 +219,28 @@ export async function POST(req: Request) {
     let mimeType = 'image/jpeg';
     
     if (image.startsWith('data:')) {
-      const matches = image.match(/^data:([^;]+);base64,(.+)$/);
+      // More flexible regex to handle various data URI formats
+      // Supports: data:image/png;base64,xxx, data:image/jpeg;charset=utf-8;base64,xxx, etc.
+      const matches = image.match(/^data:([^;,]+)(?:;[^;,]*)*;base64,(.+)$/i);
       if (matches) {
         mimeType = matches[1];
         base64Data = matches[2];
       } else {
-        return NextResponse.json({ 
-          error: language === 'ar' ? "صيغة صورة غير صالحة" : "Invalid image format" 
-        }, { status: 400 });
+        // Fallback: try to extract base64 data after the comma
+        const commaIndex = image.indexOf(',');
+        if (commaIndex !== -1) {
+          // Try to extract MIME type from the prefix
+          const prefix = image.substring(0, commaIndex);
+          const mimeMatch = prefix.match(/data:([^;,]+)/);
+          if (mimeMatch) {
+            mimeType = mimeMatch[1];
+          }
+          base64Data = image.substring(commaIndex + 1);
+        } else {
+          return NextResponse.json({ 
+            error: language === 'ar' ? "صيغة صورة غير صالحة" : "Invalid image format" 
+          }, { status: 400 });
+        }
       }
     }
 

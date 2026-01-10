@@ -223,7 +223,7 @@ export async function POST(req: Request) {
       // Supports: data:image/png;base64,xxx, data:image/jpeg;charset=utf-8;base64,xxx, etc.
       const matches = image.match(/^data:([^;,]+)(?:;[^;,]*)*;base64,(.+)$/i);
       if (matches) {
-        mimeType = matches[1];
+        mimeType = matches[1] || 'image/jpeg';
         base64Data = matches[2];
       } else {
         // Fallback: try to extract base64 data after the comma

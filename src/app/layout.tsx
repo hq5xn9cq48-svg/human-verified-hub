@@ -12,8 +12,8 @@ const notoArabic = Noto_Sans_Arabic({ subsets: ['arabic'], variable: '--font-ara
 export const metadata: Metadata = {
   metadataBase: new URL('https://humanverified.systems'),
   title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
-  description: 'Professional AI-powered tool to detect AI-generated content and check for plagiarism. Verify if text is human-written with forensic linguistic analysis. Get certified PDF reports.',
-  keywords: 'AI detection, AI text detector, GPT detector, ChatGPT detector, plagiarism checker, human verification, content analysis, AI checker, text analyzer, AI content detector, humanverified, AI Detector, ChatGPT Checker, Human Text Verifier, Plagiarism Checker, AI Content Detection, كاشف الذكاء الاصطناعي, فحص النص, Human Verified',
+  description: 'Professional AI-powered tool to detect AI-generated content and check for plagiarism. Verify if text is human-written with forensic linguistic analysis. Get certified PDF reports. Free AI Humanizer tool available.',
+  keywords: 'AI detection, AI text detector, GPT detector, ChatGPT detector, plagiarism checker, human verification, content analysis, AI checker, text analyzer, AI content detector, humanverified, AI Detector, ChatGPT Checker, Human Text Verifier, Plagiarism Checker, AI Content Detection, كاشف الذكاء الاصطناعي, فحص النص, Human Verified, Arabic AI Check, Gemini Detection, Free AI Humanizer, فاحص الذكاء الاصطناعي, كشف GPT, أداة تحويل النص',
   authors: [{ name: 'Human-Verified Hub', url: 'https://humanverified.systems' }],
   creator: 'Human-Verified Hub',
   publisher: 'Human-Verified Hub',
@@ -27,22 +27,38 @@ export const metadata: Metadata = {
     url: 'https://humanverified.systems',
     siteName: 'Human-Verified Hub',
     title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
-    description: 'Professional AI-powered tool to detect AI-generated content. Verify if text is human-written with forensic linguistic analysis.',
+    description: 'Professional AI-powered tool to detect AI-generated content. Verify if text is human-written with forensic linguistic analysis. Free AI Humanizer included.',
     images: [
+      {
+        url: 'https://humanverified.systems/og-image.png',
+        width: 1200,
+        height: 675,
+        alt: 'Human-Verified Hub - Advanced AI Detection Platform Dashboard',
+        type: 'image/png',
+      },
       {
         url: 'https://humanverified.systems/logo.png',
         width: 512,
         height: 512,
-        alt: 'Human-Verified Hub - AI Text Detection',
+        alt: 'Human-Verified Hub Logo',
+        type: 'image/png',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
-    description: 'Detect AI-generated content with forensic linguistic analysis. Get certified PDF reports.',
-    images: ['https://humanverified.systems/logo.png'],
+    site: '@humanverified',
     creator: '@humanverified',
+    title: 'Human-Verified Hub | AI Text Detection & Plagiarism Checker',
+    description: 'Detect AI-generated content with forensic linguistic analysis. Get certified PDF reports. Free AI Humanizer tool.',
+    images: [
+      {
+        url: 'https://humanverified.systems/og-image.png',
+        width: 1200,
+        height: 675,
+        alt: 'Human-Verified Hub - Advanced AI Detection Platform Dashboard',
+      },
+    ],
   },
   robots: {
     index: true,
@@ -57,6 +73,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: 'https://humanverified.systems',
+  },
+  other: {
+    'google-site-verification': '',
   },
 }
 

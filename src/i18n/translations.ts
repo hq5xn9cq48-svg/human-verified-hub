@@ -137,6 +137,11 @@ export const translations = {
     // Footer
     footer: {
       copyright: "© 2026 Human-Verified Hub. All rights reserved.",
+      about: "About",
+      methodology: "How It Works",
+      contact: "Contact",
+      privacy: "Privacy",
+      terms: "Terms",
     },
     // Guide
     guide: {
@@ -144,6 +149,27 @@ export const translations = {
       aiRange: "AI Confirmed",
       hybridRange: "Hybrid",
       humanRange: "Human",
+    },
+    // Account
+    account: {
+      title: "My Account",
+      overview: "Overview",
+      history: "Scan History",
+      settings: "Settings",
+      subscription: "Subscription Status",
+      signOut: "Sign Out",
+    },
+    // Pages
+    pages: {
+      aboutTitle: "About Us",
+      contactTitle: "Contact Us",
+      methodologyTitle: "How It Works",
+      privacyTitle: "Privacy Policy",
+      termsTitle: "Terms of Service",
+    },
+    // Disclaimer
+    disclaimer: {
+      text: "This tool is for educational and research purposes. Results are indicative and should not be the sole basis for academic or legal decisions.",
     },
   },
   ar: {
@@ -284,6 +310,11 @@ export const translations = {
     // Footer
     footer: {
       copyright: "© 2026 Human-Verified Hub. جميع الحقوق محفوظة.",
+      about: "من نحن",
+      methodology: "كيف يعمل",
+      contact: "اتصل بنا",
+      privacy: "الخصوصية",
+      terms: "الشروط",
     },
     // Guide
     guide: {
@@ -291,6 +322,27 @@ export const translations = {
       aiRange: "ذكاء اصطناعي",
       hybridRange: "هجين",
       humanRange: "بشري",
+    },
+    // Account
+    account: {
+      title: "حسابي",
+      overview: "نظرة عامة",
+      history: "سجل الفحوصات",
+      settings: "الإعدادات",
+      subscription: "حالة الاشتراك",
+      signOut: "تسجيل الخروج",
+    },
+    // Pages
+    pages: {
+      aboutTitle: "من نحن",
+      contactTitle: "اتصل بنا",
+      methodologyTitle: "كيف يعمل",
+      privacyTitle: "سياسة الخصوصية",
+      termsTitle: "شروط الخدمة",
+    },
+    // Disclaimer
+    disclaimer: {
+      text: "هذه الأداة للأغراض التعليمية والبحثية. النتائج إرشادية ولا يجب أن تكون الأساس الوحيد للقرارات الأكاديمية أو القانونية.",
     },
   },
   fr: {
@@ -431,6 +483,11 @@ export const translations = {
     // Footer
     footer: {
       copyright: "© 2026 Human-Verified Hub. Tous droits reserves.",
+      about: "A propos",
+      methodology: "Comment ca marche",
+      contact: "Contact",
+      privacy: "Confidentialite",
+      terms: "Conditions",
     },
     // Guide
     guide: {
@@ -438,6 +495,27 @@ export const translations = {
       aiRange: "IA Confirmee",
       hybridRange: "Hybride",
       humanRange: "Humain",
+    },
+    // Account
+    account: {
+      title: "Mon Compte",
+      overview: "Apercu",
+      history: "Historique des analyses",
+      settings: "Parametres",
+      subscription: "Statut de l'abonnement",
+      signOut: "Deconnexion",
+    },
+    // Pages
+    pages: {
+      aboutTitle: "A propos",
+      contactTitle: "Contactez-nous",
+      methodologyTitle: "Comment ca marche",
+      privacyTitle: "Politique de confidentialite",
+      termsTitle: "Conditions d'utilisation",
+    },
+    // Disclaimer
+    disclaimer: {
+      text: "Cet outil est a des fins educatives et de recherche. Les resultats sont indicatifs et ne doivent pas etre la seule base pour des decisions academiques ou juridiques.",
     },
   },
   es: {
@@ -578,6 +656,11 @@ export const translations = {
     // Footer
     footer: {
       copyright: "© 2026 Human-Verified Hub. Todos los derechos reservados.",
+      about: "Acerca de",
+      methodology: "Como funciona",
+      contact: "Contacto",
+      privacy: "Privacidad",
+      terms: "Terminos",
     },
     // Guide
     guide: {
@@ -585,6 +668,27 @@ export const translations = {
       aiRange: "IA Confirmada",
       hybridRange: "Hibrido",
       humanRange: "Humano",
+    },
+    // Account
+    account: {
+      title: "Mi Cuenta",
+      overview: "Vista general",
+      history: "Historial de analisis",
+      settings: "Configuracion",
+      subscription: "Estado de suscripcion",
+      signOut: "Cerrar sesion",
+    },
+    // Pages
+    pages: {
+      aboutTitle: "Sobre nosotros",
+      contactTitle: "Contactenos",
+      methodologyTitle: "Como funciona",
+      privacyTitle: "Politica de privacidad",
+      termsTitle: "Terminos de servicio",
+    },
+    // Disclaimer
+    disclaimer: {
+      text: "Esta herramienta es para fines educativos e investigativos. Los resultados son indicativos y no deben ser la unica base para decisiones academicas o legales.",
     },
   },
 };

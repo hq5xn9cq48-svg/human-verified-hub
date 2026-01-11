@@ -18,7 +18,11 @@ import {
   X,
   Globe,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  User,
+  Info,
+  Mail,
+  BookOpen
 } from 'lucide-react'
 
 export default function Navbar() {
@@ -158,6 +162,19 @@ export default function Navbar() {
                 )}
               </AnimatePresence>
             </div>
+
+            {/* My Account Button (always visible) */}
+            <Link
+              href="/account"
+              className={`p-2.5 rounded-xl transition-all border ${
+                pathname === '/account'
+                  ? 'text-purple-300 bg-purple-600/20 border-purple-500/40'
+                  : 'text-gray-400 hover:text-purple-300 border-transparent hover:border-purple-500/30 hover:bg-purple-600/10'
+              }`}
+              title={language === 'ar' ? 'حسابي' : 'My Account'}
+            >
+              <User className="w-4 h-4" />
+            </Link>
 
             {/* Auth Button */}
             {user ? (

@@ -501,6 +501,20 @@ export default function HomePage() {
 
       {/* Main content with top padding for fixed navbar + thin banner */}
       <main className="max-w-5xl mx-auto px-4 py-8 pt-28">
+        {/* Disclaimer Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-3 rounded-xl bg-yellow-900/10 border border-yellow-500/20 text-center"
+        >
+          <p className="text-yellow-400/80 text-xs flex items-center justify-center gap-2">
+            <Shield className="w-3 h-3" />
+            {language === 'ar' 
+              ? 'هذه الأداة للأغراض التعليمية والبحثية. النتائج إرشادية ولا يجب أن تكون الأساس الوحيد للقرارات الأكاديمية أو القانونية.'
+              : 'This tool is for educational and research purposes. Results are indicative and should not be the sole basis for academic or legal decisions.'}
+          </p>
+        </motion.div>
+
         {/* Hero Header */}
         <div className="text-center mb-8">
           <motion.div
@@ -944,15 +958,21 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-gray-500 text-sm">© 2026 Human-Verified Hub. All rights reserved.</p>
-            <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center flex-wrap justify-center gap-4 md:gap-6 text-sm">
+              <a href="/about" className="text-gray-400 hover:text-purple-400 transition-colors">
+                {language === 'ar' ? 'من نحن' : 'About'}
+              </a>
+              <a href="/methodology" className="text-gray-400 hover:text-purple-400 transition-colors">
+                {language === 'ar' ? 'المنهجية' : 'How It Works'}
+              </a>
+              <a href="/contact" className="text-gray-400 hover:text-purple-400 transition-colors">
+                {language === 'ar' ? 'اتصل بنا' : 'Contact'}
+              </a>
               <a href="/privacy" className="text-gray-400 hover:text-purple-400 transition-colors">
                 {language === 'ar' ? 'الخصوصية' : 'Privacy'}
               </a>
               <a href="/terms" className="text-gray-400 hover:text-purple-400 transition-colors">
                 {language === 'ar' ? 'الشروط' : 'Terms'}
-              </a>
-              <a href="mailto:contact@humanverified.systems" className="text-gray-400 hover:text-purple-400 transition-colors">
-                {language === 'ar' ? 'اتصل بنا' : 'Contact'}
               </a>
             </div>
           </div>

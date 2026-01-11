@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 // Use environment variable with fallback (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 // Step-by-step logging utility
 function logStep(step: string, details?: any) {
@@ -14,42 +14,102 @@ function logError(step: string, error: any) {
   console.error(`[${timestamp}] [IMAGE-ANALYZE ERROR] ${step}:`, error);
 }
 
-const systemPrompt = `You are an AI image forensics expert. Analyze images to detect if they are AI-generated.
+const systemPrompt = `You are an expert AI image forensics analyst. Your task is to determine if an image is AI-generated or an authentic photograph.
 
-DETECTION CATEGORIES:
-1. Anatomical: Check hands (finger count), eyes (reflection consistency), teeth, ears
-2. Texture: Skin (waxy/plastic look), hair (individual strands vs mass), fabric patterns
-3. Physics: Lighting consistency, shadow direction, reflections
-4. Artifacts: Background warping, text errors, repeating patterns
+## DETECTION METHODOLOGY
 
-SCORING:
-- aiProbability 0-30: Authentic photo (natural imperfections, consistent physics)
-- aiProbability 31-60: Uncertain (some anomalies but not conclusive)
-- aiProbability 61-100: AI Generated (clear artifacts or anatomical errors)
+### 1. ANATOMICAL ANALYSIS (For images with people)
+- **Hands**: Count fingers (AI often generates 4, 6, or malformed fingers), check joint articulation, nail consistency
+- **Eyes**: Verify iris pattern consistency, reflection symmetry, pupil alignment
+- **Teeth**: Check for uniform size anomalies, floating teeth, missing gaps
+- **Ears**: Look for asymmetry beyond natural variation, detached lobes inconsistency
+- **Skin**: Examine for "waxy" or "plastic" textures, pore patterns, wrinkle logic
 
-OUTPUT FORMAT (JSON only):
+### 2. TEXTURE & SURFACE ANALYSIS
+- **Hair**: Individual strand visibility vs. painted mass appearance
+- **Fabric**: Pattern consistency, weave logic, fold physics
+- **Backgrounds**: Warping near edges, impossible architecture, blending artifacts
+- **Text/Signs**: Gibberish letters, inconsistent fonts, warped characters
+
+### 3. PHYSICS & LIGHTING
+- **Shadows**: Direction consistency, soft vs. hard shadow logic
+- **Reflections**: Surface reflection accuracy, eye reflection matching
+- **Perspective**: Vanishing point consistency, scale logic
+- **Depth of Field**: Natural bokeh vs. artificial blur
+
+### 4. AI FINGERPRINT PATTERNS
+- **Repetitive patterns**: Tiling artifacts, clone stamps
+- **Edge artifacts**: Halo effects, unnatural transitions
+- **Color banding**: Gradient stepping in smooth areas
+- **Micro-artifacts**: Pixel-level inconsistencies
+
+## SCORING GUIDELINES
+
+- **0-20% AI Probability**: Strong indicators of authentic photograph
+  - Natural imperfections present (dust, grain, slight blur)
+  - Consistent physics throughout
+  - No anatomical anomalies
+  
+- **21-40% AI Probability**: Likely authentic with some uncertainty
+  - Minor anomalies that could be compression artifacts
+  - Overall natural appearance
+  
+- **41-60% AI Probability**: Uncertain/Mixed signals
+  - Some AI indicators but not conclusive
+  - Could be heavily edited photo OR AI generated
+  
+- **61-80% AI Probability**: Likely AI Generated
+  - Clear artifacts or anatomical issues
+  - Multiple AI fingerprints detected
+  
+- **81-100% AI Probability**: Strong AI Generation indicators
+  - Multiple critical anomalies
+  - Clear AI model signatures (DALL-E style, Midjourney aesthetic, etc.)
+
+## AI MODEL CLASSIFICATION
+
+If you determine the image is likely AI-generated (>60%), try to identify the probable source:
+- **DALL-E 3**: Photorealistic style, sometimes "too perfect", characteristic lighting
+- **Midjourney v6**: Artistic/painterly quality, strong composition, distinctive color grading
+- **Stable Diffusion XL**: Variable quality, sometimes softer details
+- **Sora/Video AI**: Frame-like quality, temporal artifacts if from video
+- **Firefly/Adobe**: Clean commercial look, stock photo aesthetic
+- **Flux**: High photorealism, sometimes uncanny valley effect
+- **Nano Banana Pro**: Excellent detail, natural lighting recreation
+
+## OUTPUT FORMAT (STRICT JSON)
+
+Return ONLY valid JSON with this exact structure:
 {
-  "aiProbability": number (0-100),
-  "verdict": "Authentic Photo" | "Likely Authentic" | "Uncertain" | "Likely AI" | "AI Generated",
-  "confidenceLevel": "high" | "medium" | "low",
-  "summary": "Brief explanation",
+  "aiProbability": <number 0-100>,
+  "verdict": "<Authentic Photo | Likely Authentic | Uncertain | Likely AI | AI Generated>",
+  "confidenceLevel": "<high | medium | low>",
+  "summary": "<2-3 sentence analysis summary>",
+  "likelyModel": "<Model name if AI detected, null if authentic>",
   "artifacts": [
-    {"name": "artifact name", "category": "anatomical|texture|physics|artifact", "severity": "critical|high|medium|low", "location": "where", "description": "details"}
+    {
+      "name": "<artifact name>",
+      "category": "<anatomical | texture | physics | artifact>",
+      "severity": "<critical | high | medium | low>",
+      "location": "<where in image>",
+      "description": "<detailed description>"
+    }
   ],
   "analysisDetails": {
-    "handAnalysis": "findings or N/A",
-    "eyeAnalysis": "findings or N/A", 
-    "textureAnalysis": "findings",
-    "lightingAnalysis": "findings",
-    "backgroundAnalysis": "findings"
+    "handAnalysis": "<findings or 'N/A - No hands visible'>",
+    "eyeAnalysis": "<findings or 'N/A - No eyes visible'>",
+    "textureAnalysis": "<skin, hair, fabric findings>",
+    "lightingAnalysis": "<shadow and lighting consistency>",
+    "backgroundAnalysis": "<background elements analysis>"
   },
-  "recommendations": "verification tips"
+  "recommendations": "<verification tips for the user>"
 }
 
-Return ONLY valid JSON, no markdown, no code blocks.`;
+IMPORTANT: Return ONLY the JSON object. No markdown, no code blocks, no explanatory text.`;
 
-// Updated model list - using working models that support vision
+// Updated model list - using correct Gemini model names for vision
 const VISION_MODELS = [
+  'gemini-2.5-flash',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-pro'
@@ -111,7 +171,7 @@ function parseGeminiResponse(responseText: string): any {
     }
   }
   
-  logError('All parsing strategies failed', { preview: responseText.substring(0, 200) });
+  logError('All parsing strategies failed', { preview: responseText.substring(0, 500) });
   return null;
 }
 
@@ -120,14 +180,14 @@ async function callGeminiVisionAPI(
   imageData: string, 
   mimeType: string,
   apiKey: string
-): Promise<{ text: string | null; error: string | null }> {
+): Promise<{ text: string | null; error: string | null; modelUsed?: string }> {
   
   for (const model of VISION_MODELS) {
     try {
       logStep(`Trying vision model: ${model}`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 90000);
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes timeout
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -142,8 +202,10 @@ async function callGeminiVisionAPI(
               ]
             }],
             generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 4096,
+              temperature: 0.2,
+              maxOutputTokens: 8192,
+              topP: 0.8,
+              topK: 40
             },
             safetySettings: [
               { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -161,7 +223,15 @@ async function callGeminiVisionAPI(
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         const errMessage = errData?.error?.message || `HTTP ${response.status}`;
-        logError(`Model ${model} failed`, errMessage);
+        logError(`Model ${model} failed`, { status: response.status, message: errMessage });
+        
+        // If it's a 404, the model doesn't exist, try next
+        if (response.status === 404) continue;
+        
+        // If it's rate limit or quota, try next model
+        if (response.status === 429 || response.status === 403) continue;
+        
+        // For other errors, continue to next model
         continue;
       }
 
@@ -169,20 +239,21 @@ async function callGeminiVisionAPI(
       const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (responseText) {
-        logStep(`Success with model: ${model}`);
-        return { text: responseText, error: null };
+        logStep(`Success with model: ${model}`, { responseLength: responseText.length });
+        return { text: responseText, error: null, modelUsed: model };
       }
       
       // Check for blocked content
-      if (data?.candidates?.[0]?.finishReason === 'SAFETY') {
+      const finishReason = data?.candidates?.[0]?.finishReason;
+      if (finishReason === 'SAFETY') {
         logStep(`Content blocked by safety filters for ${model}`);
         continue;
       }
       
-      logStep(`Empty response from ${model}`);
+      logStep(`Empty response from ${model}`, { finishReason, data: JSON.stringify(data).substring(0, 200) });
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        logError(`Timeout for ${model}`, 'Request timed out');
+        logError(`Timeout for ${model}`, 'Request timed out after 120 seconds');
       } else {
         logError(`Error for ${model}`, error.message);
       }
@@ -190,7 +261,7 @@ async function callGeminiVisionAPI(
     }
   }
 
-  return { text: null, error: 'All vision models failed' };
+  return { text: null, error: 'All vision models failed to process the image' };
 }
 
 export async function POST(req: Request) {
@@ -198,20 +269,22 @@ export async function POST(req: Request) {
   
   // Check API key first
   if (!GEMINI_API_KEY) {
-    logError('API key missing', 'GEMINI_API_KEY not set');
+    logError('API key missing', 'GEMINI_API_KEY environment variable not set');
     return NextResponse.json({ 
-      error: 'API configuration error. Please contact support.' 
-    }, { status: 500 });
+      error: 'Service temporarily unavailable. Please try again later.',
+      errorCode: 'API_CONFIG_ERROR'
+    }, { status: 503 });
   }
 
   try {
     const body = await req.json();
     const { image, language = 'en' } = body;
-    logStep('Request received', { hasImage: !!image, language });
+    logStep('Request received', { hasImage: !!image, imageType: typeof image, language });
 
     if (!image || typeof image !== 'string') {
       return NextResponse.json({ 
-        error: language === 'ar' ? "لم يتم توفير صورة" : "No image provided" 
+        error: language === 'ar' ? "لم يتم توفير صورة" : "No image provided",
+        errorCode: 'NO_IMAGE'
       }, { status: 400 });
     }
 
@@ -219,47 +292,55 @@ export async function POST(req: Request) {
     let mimeType = 'image/jpeg';
     
     if (image.startsWith('data:')) {
-      // More flexible regex to handle various data URI formats
-      // Supports: data:image/png;base64,xxx, data:image/jpeg;charset=utf-8;base64,xxx, etc.
-      const matches = image.match(/^data:([^;,]+)(?:;[^;,]*)*;base64,(.+)$/i);
+      const matches = image.match(/^data:([^;]+);base64,(.+)$/);
       if (matches) {
-        mimeType = matches[1] || 'image/jpeg';
+        mimeType = matches[1];
         base64Data = matches[2];
+        logStep('Extracted base64 data', { mimeType, dataLength: base64Data.length });
       } else {
-        // Fallback: try to extract base64 data after the comma
-        const commaIndex = image.indexOf(',');
-        if (commaIndex !== -1) {
-          // Try to extract MIME type from the prefix
-          const prefix = image.substring(0, commaIndex);
-          const mimeMatch = prefix.match(/data:([^;,]+)/);
-          if (mimeMatch) {
-            mimeType = mimeMatch[1];
-          }
-          base64Data = image.substring(commaIndex + 1);
-        } else {
-          return NextResponse.json({ 
-            error: language === 'ar' ? "صيغة صورة غير صالحة" : "Invalid image format" 
-          }, { status: 400 });
-        }
+        return NextResponse.json({ 
+          error: language === 'ar' ? "صيغة صورة غير صالحة" : "Invalid image format. Please use JPG, PNG, or WebP.",
+          errorCode: 'INVALID_FORMAT'
+        }, { status: 400 });
       }
     }
 
-    // Check size (roughly)
-    if (base64Data.length > 10 * 1024 * 1024) {
+    // Validate mime type
+    const validMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!validMimeTypes.includes(mimeType)) {
       return NextResponse.json({ 
-        error: language === 'ar' ? "الصورة كبيرة جداً" : "Image too large (max 10MB)" 
+        error: language === 'ar' ? "صيغة صورة غير مدعومة" : `Unsupported image format: ${mimeType}. Please use JPG, PNG, or WebP.`,
+        errorCode: 'UNSUPPORTED_FORMAT'
       }, { status: 400 });
     }
 
-    logStep('Image data prepared', { mimeType, dataLength: base64Data.length });
+    // Check size (base64 is ~33% larger than binary)
+    const estimatedSizeBytes = (base64Data.length * 3) / 4;
+    const maxSizeBytes = 15 * 1024 * 1024; // 15MB limit
+    
+    if (estimatedSizeBytes > maxSizeBytes) {
+      return NextResponse.json({ 
+        error: language === 'ar' ? "الصورة كبيرة جداً (الحد الأقصى 15MB)" : "Image too large. Maximum size is 15MB.",
+        errorCode: 'FILE_TOO_LARGE'
+      }, { status: 400 });
+    }
 
-    const prompt = `${systemPrompt}\n\nAnalyze this image for AI generation indicators:`;
+    logStep('Image validation passed', { 
+      mimeType, 
+      estimatedSizeMB: (estimatedSizeBytes / 1024 / 1024).toFixed(2) 
+    });
+
+    const prompt = `${systemPrompt}\n\nAnalyze this image thoroughly for AI generation indicators. Examine every detail carefully.`;
     const apiResult = await callGeminiVisionAPI(prompt, base64Data, mimeType, GEMINI_API_KEY);
 
     if (!apiResult.text) {
       logError('All API methods failed', apiResult.error);
       return NextResponse.json({ 
-        error: language === 'ar' ? "فشل التحليل. حاول مرة أخرى." : "Image analysis failed. Please try again." 
+        error: language === 'ar' 
+          ? "فشل تحليل الصورة. يرجى المحاولة مرة أخرى أو استخدام صورة مختلفة." 
+          : "Image analysis failed. Please try again or use a different image.",
+        errorCode: 'ANALYSIS_FAILED',
+        details: apiResult.error
       }, { status: 500 });
     }
 
@@ -267,44 +348,66 @@ export async function POST(req: Request) {
     let result = parseGeminiResponse(apiResult.text);
     
     if (!result) {
-      logStep('Parse failed, creating fallback result');
+      logStep('Parse failed, returning raw analysis');
+      // Try to extract key information even if JSON parsing fails
+      const text = apiResult.text.toLowerCase();
+      const hasAIIndicators = text.includes('ai generated') || text.includes('artificial') || text.includes('generated image');
+      
       result = {
-        aiProbability: 50,
-        verdict: "Uncertain",
+        aiProbability: hasAIIndicators ? 65 : 35,
+        verdict: hasAIIndicators ? "Likely AI" : "Uncertain",
         confidenceLevel: "low",
-        summary: "Analysis could not be completed properly.",
+        summary: "Analysis completed but structured parsing failed. Manual review recommended.",
+        likelyModel: null,
         artifacts: [],
-        analysisDetails: {},
-        recommendations: "Try with a different image."
+        analysisDetails: {
+          rawAnalysis: apiResult.text.substring(0, 500)
+        },
+        recommendations: "Consider re-analyzing the image or trying with a different image."
       };
     }
 
-    // Normalize result
-    result.aiProbability = Math.max(0, Math.min(100, Number(result.aiProbability) || 50));
+    // Normalize and validate result
+    result.aiProbability = Math.max(0, Math.min(100, Math.round(Number(result.aiProbability) || 50)));
     
-    if (!result.verdict) {
-      if (result.aiProbability >= 70) result.verdict = "AI Generated";
-      else if (result.aiProbability >= 50) result.verdict = "Likely AI";
-      else if (result.aiProbability >= 30) result.verdict = "Uncertain";
-      else result.verdict = "Likely Authentic";
+    // Ensure verdict matches probability
+    if (!result.verdict || typeof result.verdict !== 'string') {
+      if (result.aiProbability >= 81) result.verdict = "AI Generated";
+      else if (result.aiProbability >= 61) result.verdict = "Likely AI";
+      else if (result.aiProbability >= 41) result.verdict = "Uncertain";
+      else if (result.aiProbability >= 21) result.verdict = "Likely Authentic";
+      else result.verdict = "Authentic Photo";
     }
 
+    // Ensure arrays and objects exist
     result.artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
-    result.confidenceLevel = result.confidenceLevel || "medium";
+    result.confidenceLevel = ['high', 'medium', 'low'].includes(result.confidenceLevel) ? result.confidenceLevel : "medium";
     result.summary = result.summary || "Analysis completed.";
     result.analysisDetails = result.analysisDetails || {};
-    result.recommendations = result.recommendations || "";
+    result.recommendations = result.recommendations || "For best results, use high-resolution original images.";
+    result.likelyModel = result.likelyModel || null;
+    
+    // Add model used info
+    result.modelUsed = apiResult.modelUsed;
 
-    logStep('Analysis complete', { aiProbability: result.aiProbability, verdict: result.verdict });
+    logStep('Analysis complete', { 
+      aiProbability: result.aiProbability, 
+      verdict: result.verdict,
+      confidence: result.confidenceLevel,
+      artifactsCount: result.artifacts.length,
+      likelyModel: result.likelyModel
+    });
+    
     return NextResponse.json(result);
 
   } catch (error: any) {
-    logError("Unhandled error", error);
+    logError("Unhandled error", { message: error.message, stack: error.stack });
     return NextResponse.json({ 
-      error: `Image analysis failed: ${error.message || 'Unknown error'}` 
+      error: 'An unexpected error occurred during analysis. Please try again.',
+      errorCode: 'INTERNAL_ERROR'
     }, { status: 500 });
   }
 }
 
 export const runtime = 'nodejs';
-export const maxDuration = 90;
+export const maxDuration = 120;

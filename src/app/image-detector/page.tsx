@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -21,13 +21,17 @@ import {
   RefreshCw,
   AlertTriangle,
   Info,
-  CheckCircle
+  CheckCircle,
+  Cpu,
+  Shield,
+  Zap
 } from 'lucide-react'
 
 interface AnalysisResult {
   aiProbability: number
   verdict: string
   confidenceLevel?: string
+  likelyModel?: string | null
   artifacts: { 
     name: string
     category?: string
@@ -45,32 +49,32 @@ interface AnalysisResult {
   }
   summary?: string
   recommendations?: string
+  modelUsed?: string
 }
 
 export default function ImageDetectorPage() {
-  const { t, isRTL, isLoaded } = useLanguage()
-  const [mounted, setMounted] = useState(false)
-  
-  // Ensure component is mounted before rendering to prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const { t, language, isRTL } = useLanguage()
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState(0)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const loadingSteps = language === 'ar' 
+    ? ['جاري تحميل الصورة...', 'تحليل التشريح البشري...', 'فحص الأنسجة والتفاصيل...', 'تحليل الإضاءة والفيزياء...', 'البحث عن بصمات AI...', 'إعداد التقرير...']
+    : ['Uploading image...', 'Analyzing human anatomy...', 'Examining textures & details...', 'Checking lighting & physics...', 'Detecting AI fingerprints...', 'Preparing report...']
+
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file (JPG, PNG, or WebP)')
+      setError(language === 'ar' ? 'يرجى اختيار ملف صورة (JPG, PNG, أو WebP)' : 'Please select an image file (JPG, PNG, or WebP)')
       return
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image size must be less than 10MB')
+    if (file.size > 15 * 1024 * 1024) {
+      setError(language === 'ar' ? 'حجم الصورة يجب أن يكون أقل من 15MB' : 'Image size must be less than 15MB')
       return
     }
 
@@ -98,24 +102,31 @@ export default function ImageDetectorPage() {
     setLoading(true)
     setError(null)
     setResult(null)
+    setLoadingStep(0)
+
+    // Animate through loading steps
+    const stepInterval = setInterval(() => {
+      setLoadingStep(prev => (prev + 1) % loadingSteps.length)
+    }, 2000)
 
     try {
       const response = await fetch('/api/image-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image }),
+        body: JSON.stringify({ image, language }),
       })
 
       const data = await response.json()
 
       if (!response.ok || data.error) {
-        throw new Error(data.error || 'Analysis failed')
+        throw new Error(data.error || (language === 'ar' ? 'فشل التحليل' : 'Analysis failed'))
       }
 
       setResult(data)
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setError(err.message || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
     } finally {
+      clearInterval(stepInterval)
       setLoading(false)
     }
   }
@@ -151,18 +162,12 @@ export default function ImageDetectorPage() {
     }
   }
 
-  // Show loading state until mounted and language is loaded
-  if (!mounted || !isLoaded) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
-            <Microscope className="w-8 h-8 text-purple-400" />
-          </div>
-          <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    )
+  const getVerdictInfo = (probability: number) => {
+    if (probability >= 81) return { icon: Bot, color: 'text-red-400', bg: 'from-red-500 to-rose-600', label: language === 'ar' ? 'مُنشأ بالذكاء الاصطناعي' : 'AI Generated' }
+    if (probability >= 61) return { icon: AlertTriangle, color: 'text-orange-400', bg: 'from-orange-500 to-amber-500', label: language === 'ar' ? 'على الأرجح AI' : 'Likely AI' }
+    if (probability >= 41) return { icon: AlertTriangle, color: 'text-yellow-400', bg: 'from-yellow-500 to-orange-500', label: language === 'ar' ? 'غير مؤكد' : 'Uncertain' }
+    if (probability >= 21) return { icon: Camera, color: 'text-emerald-400', bg: 'from-emerald-500 to-green-500', label: language === 'ar' ? 'على الأرجح أصلية' : 'Likely Authentic' }
+    return { icon: CheckCircle, color: 'text-green-400', bg: 'from-green-500 to-emerald-500', label: language === 'ar' ? 'صورة أصلية' : 'Authentic Photo' }
   }
 
   return (
@@ -199,9 +204,26 @@ export default function ImageDetectorPage() {
             transition={{ delay: 0.2 }}
             className="text-gray-400 max-w-2xl mx-auto"
           >
-            Deep forensic analysis for hands, eyes, mixed media, and micro-artifacts
+            {language === 'ar' 
+              ? 'تحليل جنائي عميق للأيدي والعيون والأنسجة وبصمات الذكاء الاصطناعي'
+              : 'Deep forensic analysis for hands, eyes, mixed media, and micro-artifacts'}
           </motion.p>
         </div>
+
+        {/* Disclaimer Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="mb-6 p-3 rounded-xl bg-yellow-900/10 border border-yellow-500/20 text-center"
+        >
+          <p className="text-yellow-400/80 text-xs flex items-center justify-center gap-2">
+            <Shield className="w-3 h-3" />
+            {language === 'ar' 
+              ? 'هذه الأداة للأغراض التعليمية والبحثية. النتائج إرشادية ولا يجب أن تكون الأساس الوحيد للقرارات الأكاديمية أو القانونية.'
+              : 'This tool is for educational and research purposes. Results are indicative and should not be the sole basis for academic or legal decisions.'}
+          </p>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -218,22 +240,38 @@ export default function ImageDetectorPage() {
                   transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                 />
                 <motion.div
-                  className="absolute inset-4 rounded-full border-4 border-purple-400/20"
+                  className="absolute inset-4 rounded-full border-4 border-purple-400/30"
                   animate={{ rotate: -360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                />
+                <motion.div
+                  className="absolute inset-8 rounded-full border-4 border-purple-300/40"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <Microscope className="w-10 h-10 text-purple-400" />
                 </div>
               </div>
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ repeat: Infinity, duration: 2, repeatType: 'reverse' }}
+                key={loadingStep}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
               >
-                <p className="text-gray-300 font-medium">Analyzing image...</p>
-                <p className="text-gray-500 text-sm mt-1">Checking for artifacts, anomalies, and AI signatures</p>
+                <p className="text-gray-300 font-medium">{loadingSteps[loadingStep]}</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  {language === 'ar' ? 'قد يستغرق هذا 30-60 ثانية' : 'This may take 30-60 seconds'}
+                </p>
               </motion.div>
+              <div className="mt-6 flex justify-center gap-2">
+                {loadingSteps.map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={`w-2 h-2 rounded-full transition-all ${i <= loadingStep ? 'bg-purple-500' : 'bg-gray-700'}`} 
+                  />
+                ))}
+              </div>
             </div>
           ) : !result ? (
             <div className="space-y-6">
@@ -270,7 +308,7 @@ export default function ImageDetectorPage() {
                       className="mt-2 text-xs text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1 mx-auto"
                     >
                       <X className="w-3 h-3" />
-                      Remove image
+                      {language === 'ar' ? 'إزالة الصورة' : 'Remove image'}
                     </button>
                   </div>
                 ) : (
@@ -323,31 +361,52 @@ export default function ImageDetectorPage() {
               </div>
 
               {/* Score Display */}
-              <div className="flex flex-col md:flex-row items-center gap-8">
-                <ScoreGauge score={100 - result.aiProbability} />
-                
-                <div className="flex-1 text-center md:text-left">
-                  <div className="text-4xl mb-2">
-                    {result.aiProbability >= 70 ? <Bot className="w-12 h-12 text-red-400 mx-auto md:mx-0" /> : result.aiProbability >= 40 ? <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto md:mx-0" /> : <Camera className="w-12 h-12 text-green-400 mx-auto md:mx-0" />}
-                  </div>
-                  <div className={`text-3xl font-bold ${
-                    result.aiProbability >= 70 ? 'text-red-400' 
-                    : result.aiProbability >= 40 ? 'text-yellow-400' 
-                    : 'text-green-400'
-                  }`}>
-                    {result.verdict}
-                  </div>
-                  <div className="mt-2 text-gray-400">
-                    AI Probability: <span className="font-bold">{result.aiProbability}%</span>
-                  </div>
-                  {result.confidenceLevel && (
-                    <div className="mt-1 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-purple-900/30">
-                      <span className="text-xs text-gray-400">Confidence:</span>
-                      <span className="text-xs font-medium text-gray-300 capitalize">{result.confidenceLevel}</span>
+              {(() => {
+                const verdictInfo = getVerdictInfo(result.aiProbability)
+                const VerdictIcon = verdictInfo.icon
+                return (
+                  <div className="flex flex-col md:flex-row items-center gap-8">
+                    <ScoreGauge score={100 - result.aiProbability} />
+                    
+                    <div className="flex-1 text-center md:text-left">
+                      <div className="mb-2">
+                        <VerdictIcon className={`w-12 h-12 mx-auto md:mx-0 ${verdictInfo.color}`} />
+                      </div>
+                      <div className={`text-3xl font-bold ${verdictInfo.color}`}>
+                        {result.verdict}
+                      </div>
+                      <div className="mt-2 text-gray-400">
+                        {language === 'ar' ? 'احتمالية AI:' : 'AI Probability:'}{' '}
+                        <span className="font-bold text-xl">{result.aiProbability}%</span>
+                      </div>
+                      
+                      {/* Confidence Badge */}
+                      {result.confidenceLevel && (
+                        <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/50 border border-purple-900/30">
+                          <Zap className="w-3 h-3 text-purple-400" />
+                          <span className="text-xs text-gray-400">{language === 'ar' ? 'الثقة:' : 'Confidence:'}</span>
+                          <span className="text-xs font-medium text-gray-300 capitalize">{result.confidenceLevel}</span>
+                        </div>
+                      )}
+                      
+                      {/* Model Classification */}
+                      {result.likelyModel && result.aiProbability > 60 && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-900/20 border border-red-500/30"
+                        >
+                          <Cpu className="w-4 h-4 text-red-400" />
+                          <span className="text-sm text-red-300">
+                            {language === 'ar' ? 'النموذج المحتمل:' : 'Likely Model:'}{' '}
+                            <span className="font-bold">{result.likelyModel}</span>
+                          </span>
+                        </motion.div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                )
+              })()}
 
               {/* Progress Bar */}
               <div>
@@ -356,18 +415,12 @@ export default function ImageDetectorPage() {
                     initial={{ width: 0 }}
                     animate={{ width: `${result.aiProbability}%` }}
                     transition={{ duration: 1, ease: 'easeOut' }}
-                    className={`h-full rounded-full ${
-                      result.aiProbability >= 70 
-                        ? 'bg-gradient-to-r from-red-500 to-rose-600' 
-                        : result.aiProbability >= 40 
-                          ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                          : 'bg-gradient-to-r from-green-500 to-emerald-500'
-                    }`}
+                    className={`h-full rounded-full bg-gradient-to-r ${getVerdictInfo(result.aiProbability).bg}`}
                   />
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><Camera className="w-3 h-3" /> Authentic Photo</span>
-                  <span className="flex items-center gap-1"><Bot className="w-3 h-3" /> AI Generated</span>
+                  <span className="flex items-center gap-1"><Camera className="w-3 h-3" /> {language === 'ar' ? 'صورة أصلية' : 'Authentic Photo'}</span>
+                  <span className="flex items-center gap-1"><Bot className="w-3 h-3" /> {language === 'ar' ? 'مُنشأ بـ AI' : 'AI Generated'}</span>
                 </div>
               </div>
 
@@ -376,22 +429,22 @@ export default function ImageDetectorPage() {
                 <div className="bg-black/30 rounded-xl p-5 border border-purple-900/20">
                   <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                     <Info className="w-4 h-4 text-purple-400" />
-                    Forensic Summary
+                    {language === 'ar' ? 'ملخص التحليل الجنائي' : 'Forensic Summary'}
                   </h3>
                   <p className="text-gray-300 text-sm leading-relaxed">{result.summary}</p>
                 </div>
               )}
 
               {/* Analysis Details */}
-              {result.analysisDetails && (
+              {result.analysisDetails && Object.keys(result.analysisDetails).length > 0 && (
                 <div className="bg-black/30 rounded-xl p-5 border border-purple-500/20">
                   <h3 className="text-sm font-semibold text-purple-400 mb-4 flex items-center gap-2">
                     <Microscope className="w-4 h-4" />
-                    Detailed Analysis
+                    {language === 'ar' ? 'التحليل المفصل' : 'Detailed Analysis'}
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     {Object.entries(result.analysisDetails).map(([key, value]) => {
-                      if (!value || value === 'Not analyzed') return null
+                      if (!value || value === 'Not analyzed' || value === 'N/A') return null
                       const getIcon = () => {
                         if (key.includes('hand')) return Hand
                         if (key.includes('eye')) return Eye
@@ -401,11 +454,12 @@ export default function ImageDetectorPage() {
                         return Microscope
                       }
                       const Icon = getIcon()
+                      const formatKey = (k: string) => k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()
                       return (
                         <div key={key} className="p-4 bg-black/50 rounded-xl border border-purple-900/20">
                           <div className="flex items-center gap-2 mb-2">
                             <Icon className="w-4 h-4 text-purple-400" />
-                            <span className="text-gray-400 text-xs capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
+                            <span className="text-gray-400 text-xs">{formatKey(key)}</span>
                           </div>
                           <p className="text-gray-300 text-sm">{value}</p>
                         </div>
@@ -420,7 +474,7 @@ export default function ImageDetectorPage() {
                 <div className="bg-black/30 rounded-xl p-5 border border-orange-500/20">
                   <h3 className="text-sm font-semibold text-orange-400 mb-4 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4" />
-                    {t.imageDetector.detectedArtifacts}
+                    {language === 'ar' ? 'الأدلة المكتشفة' : 'Detected Artifacts'} ({result.artifacts.length})
                   </h3>
                   <div className="space-y-3">
                     {result.artifacts.map((artifact, index) => {
@@ -443,7 +497,9 @@ export default function ImageDetectorPage() {
                             </span>
                           </div>
                           {artifact.location && (
-                            <p className="text-gray-500 text-xs mb-1">Location: {artifact.location}</p>
+                            <p className="text-gray-500 text-xs mb-1">
+                              {language === 'ar' ? 'الموقع:' : 'Location:'} {artifact.location}
+                            </p>
                           )}
                           <p className="text-gray-400 text-sm">{artifact.description}</p>
                         </motion.div>
@@ -458,7 +514,7 @@ export default function ImageDetectorPage() {
                 <div className="bg-black/30 rounded-xl p-5 border border-purple-500/20">
                   <h3 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
                     <CheckCircle className="w-4 h-4" />
-                    Verification Tips
+                    {language === 'ar' ? 'نصائح التحقق' : 'Verification Tips'}
                   </h3>
                   <p className="text-gray-300 text-sm">{result.recommendations}</p>
                 </div>
@@ -470,7 +526,7 @@ export default function ImageDetectorPage() {
                 className="w-full py-3 px-4 rounded-xl border border-purple-500/30 text-gray-300 hover:text-white hover:border-purple-500/50 hover:bg-purple-900/10 transition-all flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
-                Analyze Another Image
+                {language === 'ar' ? 'تحليل صورة أخرى' : 'Analyze Another Image'}
               </button>
             </div>
           )}
@@ -485,33 +541,33 @@ export default function ImageDetectorPage() {
         >
           <h3 className="text-sm font-semibold text-white mb-4 text-center flex items-center justify-center gap-2">
             <Microscope className="w-4 h-4 text-purple-400" />
-            Detection Categories
+            {language === 'ar' ? 'فئات الكشف' : 'Detection Categories'}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center text-xs">
             <div className="p-3 bg-black/30 rounded-xl border border-purple-900/20">
               <Hand className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-              <div className="text-white font-medium">Hands</div>
-              <div className="text-gray-500">Finger count & joints</div>
+              <div className="text-white font-medium">{language === 'ar' ? 'الأيدي' : 'Hands'}</div>
+              <div className="text-gray-500">{language === 'ar' ? 'عدد الأصابع والمفاصل' : 'Finger count & joints'}</div>
             </div>
             <div className="p-3 bg-black/30 rounded-xl border border-purple-900/20">
               <Eye className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-              <div className="text-white font-medium">Eyes</div>
-              <div className="text-gray-500">Reflections & pupils</div>
+              <div className="text-white font-medium">{language === 'ar' ? 'العيون' : 'Eyes'}</div>
+              <div className="text-gray-500">{language === 'ar' ? 'الانعكاسات والحدقات' : 'Reflections & pupils'}</div>
             </div>
             <div className="p-3 bg-black/30 rounded-xl border border-purple-900/20">
               <Palette className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-              <div className="text-white font-medium">Mixed Media</div>
-              <div className="text-gray-500">Composite detection</div>
+              <div className="text-white font-medium">{language === 'ar' ? 'الأنسجة' : 'Textures'}</div>
+              <div className="text-gray-500">{language === 'ar' ? 'الجلد والشعر والملابس' : 'Skin, hair & fabric'}</div>
             </div>
             <div className="p-3 bg-black/30 rounded-xl border border-purple-900/20">
               <Microscope className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-              <div className="text-white font-medium">Micro</div>
-              <div className="text-gray-500">Subtle artifacts</div>
+              <div className="text-white font-medium">{language === 'ar' ? 'البصمات الدقيقة' : 'Micro Artifacts'}</div>
+              <div className="text-gray-500">{language === 'ar' ? 'أنماط AI الخفية' : 'Subtle AI patterns'}</div>
             </div>
             <div className="p-3 bg-black/30 rounded-xl border border-purple-900/20">
               <Lightbulb className="w-6 h-6 mx-auto mb-2 text-purple-400" />
-              <div className="text-white font-medium">Physics</div>
-              <div className="text-gray-500">Lighting & shadows</div>
+              <div className="text-white font-medium">{language === 'ar' ? 'الفيزياء' : 'Physics'}</div>
+              <div className="text-gray-500">{language === 'ar' ? 'الإضاءة والظلال' : 'Lighting & shadows'}</div>
             </div>
           </div>
         </motion.div>

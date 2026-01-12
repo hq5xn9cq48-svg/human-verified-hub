@@ -29,17 +29,10 @@ export const metadata: Metadata = {
     description: 'Professional AI-powered tool to detect AI-generated content. Verify if text is human-written with forensic linguistic analysis. Free AI Humanizer included.',
     images: [
       {
-        url: 'https://humanverified.systems/og-image.png',
+        url: 'https://creative-indigo-59qe7dqjqu.edgeone.app/Untitled%20design.png',
         width: 1200,
         height: 675,
         alt: 'Human-Verified Hub - Advanced AI Detection Platform Dashboard',
-        type: 'image/png',
-      },
-      {
-        url: 'https://humanverified.systems/logo.png',
-        width: 512,
-        height: 512,
-        alt: 'Human-Verified Hub Logo',
         type: 'image/png',
       },
     ],
@@ -52,7 +45,7 @@ export const metadata: Metadata = {
     description: 'Detect AI-generated content with forensic linguistic analysis. Get certified PDF reports. Free AI Humanizer tool.',
     images: [
       {
-        url: 'https://humanverified.systems/og-image.png',
+        url: 'https://creative-indigo-59qe7dqjqu.edgeone.app/Untitled%20design.png',
         width: 1200,
         height: 675,
         alt: 'Human-Verified Hub - Advanced AI Detection Platform Dashboard',
@@ -87,6 +80,33 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         <link rel="icon" href="/logo.png" type="image/png" />
+        {/* Organization Schema for SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "Human-Verified Hub",
+              "url": "https://humanverified.systems",
+              "logo": "https://humanverified.systems/logo.png",
+              "description": "Professional AI-powered platform to detect AI-generated content, verify human-written text, and provide certified authenticity reports.",
+              "sameAs": [
+                "https://twitter.com/humanverified"
+              ],
+              "contactPoint": {
+                "@type": "ContactPoint",
+                "contactType": "customer support",
+                "url": "https://humanverified.systems/contact"
+              },
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://humanverified.systems/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
         {/* Google Analytics Placeholder - Replace GA_MEASUREMENT_ID with actual ID */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"

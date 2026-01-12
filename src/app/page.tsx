@@ -501,20 +501,6 @@ export default function HomePage() {
 
       {/* Main content with top padding for fixed navbar + thin banner */}
       <main className="max-w-5xl mx-auto px-4 py-8 pt-28">
-        {/* Disclaimer Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 p-3 rounded-xl bg-yellow-900/10 border border-yellow-500/20 text-center"
-        >
-          <p className="text-yellow-400/80 text-xs flex items-center justify-center gap-2">
-            <Shield className="w-3 h-3" />
-            {language === 'ar' 
-              ? 'هذه الأداة للأغراض التعليمية والبحثية. النتائج إرشادية ولا يجب أن تكون الأساس الوحيد للقرارات الأكاديمية أو القانونية.'
-              : 'This tool is for educational and research purposes. Results are indicative and should not be the sole basis for academic or legal decisions.'}
-          </p>
-        </motion.div>
-
         {/* Hero Header */}
         <div className="text-center mb-8">
           <motion.div
@@ -975,6 +961,14 @@ export default function HomePage() {
                 {language === 'ar' ? 'الشروط' : 'Terms'}
               </a>
             </div>
+          </div>
+          {/* Disclaimer */}
+          <div className="mt-6 pt-4 border-t border-purple-900/20">
+            <p className="text-gray-600 text-[10px] text-center leading-relaxed">
+              {language === 'ar' 
+                ? 'هذه الأداة للأغراض التعليمية والبحثية فقط. النتائج إرشادية ولا يجب أن تكون الأساس الوحيد لاتخاذ قرارات أكاديمية أو قانونية.'
+                : 'This tool is for educational and research purposes only. Results are indicative and should not be the sole basis for academic or legal decisions.'}
+            </p>
           </div>
         </div>
       </footer>

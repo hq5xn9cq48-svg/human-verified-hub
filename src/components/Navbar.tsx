@@ -22,7 +22,8 @@ import {
   User,
   Info,
   Mail,
-  BookOpen
+  BookOpen,
+  Crown
 } from 'lucide-react'
 
 export default function Navbar() {
@@ -167,15 +168,20 @@ export default function Navbar() {
             <div className="hidden md:flex items-center">
               {user ? (
                 <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-white/5 border border-purple-900/30">
-                  {/* User Avatar with Status */}
-                  <div className="relative">
+                  {/* User Avatar - Google profile picture or letter fallback */}
+                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                    <img 
+                      src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
+                      alt="Profile" 
+                      className="w-8 h-8 rounded-full object-cover border border-purple-500/30"
+                    />
+                  ) : (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
                       <span className="text-white text-xs font-bold">
                         {user.email?.charAt(0).toUpperCase() || 'U'}
                       </span>
                     </div>
-                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-black" />
-                  </div>
+                  )}
                   {/* My Account Link */}
                   <Link
                     href="/account"
@@ -187,6 +193,20 @@ export default function Navbar() {
                   >
                     {language === 'ar' ? 'حسابي' : 'My Account'}
                   </Link>
+                  {/* Upgrade to Pro Button - Neon Purple Theme */}
+                  <div className="relative group">
+                    <button
+                      disabled
+                      className="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-300 border border-purple-500/40 flex items-center gap-1.5 cursor-not-allowed hover:border-purple-400/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
+                    >
+                      <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
+                      <span className="hidden lg:inline bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent font-semibold">Pro</span>
+                    </button>
+                    {/* Tooltip */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-black/95 border border-purple-500/40 rounded-lg text-xs text-purple-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                      {language === 'ar' ? 'قريباً' : 'Coming Soon'}
+                    </div>
+                  </div>
                   {/* Sign Out Button */}
                   <button
                     onClick={signOut}
@@ -254,23 +274,45 @@ export default function Navbar() {
                     <div className="p-4 rounded-xl bg-white/5 border border-purple-900/30">
                       {/* User Info */}
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="relative">
+                        {/* User Avatar - Google profile picture or letter fallback */}
+                        {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                          <img 
+                            src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
+                            alt="Profile" 
+                            className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/30"
+                          />
+                        ) : (
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
                             <span className="text-white text-lg font-bold">
                               {user.email?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           </div>
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-400 border-2 border-black" />
-                        </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-medium truncate">
-                            {user.email}
+                            {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
                           </p>
-                          <p className="text-green-400 text-xs">
-                            {language === 'ar' ? 'متصل' : 'Online'}
+                          <p className="text-gray-400 text-xs truncate">
+                            {user.email}
                           </p>
                         </div>
                       </div>
+                      
+                      {/* Upgrade to Pro - Neon Purple Theme */}
+                      <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-purple-600/15 to-fuchsia-600/15 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Crown className="w-4 h-4 text-fuchsia-400" />
+                            <span className="bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent text-sm font-semibold">
+                              {language === 'ar' ? 'الترقية للاحترافي' : 'Upgrade to Pro'}
+                            </span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-medium border border-purple-500/30">
+                            {language === 'ar' ? 'قريباً' : 'Coming Soon'}
+                          </span>
+                        </div>
+                      </div>
+                      
                       {/* Action Buttons */}
                       <div className="flex gap-2">
                         <Link

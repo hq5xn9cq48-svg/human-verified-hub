@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 
 // ============================================================================
-// CONFIGURATION
+// CONFIGURATION - STABILITY FIRST
 // ============================================================================
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+// API Key from environment variable (Vercel config)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
-// Cost-efficient: gemini-2.5-flash as primary (cheaper, multimodal), pro as fallback
-const VISION_MODELS = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash-exp'];
+// MANDATORY: gemini-1.5-flash as primary for cost efficiency
+// Using same proven model pattern as Text Analysis API
+const VISION_MODELS = [
+  'gemini-1.5-flash',      // Primary - cost efficient, proven working
+  'gemini-flash-latest',   // Fallback 1 - confirmed working in text analysis
+  'gemini-1.5-pro'         // Fallback 2 - higher quality if flash fails
+];
 
-// Slightly higher temperature for creative prompt generation
+// Low temperature (0.3) for precise prompt generation with slight creativity
 const GENERATION_CONFIG = {
-  temperature: 0.5,
-  maxOutputTokens: 4096,
-  topP: 0.9,
+  temperature: 0.3,
+  maxOutputTokens: 2048,
+  topP: 0.85,
   topK: 40
 };
 
@@ -32,48 +38,79 @@ function logError(step: string, error: unknown) {
 }
 
 // ============================================================================
-// SYSTEM PROMPT - Expert Prompt Engineering
+// HIGH-PRECISION SYSTEM PROMPT - Expert Prompt Engineering
+// Designed to force gemini-1.5-flash to generate detailed, accurate prompts
 // ============================================================================
 
-const SYSTEM_PROMPT = `You are an expert AI prompt engineer specializing in reverse-engineering images into detailed text prompts for AI image generators (Midjourney, DALL-E, Stable Diffusion).
+const SYSTEM_PROMPT = `You are PROMPT-ENGINEER V5.0, an expert at reverse-engineering images into detailed AI generation prompts. Your prompts must be precise enough to recreate the image with Midjourney, DALL-E, or Stable Diffusion.
 
-## ANALYSIS FRAMEWORK
+## YOUR MISSION
+Analyze the provided image and generate a comprehensive text prompt that could recreate it. Be specific about every visual element.
 
-1. **Subject**: Main subjects, characters, objects, their relationships
-2. **Style**: Art style, photography type, illustration method, artistic influences
-3. **Composition**: Layout, perspective, framing, focal points, rule of thirds
-4. **Colors**: Color palette, color harmony, lighting mood, temperature
-5. **Details**: Textures, materials, patterns, fine details, quality indicators
-6. **Atmosphere**: Overall mood, ambiance, emotional tone, time of day
-7. **Technical**: Aspect ratio hints, resolution quality, rendering style
+## ANALYSIS FRAMEWORK (Apply ALL)
 
-## OUTPUT FORMAT (STRICT JSON - NO MARKDOWN)
+### 1. SUBJECT ANALYSIS
+- Main subjects, characters, objects
+- Poses, expressions, actions
+- Relationships between elements
+- Foreground vs background placement
+
+### 2. STYLE IDENTIFICATION
+- Art style: photography, digital art, anime, oil painting, illustration, 3D render, etc.
+- Artistic influences or resemblances
+- Era or period aesthetics
+- Quality level: professional, amateur, artistic, commercial
+
+### 3. COMPOSITION
+- Layout and framing (close-up, wide shot, portrait, landscape)
+- Perspective and camera angle
+- Rule of thirds application
+- Focal points and visual hierarchy
+
+### 4. LIGHTING & COLOR
+- Light source direction and type (natural, studio, dramatic)
+- Color palette (warm, cool, vibrant, muted)
+- Mood created by lighting
+- Shadows and highlights
+
+### 5. TECHNICAL DETAILS
+- Resolution quality indicators
+- Rendering style
+- Texture details
+- Special effects or filters
+
+## OUTPUT FORMAT (STRICT JSON ONLY)
 
 {
-  "prompt": "A comprehensive 2-4 sentence prompt that could recreate this image with an AI generator. Include subject, style, composition, lighting, colors, mood, and quality descriptors. Be vivid and specific.",
-  "shortPrompt": "A concise 1-sentence version for quick use",
-  "style": "The detected style (e.g., 'digital art', 'photography', 'anime', 'oil painting', 'cinematic', 'illustration')",
-  "tags": ["keyword1", "keyword2", "keyword3", "...up to 10 relevant tags"],
-  "negativePrompt": "What to avoid (e.g., 'blurry, low quality, distorted, watermark')"
+  "prompt": "A comprehensive 2-4 sentence prompt that captures all visual elements. Include: subject description, style, composition, lighting, colors, mood, and quality modifiers. Be vivid and specific.",
+  "shortPrompt": "A concise 1-sentence version capturing the essence for quick use.",
+  "style": "The primary detected style (photography | digital art | anime | illustration | oil painting | watercolor | 3D render | cinematic | concept art | other)",
+  "tags": ["keyword1", "keyword2", "up to 10 relevant tags for searchability"],
+  "negativePrompt": "What to avoid in recreation (e.g., blurry, low quality, distorted, watermark, text)"
 }
 
-CRITICAL: Return ONLY the JSON object. No markdown code blocks. No explanatory text before or after.`;
+CRITICAL RULES:
+1. Return ONLY valid JSON - no markdown, no code blocks, no extra text
+2. Be extremely specific - mention exact colors, positions, expressions
+3. Include quality modifiers (8k, detailed, professional, etc.) in the prompt
+4. Tags should be searchable keywords that describe the image
+5. Negative prompt should list common AI generation artifacts to avoid`;
 
 // ============================================================================
-// JSON PARSING WITH MULTIPLE STRATEGIES
+// JSON PARSING - Multiple strategies for robustness
 // ============================================================================
 
 function parseGeminiResponse(responseText: string): Record<string, unknown> | null {
   logStep('Parsing response', { length: responseText.length });
   
-  // Strategy 1: Direct parse
+  // Strategy 1: Direct JSON parse
   try {
     return JSON.parse(responseText);
   } catch {
     logStep('Direct parse failed');
   }
   
-  // Strategy 2: Clean markdown
+  // Strategy 2: Clean markdown and parse
   let cleaned = responseText
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/gi, '')
@@ -85,13 +122,13 @@ function parseGeminiResponse(responseText: string): Record<string, unknown> | nu
     logStep('Cleaned parse failed');
   }
   
-  // Strategy 3: Regex extraction
+  // Strategy 3: Extract JSON object with regex
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     try {
       return JSON.parse(jsonMatch[0]);
     } catch {
-      logStep('Regex parse failed');
+      logStep('Regex extraction failed');
     }
   }
   
@@ -122,12 +159,13 @@ function parseGeminiResponse(responseText: string): Record<string, unknown> | nu
 }
 
 // ============================================================================
-// GEMINI VISION API CALL
+// GEMINI VISION API CALL - Following Text Analysis pattern
 // ============================================================================
 
 interface VisionAPIResult {
   text: string | null;
   error: string | null;
+  modelUsed?: string;
 }
 
 async function callGeminiVisionAPI(
@@ -137,14 +175,15 @@ async function callGeminiVisionAPI(
   apiKey: string
 ): Promise<VisionAPIResult> {
   
-  const errors: string[] = [];
-  
   for (const model of VISION_MODELS) {
     try {
-      logStep(`Calling model: ${model}`);
+      logStep(`Trying model: ${model}`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const timeoutId = setTimeout(() => {
+        logStep(`Timeout triggered for ${model}`);
+        controller.abort();
+      }, 45000); // 45s timeout - same as Text Analysis
 
       const requestBody = {
         contents: [{
@@ -160,10 +199,10 @@ async function callGeminiVisionAPI(
         }],
         generationConfig: GENERATION_CONFIG,
         safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
         ]
       };
 
@@ -178,17 +217,13 @@ async function callGeminiVisionAPI(
       );
 
       clearTimeout(timeoutId);
+      logStep(`Response received`, { status: response.status, model });
 
       if (!response.ok) {
-        const errText = await response.text();
-        let errMsg = `HTTP ${response.status}`;
-        try {
-          const errData = JSON.parse(errText);
-          errMsg = errData?.error?.message || errMsg;
-        } catch {}
-        logError(`Model ${model} failed`, errMsg);
-        errors.push(`${model}: ${errMsg}`);
-        continue;
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = errData?.error?.message || `HTTP ${response.status}`;
+        logError(`Model ${model} failed`, { status: response.status, message: errMsg });
+        continue; // Try next model
       }
 
       const data = await response.json();
@@ -196,29 +231,30 @@ async function callGeminiVisionAPI(
 
       if (textContent) {
         logStep(`Success with ${model}`, { responseLength: textContent.length });
-        return { text: textContent, error: null };
+        return { text: textContent, error: null, modelUsed: model };
       }
 
+      // Check for safety block
       const finishReason = data?.candidates?.[0]?.finishReason;
       if (finishReason === 'SAFETY') {
-        errors.push(`${model}: Content blocked by safety filters`);
+        logStep(`Safety block on ${model}`);
         continue;
       }
 
-      errors.push(`${model}: Empty response`);
+      logStep(`Empty response from ${model}`, { finishReason });
       
     } catch (error: unknown) {
       const err = error as Error;
       if (err.name === 'AbortError') {
-        errors.push(`${model}: Timeout (60s)`);
+        logError(`Timeout on ${model}`, '45 seconds exceeded');
       } else {
-        errors.push(`${model}: ${err.message}`);
+        logError(`Error on ${model}`, err.message);
       }
-      continue;
+      continue; // Try next model
     }
   }
 
-  return { text: null, error: errors.join('; ') };
+  return { text: null, error: 'All vision models failed' };
 }
 
 // ============================================================================
@@ -228,13 +264,15 @@ async function callGeminiVisionAPI(
 export async function POST(req: Request) {
   logStep('=== NEW IMAGE-TO-PROMPT REQUEST ===');
   
-  // Validate API key
+  // Validate API key from environment
   if (!GEMINI_API_KEY) {
-    logError('Configuration error', 'GEMINI_API_KEY not set');
+    logError('Configuration error', 'GEMINI_API_KEY not set in environment');
     return NextResponse.json({ 
-      error: 'Service configuration error. Please contact support.' 
-    }, { status: 500 });
+      error: 'Service temporarily unavailable. Please try again later.',
+      errorCode: 'API_CONFIG_ERROR'
+    }, { status: 503 });
   }
+  logStep('API key validated', { keyLength: GEMINI_API_KEY.length });
 
   try {
     const body = await req.json();
@@ -249,7 +287,8 @@ export async function POST(req: Request) {
     // Validate image presence
     if (!image || typeof image !== 'string') {
       return NextResponse.json({ 
-        error: language === 'ar' ? 'لم يتم توفير صورة' : 'No image provided' 
+        error: language === 'ar' ? 'لم يتم توفير صورة' : 'No image provided',
+        errorCode: 'NO_IMAGE'
       }, { status: 400 });
     }
 
@@ -261,7 +300,8 @@ export async function POST(req: Request) {
       const commaIndex = image.indexOf(',');
       if (commaIndex === -1) {
         return NextResponse.json({ 
-          error: language === 'ar' ? 'صيغة صورة غير صالحة' : 'Invalid image format' 
+          error: language === 'ar' ? 'صيغة صورة غير صالحة' : 'Invalid image format',
+          errorCode: 'INVALID_FORMAT'
         }, { status: 400 });
       }
       
@@ -279,74 +319,88 @@ export async function POST(req: Request) {
     // Validate base64 data
     if (!base64Data || base64Data.length < 100) {
       return NextResponse.json({ 
-        error: language === 'ar' ? 'بيانات الصورة غير كافية' : 'Image data too short' 
+        error: language === 'ar' ? 'بيانات الصورة غير كافية' : 'Image data too short',
+        errorCode: 'INVALID_DATA'
       }, { status: 400 });
     }
 
-    // Validate size
-    if (base64Data.length > 15 * 1024 * 1024) {
+    // Validate size (base64 is ~33% larger than binary)
+    const estimatedBytes = (base64Data.length * 3) / 4;
+    const maxBytes = 15 * 1024 * 1024;
+    
+    if (estimatedBytes > maxBytes) {
       return NextResponse.json({ 
-        error: language === 'ar' ? 'الصورة كبيرة جداً' : 'Image too large (max 10MB)' 
+        error: language === 'ar' ? 'الصورة كبيرة جداً (الحد الأقصى 10 ميجابايت)' : 'Image too large (max 10MB)',
+        errorCode: 'FILE_TOO_LARGE'
       }, { status: 400 });
     }
 
-    logStep('Image validated', { mimeType, dataLength: base64Data.length });
+    logStep('Image validated', { mimeType, sizeMB: (estimatedBytes / 1024 / 1024).toFixed(2) });
 
-    // Build prompt with optional Arabic output
+    // Build prompt with language hint
     const langHint = language === 'ar' 
-      ? '\n\nIMPORTANT: Output all text in Arabic language.'
+      ? '\n\nIMPORTANT: Output all text fields in Arabic language.'
       : '';
     
-    const prompt = `${SYSTEM_PROMPT}${langHint}\n\nAnalyze this image and generate a detailed AI prompt to recreate it:`;
+    const prompt = `${SYSTEM_PROMPT}${langHint}\n\nAnalyze this image and generate a detailed AI prompt to recreate it. Be specific:`;
     
-    // Call API
+    // Call Gemini Vision API
     const apiResult = await callGeminiVisionAPI(prompt, base64Data, mimeType, GEMINI_API_KEY);
 
     if (!apiResult.text) {
-      logError('API failed', apiResult.error);
+      logError('All API calls failed', apiResult.error);
       return NextResponse.json({ 
         error: language === 'ar' 
-          ? 'فشل إنشاء الأمر. حاول مرة أخرى.' 
-          : 'Prompt generation failed. Please try again.' 
+          ? 'فشل إنشاء الوصف. حاول مرة أخرى.' 
+          : 'Prompt generation failed. Please try again.',
+        errorCode: 'GENERATION_FAILED'
       }, { status: 500 });
     }
 
     // Parse response
     let result = parseGeminiResponse(apiResult.text);
     
+    // Fallback if parsing fails
     if (!result) {
-      logStep('Parse failed, using fallback');
+      logStep('Parse failed, creating fallback from raw text');
       const cleanedText = apiResult.text
         .replace(/```[a-z]*\n?/gi, '')
         .replace(/```/g, '')
         .trim();
       
       result = {
-        prompt: cleanedText.substring(0, 800) || 'Unable to generate prompt',
-        shortPrompt: cleanedText.substring(0, 120) || 'Parse error',
+        prompt: cleanedText.substring(0, 800) || 'Unable to generate prompt from this image.',
+        shortPrompt: cleanedText.substring(0, 150) || 'Image analysis completed.',
         style: 'unknown',
-        tags: [],
-        negativePrompt: 'blurry, low quality, distorted'
+        tags: ['image', 'generated'],
+        negativePrompt: 'blurry, low quality, distorted, watermark'
       };
     }
 
     // Normalize result with proper type handling
-    const promptText = typeof result.prompt === 'string' ? result.prompt : 'No prompt generated';
-    const shortPromptText = typeof result.shortPrompt === 'string' 
+    const promptText = typeof result.prompt === 'string' && result.prompt.length > 0 
+      ? result.prompt 
+      : 'No detailed prompt could be generated.';
+    
+    const shortPromptText = typeof result.shortPrompt === 'string' && result.shortPrompt.length > 0
       ? result.shortPrompt 
-      : promptText.substring(0, 100);
+      : promptText.substring(0, 150);
     
     const finalResult = {
       prompt: promptText,
       shortPrompt: shortPromptText,
-      style: (typeof result.style === 'string' ? result.style : 'unknown'),
-      tags: Array.isArray(result.tags) ? result.tags : [],
-      negativePrompt: typeof result.negativePrompt === 'string' ? result.negativePrompt : 'blurry, low quality'
+      style: typeof result.style === 'string' ? result.style : 'unknown',
+      tags: Array.isArray(result.tags) ? result.tags.slice(0, 10) : [],
+      negativePrompt: typeof result.negativePrompt === 'string' 
+        ? result.negativePrompt 
+        : 'blurry, low quality, distorted, watermark',
+      modelUsed: apiResult.modelUsed
     };
 
-    logStep('Generation complete', { 
+    logStep('=== GENERATION COMPLETE ===', { 
       promptLength: finalResult.prompt.length, 
-      style: finalResult.style 
+      style: finalResult.style,
+      model: finalResult.modelUsed
     });
     
     return NextResponse.json(finalResult);
@@ -355,10 +409,11 @@ export async function POST(req: Request) {
     const err = error as Error;
     logError('Unhandled error', { message: err.message, stack: err.stack });
     return NextResponse.json({ 
-      error: 'An unexpected error occurred. Please try again.' 
+      error: 'An unexpected error occurred. Please try again.',
+      errorCode: 'INTERNAL_ERROR'
     }, { status: 500 });
   }
 }
 
 export const runtime = 'nodejs';
-export const maxDuration = 90;
+export const maxDuration = 60;

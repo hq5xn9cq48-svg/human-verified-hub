@@ -193,17 +193,17 @@ export default function Navbar() {
                   >
                     {language === 'ar' ? 'حسابي' : 'My Account'}
                   </Link>
-                  {/* Upgrade to Pro Button - Coming Soon */}
+                  {/* Upgrade to Pro Button - Neon Purple Theme */}
                   <div className="relative group">
                     <button
                       disabled
-                      className="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5 opacity-80 cursor-not-allowed"
+                      className="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-300 border border-purple-500/40 flex items-center gap-1.5 cursor-not-allowed hover:border-purple-400/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
                     >
-                      <Crown className="w-3.5 h-3.5" />
-                      <span className="hidden lg:inline">Pro</span>
+                      <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
+                      <span className="hidden lg:inline bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent font-semibold">Pro</span>
                     </button>
                     {/* Tooltip */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-black/95 border border-amber-500/30 rounded-lg text-xs text-amber-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-black/95 border border-purple-500/40 rounded-lg text-xs text-purple-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                       {language === 'ar' ? 'قريباً' : 'Coming Soon'}
                     </div>
                   </div>
@@ -298,16 +298,16 @@ export default function Navbar() {
                         </div>
                       </div>
                       
-                      {/* Upgrade to Pro - Coming Soon */}
-                      <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20">
+                      {/* Upgrade to Pro - Neon Purple Theme */}
+                      <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-purple-600/15 to-fuchsia-600/15 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Crown className="w-4 h-4 text-amber-400" />
-                            <span className="text-amber-300 text-sm font-medium">
+                            <Crown className="w-4 h-4 text-fuchsia-400" />
+                            <span className="bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent text-sm font-semibold">
                               {language === 'ar' ? 'الترقية للاحترافي' : 'Upgrade to Pro'}
                             </span>
                           </div>
-                          <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-medium">
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-medium border border-purple-500/30">
                             {language === 'ar' ? 'قريباً' : 'Coming Soon'}
                           </span>
                         </div>

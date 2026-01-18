@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -29,13 +31,22 @@ interface PromptResult {
 }
 
 export default function ImageToPromptPage() {
+  const router = useRouter()
   const { language, isRTL, isLoaded } = useLanguage()
+  const { user, loading: authLoading } = useAuth()
   const [mounted, setMounted] = useState(false)
   
   // Ensure component is mounted before rendering to prevent hydration mismatch
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Auth Guard: Redirect unauthenticated users to /auth
+  useEffect(() => {
+    if (!authLoading && !user && isLoaded) {
+      router.push('/auth')
+    }
+  }, [user, authLoading, isLoaded, router])
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -133,15 +144,29 @@ export default function ImageToPromptPage() {
     }
   }
 
-  // Show loading state until mounted and language is loaded
-  if (!mounted || !isLoaded) {
+  // Auth Guard: Show loading while checking auth status
+  if (!mounted || !isLoaded || authLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
             <Wand2 className="w-8 h-8 text-purple-400" />
           </div>
-          <p className="text-gray-400">Loading...</p>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التحقق...' : 'Verifying access...'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Auth Guard: Redirect if not authenticated (effect handles redirect)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Wand2 className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التوجيه للتسجيل...' : 'Redirecting to login...'}</p>
         </div>
       </div>
     )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -66,8 +67,9 @@ const loadingMessages = [
 ]
 
 export default function HomePage() {
-  const { t, language, isRTL } = useLanguage()
-  const { user } = useAuth()
+  const router = useRouter()
+  const { t, language, isRTL, isLoaded } = useLanguage()
+  const { user, loading: authLoading } = useAuth()
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
   const [inputMode, setInputMode] = useState<'text' | 'url'>('text')
@@ -94,6 +96,13 @@ export default function HomePage() {
       return () => clearInterval(interval)
     }
   }, [loading])
+
+  // Auth Guard: Redirect unauthenticated users to /auth
+  useEffect(() => {
+    if (!authLoading && !user && isLoaded) {
+      router.push('/auth')
+    }
+  }, [user, authLoading, isLoaded, router])
 
   // Check for cookie consent and welcome modal
   useEffect(() => {
@@ -478,6 +487,34 @@ export default function HomePage() {
     setResult(null)
     setError(null)
     setVerificationId(null)
+  }
+
+  // Auth Guard: Show loading while checking auth status
+  if (authLoading || !isLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Shield className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التحقق...' : 'Verifying access...'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Auth Guard: Redirect if not authenticated (effect handles redirect)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Shield className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التوجيه للتسجيل...' : 'Redirecting to login...'}</p>
+        </div>
+      </div>
+    )
   }
 
   return (

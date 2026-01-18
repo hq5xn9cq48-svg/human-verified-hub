@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
 import ScoreGauge from '@/components/ScoreGauge'
 import { 
   Image as ImageIcon, 
@@ -53,7 +55,9 @@ interface AnalysisResult {
 }
 
 export default function ImageDetectorPage() {
-  const { t, language, isRTL } = useLanguage()
+  const router = useRouter()
+  const { t, language, isRTL, isLoaded } = useLanguage()
+  const { user, loading: authLoading } = useAuth()
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -66,6 +70,13 @@ export default function ImageDetectorPage() {
   const loadingSteps = language === 'ar' 
     ? ['جاري تحميل الصورة...', 'تحليل التشريح البشري...', 'فحص الأنسجة والتفاصيل...', 'تحليل الإضاءة والفيزياء...', 'البحث عن بصمات AI...', 'إعداد التقرير...']
     : ['Uploading image...', 'Analyzing human anatomy...', 'Examining textures & details...', 'Checking lighting & physics...', 'Detecting AI fingerprints...', 'Preparing report...']
+
+  // Auth Guard: Redirect unauthenticated users to /auth
+  useEffect(() => {
+    if (!authLoading && !user && isLoaded) {
+      router.push('/auth')
+    }
+  }, [user, authLoading, isLoaded, router])
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -170,6 +181,34 @@ export default function ImageDetectorPage() {
     return { icon: CheckCircle, color: 'text-green-400', bg: 'from-green-500 to-emerald-500', label: language === 'ar' ? 'صورة أصلية' : 'Authentic Photo' }
   }
 
+  // Auth Guard: Show loading while checking auth status
+  if (authLoading || !isLoaded) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Shield className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التحقق...' : 'Verifying access...'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Auth Guard: Redirect if not authenticated (effect handles redirect)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
+            <Shield className="w-8 h-8 text-purple-400" />
+          </div>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التوجيه للتسجيل...' : 'Redirecting to login...'}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
@@ -209,21 +248,6 @@ export default function ImageDetectorPage() {
               : 'Deep forensic analysis for hands, eyes, mixed media, and micro-artifacts'}
           </motion.p>
         </div>
-
-        {/* Disclaimer Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="mb-6 p-3 rounded-xl bg-yellow-900/10 border border-yellow-500/20 text-center"
-        >
-          <p className="text-yellow-400/80 text-xs flex items-center justify-center gap-2">
-            <Shield className="w-3 h-3" />
-            {language === 'ar' 
-              ? 'هذه الأداة للأغراض التعليمية والبحثية. النتائج إرشادية ولا يجب أن تكون الأساس الوحيد للقرارات الأكاديمية أو القانونية.'
-              : 'This tool is for educational and research purposes. Results are indicative and should not be the sole basis for academic or legal decisions.'}
-          </p>
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

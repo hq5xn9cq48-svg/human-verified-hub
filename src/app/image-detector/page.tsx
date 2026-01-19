@@ -71,13 +71,6 @@ export default function ImageDetectorPage() {
     ? ['جاري تحميل الصورة...', 'تحليل التشريح البشري...', 'فحص الأنسجة والتفاصيل...', 'تحليل الإضاءة والفيزياء...', 'البحث عن بصمات AI...', 'إعداد التقرير...']
     : ['Uploading image...', 'Analyzing human anatomy...', 'Examining textures & details...', 'Checking lighting & physics...', 'Detecting AI fingerprints...', 'Preparing report...']
 
-  // Auth Guard: Redirect unauthenticated users to /auth
-  useEffect(() => {
-    if (!authLoading && !user && isLoaded) {
-      router.push('/auth')
-    }
-  }, [user, authLoading, isLoaded, router])
-
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
       setError(language === 'ar' ? 'يرجى اختيار ملف صورة (JPG, PNG, أو WebP)' : 'Please select an image file (JPG, PNG, or WebP)')
@@ -109,6 +102,12 @@ export default function ImageDetectorPage() {
 
   const handleAnalyze = async () => {
     if (!image) return
+
+    // Auth check on submit - redirect to login if not authenticated
+    if (!user && !authLoading) {
+      router.push('/auth')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -181,29 +180,15 @@ export default function ImageDetectorPage() {
     return { icon: CheckCircle, color: 'text-green-400', bg: 'from-green-500 to-emerald-500', label: language === 'ar' ? 'صورة أصلية' : 'Authentic Photo' }
   }
 
-  // Auth Guard: Show loading while checking auth status
-  if (authLoading || !isLoaded) {
+  // Show loading only while language context is loading
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
-            <Shield className="w-8 h-8 text-purple-400" />
+            <Microscope className="w-8 h-8 text-purple-400" />
           </div>
-          <p className="text-gray-400">{language === 'ar' ? 'جاري التحقق...' : 'Verifying access...'}</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Auth Guard: Redirect if not authenticated (effect handles redirect)
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
-            <Shield className="w-8 h-8 text-purple-400" />
-          </div>
-          <p className="text-gray-400">{language === 'ar' ? 'جاري التوجيه للتسجيل...' : 'Redirecting to login...'}</p>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
         </div>
       </div>
     )

@@ -97,13 +97,6 @@ export default function HomePage() {
     }
   }, [loading])
 
-  // Auth Guard: Redirect unauthenticated users to /auth
-  useEffect(() => {
-    if (!authLoading && !user && isLoaded) {
-      router.push('/auth')
-    }
-  }, [user, authLoading, isLoaded, router])
-
   // Check for cookie consent and welcome modal
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -152,6 +145,12 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Auth check on submit - redirect to login if not authenticated
+    if (!user && !authLoading) {
+      router.push('/auth')
+      return
+    }
     
     if (inputMode === 'text' && (!text.trim() || text.length < 20)) {
       setError(language === 'ar' ? 'أدخل 20 حرفاً على الأقل' : 'Please enter at least 20 characters')
@@ -489,29 +488,15 @@ export default function HomePage() {
     setVerificationId(null)
   }
 
-  // Auth Guard: Show loading while checking auth status
-  if (authLoading || !isLoaded) {
+  // Show loading only while language context is loading
+  if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
-            <Shield className="w-8 h-8 text-purple-400" />
+            <Search className="w-8 h-8 text-purple-400" />
           </div>
-          <p className="text-gray-400">{language === 'ar' ? 'جاري التحقق...' : 'Verifying access...'}</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Auth Guard: Redirect if not authenticated (effect handles redirect)
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
-            <Shield className="w-8 h-8 text-purple-400" />
-          </div>
-          <p className="text-gray-400">{language === 'ar' ? 'جاري التوجيه للتسجيل...' : 'Redirecting to login...'}</p>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
         </div>
       </div>
     )

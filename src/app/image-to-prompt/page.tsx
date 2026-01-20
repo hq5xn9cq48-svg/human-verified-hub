@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -29,7 +31,9 @@ interface PromptResult {
 }
 
 export default function ImageToPromptPage() {
+  const router = useRouter()
   const { language, isRTL, isLoaded } = useLanguage()
+  const { user, loading: authLoading } = useAuth()
   const [mounted, setMounted] = useState(false)
   
   // Ensure component is mounted before rendering to prevent hydration mismatch
@@ -76,6 +80,12 @@ export default function ImageToPromptPage() {
 
   const handleGenerate = async () => {
     if (!image) return
+
+    // Auth check on submit - redirect to login if not authenticated
+    if (!user && !authLoading) {
+      router.push('/auth')
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -133,7 +143,7 @@ export default function ImageToPromptPage() {
     }
   }
 
-  // Show loading state until mounted and language is loaded
+  // Show loading only while language context is loading or component not mounted
   if (!mounted || !isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -141,7 +151,7 @@ export default function ImageToPromptPage() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-900/20 flex items-center justify-center animate-pulse">
             <Wand2 className="w-8 h-8 text-purple-400" />
           </div>
-          <p className="text-gray-400">Loading...</p>
+          <p className="text-gray-400">{language === 'ar' ? 'جاري التحميل...' : 'Loading...'}</p>
         </div>
       </div>
     )

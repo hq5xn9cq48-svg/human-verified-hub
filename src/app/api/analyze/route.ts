@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
+import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
 
 // API Key - Use environment variable only (server-side)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
@@ -553,6 +555,33 @@ function normalizeResult(result: any, analysisText: string): any {
   return result;
 }
 
+// Supabase client for auth verification
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Extract user from authorization header
+async function getUserFromRequest(req: Request): Promise<{ userId: string | null; isPro: boolean }> {
+  const authHeader = req.headers.get('authorization');
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ') || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return { userId: null, isPro: false };
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return { userId: null, isPro: false };
+    }
+    
+    return { userId: user.id, isPro: false }; // isPro will be checked in freemium logic
+  } catch {
+    return { userId: null, isPro: false };
+  }
+}
+
 export async function POST(req: Request) {
   logStep('=== NEW ANALYSIS REQUEST ===');
   
@@ -566,6 +595,36 @@ export async function POST(req: Request) {
   logStep('API key validated', { keyLength: GEMINI_API_KEY.length });
 
   try {
+    // Check user authentication and freemium limits
+    const { userId } = await getUserFromRequest(req);
+    
+    let usageStatus: UsageStatus | null = null;
+    if (userId) {
+      usageStatus = await checkAndIncrementUsage(userId);
+      
+      if (!usageStatus.canUse) {
+        logStep('Usage limit reached', { userId, usageStatus });
+        return NextResponse.json({
+          error: 'Daily limit reached. Upgrade to Pro for unlimited analyses.',
+          errorCode: 'USAGE_LIMIT_REACHED',
+          usageStatus: {
+            remaining: usageStatus.remaining,
+            limit: usageStatus.limit,
+            isPro: usageStatus.isPro,
+            message: usageStatus.message
+          }
+        }, { status: 429 });
+      }
+      
+      logStep('Usage check passed', { 
+        userId, 
+        remaining: usageStatus.remaining, 
+        isPro: usageStatus.isPro 
+      });
+    } else {
+      logStep('Guest user - allowing access without tracking');
+    }
+
     const body = await req.json();
     let { text, url, language = 'en', turnstileToken } = body;
     logStep('Request body parsed', { hasText: !!text, hasUrl: !!url, language, hasTurnstile: !!turnstileToken });

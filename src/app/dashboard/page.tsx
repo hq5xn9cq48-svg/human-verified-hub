@@ -13,6 +13,10 @@ export default async function DashboardPage() {
 
   const supabase = createClient()
   
+  if (!supabase) {
+    redirect('/auth')
+  }
+  
   try {
     const { data: { user } } = await supabase.auth.getUser()
 

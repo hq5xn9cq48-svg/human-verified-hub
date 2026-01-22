@@ -21,6 +21,7 @@ import {
   Ban,
   Palette
 } from 'lucide-react'
+import UpgradeModal from '@/components/UpgradeModal'
 
 interface PromptResult {
   prompt: string
@@ -33,7 +34,8 @@ interface PromptResult {
 export default function ImageToPromptPage() {
   const router = useRouter()
   const { language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [mounted, setMounted] = useState(false)
   
   // Ensure component is mounted before rendering to prevent hydration mismatch
@@ -101,8 +103,16 @@ export default function ImageToPromptPage() {
       const data = await response.json()
 
       if (!response.ok || data.error) {
+        // Check for usage limit error
+        if (data.errorCode === 'USAGE_LIMIT_REACHED') {
+          setShowUpgradeModal(true)
+          throw new Error(language === 'ar' ? 'وصلت للحد اليومي. الترقية للحصول على تحليلات غير محدودة.' : 'Daily limit reached. Upgrade for unlimited analyses.')
+        }
         throw new Error(data.error || 'Generation failed')
       }
+      
+      // Refresh usage status after successful analysis
+      refreshUsageStatus()
 
       setResult(data)
     } catch (err: any) {
@@ -479,6 +489,9 @@ export default function ImageToPromptPage() {
           </div>
         </motion.div>
       </main>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Footer */}
       <footer className="border-t border-purple-900/30 mt-16">

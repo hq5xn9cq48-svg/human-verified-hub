@@ -28,6 +28,7 @@ import {
   Shield,
   Zap
 } from 'lucide-react'
+import UpgradeModal from '@/components/UpgradeModal'
 
 interface AnalysisResult {
   aiProbability: number
@@ -57,7 +58,8 @@ interface AnalysisResult {
 export default function ImageDetectorPage() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
   const [loading, setLoading] = useState(false)
@@ -129,8 +131,16 @@ export default function ImageDetectorPage() {
       const data = await response.json()
 
       if (!response.ok || data.error) {
+        // Check for usage limit error
+        if (data.errorCode === 'USAGE_LIMIT_REACHED') {
+          setShowUpgradeModal(true)
+          throw new Error(language === 'ar' ? 'وصلت للحد اليومي. الترقية للحصول على تحليلات غير محدودة.' : 'Daily limit reached. Upgrade for unlimited analyses.')
+        }
         throw new Error(data.error || (language === 'ar' ? 'فشل التحليل' : 'Analysis failed'))
       }
+      
+      // Refresh usage status after successful analysis
+      refreshUsageStatus()
 
       setResult(data)
     } catch (err: any) {
@@ -581,6 +591,9 @@ export default function ImageDetectorPage() {
           </div>
         </motion.div>
       </main>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Footer */}
       <footer className="border-t border-purple-900/30 mt-16">

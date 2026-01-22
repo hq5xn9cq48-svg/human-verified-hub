@@ -1,7 +1,36 @@
 import { NextResponse } from "next/server";
+import { createClient } from '@supabase/supabase-js';
+import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
 
 // Use environment variable with fallback (server-side)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+
+// Supabase client for auth verification
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Extract user from authorization header
+async function getUserFromRequest(req: Request): Promise<{ userId: string | null }> {
+  const authHeader = req.headers.get('authorization');
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ') || !SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return { userId: null };
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return { userId: null };
+    }
+    
+    return { userId: user.id };
+  } catch {
+    return { userId: null };
+  }
+}
 
 // Step-by-step logging utility
 function logStep(step: string, details?: any) {
@@ -122,6 +151,36 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Check user authentication and freemium limits
+    const { userId } = await getUserFromRequest(req);
+    
+    let usageStatus: UsageStatus | null = null;
+    if (userId) {
+      usageStatus = await checkAndIncrementUsage(userId);
+      
+      if (!usageStatus.canUse) {
+        logStep('Usage limit reached', { userId, usageStatus });
+        return NextResponse.json({
+          error: 'Daily limit reached. Upgrade to Pro for unlimited analyses.',
+          errorCode: 'USAGE_LIMIT_REACHED',
+          usageStatus: {
+            remaining: usageStatus.remaining,
+            limit: usageStatus.limit,
+            isPro: usageStatus.isPro,
+            message: usageStatus.message
+          }
+        }, { status: 429 });
+      }
+      
+      logStep('Usage check passed', { 
+        userId, 
+        remaining: usageStatus.remaining, 
+        isPro: usageStatus.isPro 
+      });
+    } else {
+      logStep('Guest user - allowing access without tracking');
+    }
+
     const body = await req.json();
     const { text, intent = 'default', language = 'en' } = body;
     logStep('Request received', { textLength: text?.length, intent, language });

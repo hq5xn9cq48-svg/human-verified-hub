@@ -306,35 +306,43 @@ export async function POST(req: Request) {
   logStep('API key validated', { keyLength: GEMINI_API_KEY.length });
 
   try {
-    // Check user authentication and freemium limits
+    // STRICT GATING: Require authentication for all analysis requests
     const { userId } = await getUserFromRequest(req);
     
-    let usageStatus: UsageStatus | null = null;
-    if (userId) {
-      usageStatus = await checkAndIncrementUsage(userId);
-      
-      if (!usageStatus.canUse) {
-        logStep('Usage limit reached', { userId, usageStatus });
-        return NextResponse.json({
-          error: 'Daily limit reached. Upgrade to Pro for unlimited analyses.',
-          errorCode: 'USAGE_LIMIT_REACHED',
-          usageStatus: {
-            remaining: usageStatus.remaining,
-            limit: usageStatus.limit,
-            isPro: usageStatus.isPro,
-            message: usageStatus.message
-          }
-        }, { status: 429 });
-      }
-      
-      logStep('Usage check passed', { 
-        userId, 
-        remaining: usageStatus.remaining, 
-        isPro: usageStatus.isPro 
-      });
-    } else {
-      logStep('Guest user - allowing access without tracking');
+    // Guest users must sign in to use the analysis API
+    if (!userId) {
+      logStep('Guest user blocked - authentication required');
+      return NextResponse.json({
+        error: 'Please sign in to generate prompts. Create a free account to get 2 daily analyses.',
+        errorCode: 'AUTH_REQUIRED',
+        requireAuth: true
+      }, { status: 401 });
     }
+    
+    // Check freemium limits for authenticated users
+    const usageStatus = await checkAndIncrementUsage(userId);
+    
+    // STRICT ENFORCEMENT: Block if limit reached (return 403 Forbidden)
+    if (!usageStatus.canUse) {
+      logStep('Usage limit reached - BLOCKING REQUEST', { userId, usageStatus });
+      return NextResponse.json({
+        error: "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access.",
+        errorCode: 'USAGE_LIMIT_REACHED',
+        usageStatus: {
+          remaining: usageStatus.remaining,
+          limit: usageStatus.limit,
+          isPro: usageStatus.isPro,
+          message: usageStatus.message
+        },
+        upgradeUrl: '/pricing'
+      }, { status: 403 });
+    }
+    
+    logStep('Usage check passed', { 
+      userId, 
+      remaining: usageStatus.remaining, 
+      isPro: usageStatus.isPro 
+    });
 
     const body = await req.json();
     const { image, language = 'en' } = body;

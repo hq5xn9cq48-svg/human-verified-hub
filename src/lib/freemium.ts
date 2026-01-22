@@ -59,41 +59,117 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
   }
 
   try {
-    // Call the database function
-    const { data, error } = await supabase.rpc('check_and_increment_usage', {
-      p_user_id: userId
-    })
+    // First get current usage status to check limits BEFORE incrementing
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_pro, daily_usage_count, last_usage_date')
+      .eq('id', userId)
+      .single()
 
-    if (error) {
-      console.error('[FREEMIUM] Error checking usage:', error)
-      // On error, be permissive
+    // If user has no profile yet, create one
+    if (profileError && profileError.code === 'PGRST116') {
+      // No profile exists - create one and allow first use
+      await supabase.from('user_profiles').insert({
+        id: userId,
+        is_pro: false,
+        daily_usage_count: 1,
+        last_usage_date: new Date().toISOString().split('T')[0]
+      })
+      
       return {
         canUse: true,
         isPro: false,
-        remaining: -1,
-        usedToday: 0,
-        limit: -1,
-        message: 'Usage check failed, allowing access'
+        remaining: FREE_DAILY_LIMIT - 1,
+        usedToday: 1,
+        limit: FREE_DAILY_LIMIT,
+        message: `${FREE_DAILY_LIMIT - 1} uses remaining today`
       }
     }
 
-    return {
-      canUse: data.canUse ?? true,
-      isPro: data.isPro ?? false,
-      remaining: data.remaining ?? -1,
-      usedToday: data.usedToday ?? 0,
-      limit: data.limit ?? FREE_DAILY_LIMIT,
-      message: data.message ?? ''
+    if (profileError) {
+      console.error('[FREEMIUM] Error fetching profile:', profileError)
+      // STRICT MODE: On error, DENY access to prevent abuse
+      return {
+        canUse: false,
+        isPro: false,
+        remaining: 0,
+        usedToday: 0,
+        limit: FREE_DAILY_LIMIT,
+        message: 'Unable to verify usage status. Please try again.'
+      }
     }
-  } catch (err) {
-    console.error('[FREEMIUM] Exception checking usage:', err)
+
+    // Pro users bypass all limits
+    if (profile?.is_pro) {
+      return {
+        canUse: true,
+        isPro: true,
+        remaining: -1,
+        usedToday: 0,
+        limit: -1,
+        message: 'Unlimited Pro access'
+      }
+    }
+
+    // Check if date has changed (UTC reset)
+    const today = new Date().toISOString().split('T')[0]
+    const lastUsageDate = profile?.last_usage_date?.split('T')[0]
+    let currentCount = profile?.daily_usage_count ?? 0
+
+    // Reset count if new day
+    if (lastUsageDate !== today) {
+      currentCount = 0
+    }
+
+    // STRICT ENFORCEMENT: Block if limit reached
+    if (currentCount >= FREE_DAILY_LIMIT) {
+      return {
+        canUse: false,
+        isPro: false,
+        remaining: 0,
+        usedToday: currentCount,
+        limit: FREE_DAILY_LIMIT,
+        message: "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access."
+      }
+    }
+
+    // Increment usage count
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        daily_usage_count: currentCount + 1,
+        last_usage_date: today
+      })
+      .eq('id', userId)
+
+    if (updateError) {
+      console.error('[FREEMIUM] Error updating usage:', updateError)
+      // STRICT MODE: On update error, still allow this request but log it
+    }
+
+    const newRemaining = FREE_DAILY_LIMIT - (currentCount + 1)
+    
     return {
       canUse: true,
       isPro: false,
-      remaining: -1,
+      remaining: newRemaining,
+      usedToday: currentCount + 1,
+      limit: FREE_DAILY_LIMIT,
+      message: newRemaining > 0 
+        ? `${newRemaining} ${newRemaining === 1 ? 'use' : 'uses'} remaining today`
+        : "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access."
+    }
+
+  } catch (err) {
+    console.error('[FREEMIUM] Exception checking usage:', err)
+    // STRICT MODE: On exception, DENY access
+    return {
+      canUse: false,
+      isPro: false,
+      remaining: 0,
       usedToday: 0,
-      limit: -1,
-      message: 'Exception occurred, allowing access'
+      limit: FREE_DAILY_LIMIT,
+      message: 'Unable to verify usage. Please try again.'
     }
   }
 }

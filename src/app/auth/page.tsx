@@ -364,14 +364,14 @@ export default function AuthPage() {
                   </button>
                 </form>
 
-                {/* Magic Link Option */}
+                {/* Passwordless Sign In Option */}
                 <button
                   type="button"
                   onClick={() => { setAuthMode('magic-link'); setError(null); }}
                   className="w-full py-2 text-purple-400 hover:text-purple-300 text-sm transition-all flex items-center justify-center gap-1"
                 >
                   <Mail className="w-4 h-4" />
-                  {language === 'ar' ? 'تسجيل الدخول برابط سحري' : 'Sign in with Magic Link instead'}
+                  {language === 'ar' ? 'تسجيل الدخول بدون كلمة مرور' : 'Passwordless Sign In'}
                 </button>
 
                 {/* Sign Up Link */}
@@ -542,7 +542,7 @@ export default function AuthPage() {
               </motion.div>
             )}
 
-            {/* Magic Link Mode */}
+            {/* Passwordless Sign In Mode */}
             {authMode === 'magic-link' && (
               <motion.div
                 key="magic-link-step"
@@ -553,10 +553,10 @@ export default function AuthPage() {
               >
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-white">
-                    {language === 'ar' ? 'رابط سحري' : 'Magic Link'}
+                    {language === 'ar' ? 'تسجيل دخول بدون كلمة مرور' : 'Passwordless Sign In'}
                   </h2>
                   <p className="text-gray-400 text-sm mt-2">
-                    {language === 'ar' ? 'سنرسل لك رابطًا للدخول بدون كلمة مرور' : "We'll send you a link to sign in without password"}
+                    {language === 'ar' ? 'سنرسل لك رابطًا للدخول بدون كلمة مرور' : "We'll email you a secure link to sign in instantly"}
                   </p>
                 </div>
 
@@ -604,7 +604,7 @@ export default function AuthPage() {
                     ) : (
                       <>
                         <Mail className="w-4 h-4" />
-                        {language === 'ar' ? 'إرسال الرابط السحري' : 'Send Magic Link'}
+                        {language === 'ar' ? 'إرسال رابط الدخول' : 'Send Email Link'}
                       </>
                     )}
                   </button>

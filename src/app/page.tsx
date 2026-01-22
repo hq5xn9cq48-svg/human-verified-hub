@@ -29,9 +29,12 @@ import {
   Upload,
   Shield,
   Sparkles,
-  FileCheck
+  FileCheck,
+  Crown
 } from 'lucide-react'
 import Script from 'next/script'
+import UpgradeModal from '@/components/UpgradeModal'
+import UsageCounter from '@/components/UsageCounter'
 
 // Turnstile site key
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
@@ -69,7 +72,8 @@ const loadingMessages = [
 export default function HomePage() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, usageStatus, refreshUsageStatus } = useAuth()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
   const [inputMode, setInputMode] = useState<'text' | 'url'>('text')
@@ -182,8 +186,16 @@ export default function HomePage() {
       const data = await response.json()
 
       if (!response.ok || data.error) {
+        // Check for usage limit error
+        if (data.errorCode === 'USAGE_LIMIT_REACHED') {
+          setShowUpgradeModal(true)
+          throw new Error(language === 'ar' ? 'وصلت للحد اليومي. الترقية للحصول على تحليلات غير محدودة.' : 'Daily limit reached. Upgrade for unlimited analyses.')
+        }
         throw new Error(data.error || 'Analysis failed')
       }
+      
+      // Refresh usage status after successful analysis
+      refreshUsageStatus()
 
       setResult(data)
 
@@ -507,15 +519,28 @@ export default function HomePage() {
       <Navbar />
 
       {/* Beta Access Banner - Thin & Glassy */}
-      <div className="fixed top-16 left-0 right-0 z-40 h-8 bg-purple-900/40 backdrop-blur-md border-b border-purple-500/20">
-        <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-center gap-2">
-          <Sparkles className="w-3 h-3 text-yellow-300/80" />
-          <span className="text-white/90 text-xs font-medium">
-            {language === 'ar' 
-              ? 'بيتا: جميع الميزات المميزة مجانية!' 
-              : 'BETA: All Premium Features FREE for limited time'}
-          </span>
-          <Sparkles className="w-3 h-3 text-yellow-300/80" />
+      <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-purple-900/40 backdrop-blur-md border-b border-purple-500/20">
+        <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {usageStatus?.isPro ? (
+              <>
+                <Crown className="w-3 h-3 text-yellow-400" />
+                <span className="text-yellow-400 text-xs font-medium">
+                  {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
+                </span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3 h-3 text-yellow-300/80" />
+                <span className="text-white/90 text-xs font-medium">
+                  {language === 'ar' 
+                    ? 'بيتا: جميع الميزات المميزة مجانية!' 
+                    : 'BETA: All Premium Features FREE for limited time'}
+                </span>
+              </>
+            )}
+          </div>
+          <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
         </div>
       </div>
 
@@ -960,6 +985,9 @@ export default function HomePage() {
         </motion.div>
 
       </main>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Footer */}
       <footer className="bg-black border-t border-purple-900/30 mt-16">

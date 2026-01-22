@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useAuth } from '@/contexts/AuthContext'
+import UpgradeModal from '@/components/UpgradeModal'
 import { 
   Wand2, 
   Clipboard, 
@@ -54,7 +57,10 @@ const loadingMessagesAr = [
 ]
 
 export default function HumanizerPage() {
-  const { t, language, isRTL } = useLanguage()
+  const router = useRouter()
+  const { t, language, isRTL, isLoaded } = useLanguage()
+  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')
   const [intent, setIntent] = useState('default')
@@ -82,6 +88,13 @@ export default function HumanizerPage() {
 
   const handleHumanize = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Auth check on submit - redirect to login if not authenticated
+    if (!user && !authLoading) {
+      router.push('/auth')
+      return
+    }
+    
     if (!inputText.trim() || inputText.length < 20) {
       setError(language === 'ar' ? 'أدخل 20 حرفاً على الأقل' : 'Please enter at least 20 characters')
       return
@@ -108,8 +121,16 @@ export default function HumanizerPage() {
       const data = await response.json()
 
       if (!response.ok || data.error) {
+        // Check for usage limit error
+        if (data.errorCode === 'USAGE_LIMIT_REACHED') {
+          setShowUpgradeModal(true)
+          throw new Error(language === 'ar' ? 'وصلت للحد اليومي. الترقية للحصول على تحليلات غير محدودة.' : 'Daily limit reached. Upgrade for unlimited analyses.')
+        }
         throw new Error(data.error || 'Humanization failed')
       }
+      
+      // Refresh usage status after successful analysis
+      refreshUsageStatus()
 
       setOutputText(data.humanizedText || '')
     } catch (err: any) {
@@ -412,6 +433,9 @@ export default function HumanizerPage() {
           </div>
         </motion.div>
       </main>
+
+      {/* Upgrade Modal */}
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       {/* Footer */}
       <footer className="border-t border-purple-900/30 mt-16">

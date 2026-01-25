@@ -76,12 +76,13 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             className="relative w-full max-w-lg rounded-2xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Glassmorphism container */}
-            <div className="relative bg-gradient-to-b from-gray-900/95 to-black/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-[0_0_80px_-15px_rgba(168,85,247,0.4)]">
-              {/* Background effects */}
+            {/* Glassmorphism container - Premium styling */}
+            <div className="relative bg-gradient-to-b from-gray-900/98 to-black/98 backdrop-blur-2xl border border-purple-500/40 rounded-2xl shadow-[0_0_100px_-15px_rgba(168,85,247,0.5),inset_0_1px_0_0_rgba(255,255,255,0.05)]">
+              {/* Background effects - Enhanced */}
               <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] bg-purple-600/20 rounded-full blur-[100px]" />
-                <div className="absolute bottom-0 right-0 w-[200px] h-[200px] bg-pink-600/10 rounded-full blur-[80px]" />
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-purple-600/25 rounded-full blur-[120px]" />
+                <div className="absolute -bottom-20 right-0 w-[300px] h-[300px] bg-fuchsia-600/15 rounded-full blur-[100px]" />
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-purple-400/50 to-transparent" />
               </div>
 
               {/* Close button */}
@@ -120,7 +121,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                   )}
                 </div>
 
-                {/* Features grid */}
+                {/* Features grid - Enhanced styling */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {features.map((feature, index) => (
                     <motion.div
@@ -128,11 +129,12 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 * index }}
-                      className="p-4 bg-white/5 rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-colors"
+                      className="relative p-4 rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-all bg-gradient-to-br from-purple-900/20 to-transparent backdrop-blur-sm group hover:shadow-[0_0_20px_rgba(168,85,247,0.15)]"
                     >
-                      <feature.icon className="w-6 h-6 text-purple-400 mb-2" />
-                      <h4 className="text-white font-semibold text-sm mb-1">{feature.title}</h4>
-                      <p className="text-gray-400 text-xs">{feature.description}</p>
+                      <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <feature.icon className="relative w-6 h-6 text-purple-400 mb-2" />
+                      <h4 className="relative text-white font-semibold text-sm mb-1">{feature.title}</h4>
+                      <p className="relative text-gray-400 text-xs">{feature.description}</p>
                     </motion.div>
                   ))}
                 </div>

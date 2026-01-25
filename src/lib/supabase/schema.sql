@@ -1,6 +1,7 @@
 -- ============================================================================
 -- HUMAN-VERIFIED HUB - DATABASE SCHEMA
 -- Freemium Model with Lemon Squeezy Integration
+-- 24-Hour Rolling Window for Usage Limits
 -- ============================================================================
 
 -- Enable UUID extension if not already enabled
@@ -20,15 +21,24 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   subscription_id TEXT,           -- Lemon Squeezy subscription ID
   customer_id TEXT,               -- Lemon Squeezy customer ID
   subscription_status TEXT,       -- active, cancelled, expired, past_due
+  subscription_variant TEXT,      -- 'monthly' or 'yearly'
   
-  -- Usage tracking for freemium limits
+  -- Usage tracking for freemium limits (24-hour rolling window)
   daily_usage_count INTEGER DEFAULT 0,
-  last_usage_date DATE,           -- For daily reset logic
+  last_usage_timestamp TIMESTAMP WITH TIME ZONE,  -- For 24-hour rolling window
   
   -- Timestamps
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Migration: Add last_usage_timestamp if not exists (for existing databases)
+ALTER TABLE public.user_profiles 
+ADD COLUMN IF NOT EXISTS last_usage_timestamp TIMESTAMP WITH TIME ZONE;
+
+-- Migration: Add subscription_variant if not exists
+ALTER TABLE public.user_profiles 
+ADD COLUMN IF NOT EXISTS subscription_variant TEXT;
 
 -- ============================================================================
 -- VERIFICATIONS TABLE (Analysis History)
@@ -75,26 +85,38 @@ ALTER TABLE public.verifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 
 -- User profiles policies
+DROP POLICY IF EXISTS "Users can view own profile" ON public.user_profiles;
 CREATE POLICY "Users can view own profile" ON public.user_profiles
   FOR SELECT USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.user_profiles;
 CREATE POLICY "Users can update own profile" ON public.user_profiles
   FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.user_profiles;
 CREATE POLICY "Users can insert own profile" ON public.user_profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
+-- Service role can update any profile (for webhooks)
+DROP POLICY IF EXISTS "Service role can manage profiles" ON public.user_profiles;
+CREATE POLICY "Service role can manage profiles" ON public.user_profiles
+  FOR ALL USING (auth.role() = 'service_role');
+
 -- Verifications policies
+DROP POLICY IF EXISTS "Users can view own verifications" ON public.verifications;
 CREATE POLICY "Users can view own verifications" ON public.verifications
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own verifications" ON public.verifications;
 CREATE POLICY "Users can insert own verifications" ON public.verifications
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Certificates policies
+DROP POLICY IF EXISTS "Anyone can view certificates" ON public.certificates;
 CREATE POLICY "Anyone can view certificates" ON public.certificates
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can insert own certificates" ON public.certificates;
 CREATE POLICY "Users can insert own certificates" ON public.certificates
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
@@ -143,24 +165,36 @@ CREATE TRIGGER update_user_profiles_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- ============================================================================
--- FUNCTION: Check and update daily usage (for freemium limits)
+-- FUNCTION: Check and update usage with 24-hour rolling window
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.check_and_increment_usage(p_user_id UUID)
 RETURNS JSON AS $$
 DECLARE
   v_profile public.user_profiles%ROWTYPE;
-  v_today DATE := CURRENT_DATE;
+  v_now TIMESTAMP WITH TIME ZONE := NOW();
   v_can_use BOOLEAN := FALSE;
   v_remaining INTEGER := 0;
+  v_reset_time TIMESTAMP WITH TIME ZONE;
+  v_hours_since_last_use NUMERIC;
 BEGIN
   -- Get user profile
   SELECT * INTO v_profile FROM public.user_profiles WHERE id = p_user_id;
   
   -- If no profile, create one
   IF NOT FOUND THEN
-    INSERT INTO public.user_profiles (id, daily_usage_count, last_usage_date)
-    VALUES (p_user_id, 0, NULL)
+    INSERT INTO public.user_profiles (id, daily_usage_count, last_usage_timestamp)
+    VALUES (p_user_id, 1, v_now)
     RETURNING * INTO v_profile;
+    
+    RETURN json_build_object(
+      'canUse', TRUE,
+      'isPro', FALSE,
+      'remaining', 1,
+      'usedToday', 1,
+      'limit', 2,
+      'message', '1 use remaining',
+      'resetTime', (v_now + INTERVAL '24 hours')::TEXT
+    );
   END IF;
   
   -- Pro users have unlimited access
@@ -169,30 +203,40 @@ BEGIN
       'canUse', TRUE,
       'isPro', TRUE,
       'remaining', -1,
+      'usedToday', 0,
+      'limit', -1,
       'message', 'Unlimited Pro access'
     );
   END IF;
   
-  -- Reset counter if new day
-  IF v_profile.last_usage_date IS NULL OR v_profile.last_usage_date < v_today THEN
-    UPDATE public.user_profiles 
-    SET daily_usage_count = 0, last_usage_date = v_today
-    WHERE id = p_user_id;
+  -- Calculate hours since last use
+  IF v_profile.last_usage_timestamp IS NULL THEN
+    v_hours_since_last_use := 999; -- Never used
+  ELSE
+    v_hours_since_last_use := EXTRACT(EPOCH FROM (v_now - v_profile.last_usage_timestamp)) / 3600;
+  END IF;
+  
+  -- Reset counter if 24 hours have passed since last use
+  IF v_hours_since_last_use >= 24 THEN
     v_profile.daily_usage_count := 0;
   END IF;
   
-  -- Check if under limit (2 per day)
+  -- Check if under limit (2 per 24 hours)
   IF v_profile.daily_usage_count < 2 THEN
-    -- Increment counter
+    -- Increment counter and update timestamp
     UPDATE public.user_profiles 
-    SET daily_usage_count = daily_usage_count + 1, last_usage_date = v_today
+    SET 
+      daily_usage_count = v_profile.daily_usage_count + 1,
+      last_usage_timestamp = v_now
     WHERE id = p_user_id;
     
     v_remaining := 2 - v_profile.daily_usage_count - 1;
     v_can_use := TRUE;
+    v_reset_time := v_now + INTERVAL '24 hours';
   ELSE
     v_remaining := 0;
     v_can_use := FALSE;
+    v_reset_time := v_profile.last_usage_timestamp + INTERVAL '24 hours';
   END IF;
   
   RETURN json_build_object(
@@ -201,7 +245,11 @@ BEGIN
     'remaining', v_remaining,
     'usedToday', v_profile.daily_usage_count + (CASE WHEN v_can_use THEN 1 ELSE 0 END),
     'limit', 2,
-    'message', CASE WHEN v_can_use THEN 'Usage allowed' ELSE 'Daily limit reached. Upgrade to Pro for unlimited access.' END
+    'message', CASE 
+      WHEN v_can_use THEN v_remaining::TEXT || ' use(s) remaining'
+      ELSE 'Daily limit reached. Upgrade to Pro for unlimited access.'
+    END,
+    'resetTime', v_reset_time::TEXT
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -213,8 +261,11 @@ CREATE OR REPLACE FUNCTION public.get_usage_status(p_user_id UUID)
 RETURNS JSON AS $$
 DECLARE
   v_profile public.user_profiles%ROWTYPE;
-  v_today DATE := CURRENT_DATE;
-  v_remaining INTEGER := 0;
+  v_now TIMESTAMP WITH TIME ZONE := NOW();
+  v_remaining INTEGER := 2;
+  v_used INTEGER := 0;
+  v_hours_since_last_use NUMERIC;
+  v_reset_time TIMESTAMP WITH TIME ZONE;
 BEGIN
   SELECT * INTO v_profile FROM public.user_profiles WHERE id = p_user_id;
   
@@ -236,18 +287,23 @@ BEGIN
     );
   END IF;
   
-  -- Reset if new day
-  IF v_profile.last_usage_date IS NULL OR v_profile.last_usage_date < v_today THEN
-    v_remaining := 2;
-  ELSE
-    v_remaining := GREATEST(0, 2 - v_profile.daily_usage_count);
+  -- Calculate hours since last use
+  IF v_profile.last_usage_timestamp IS NOT NULL THEN
+    v_hours_since_last_use := EXTRACT(EPOCH FROM (v_now - v_profile.last_usage_timestamp)) / 3600;
+    
+    IF v_hours_since_last_use < 24 THEN
+      v_used := v_profile.daily_usage_count;
+      v_remaining := GREATEST(0, 2 - v_used);
+      v_reset_time := v_profile.last_usage_timestamp + INTERVAL '24 hours';
+    END IF;
   END IF;
   
   RETURN json_build_object(
     'isPro', FALSE,
     'remaining', v_remaining,
-    'usedToday', CASE WHEN v_profile.last_usage_date = v_today THEN v_profile.daily_usage_count ELSE 0 END,
-    'limit', 2
+    'usedToday', v_used,
+    'limit', 2,
+    'resetTime', v_reset_time::TEXT
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

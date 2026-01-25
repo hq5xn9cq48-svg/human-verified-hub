@@ -1,13 +1,58 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
+import { isUserPro } from '@/lib/freemium';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+// Extract user from authorization header
+async function getUserFromRequest(req: Request): Promise<string | null> {
+  const authHeader = req.headers.get('authorization');
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ') || !supabaseUrl || !supabaseKey) {
+    return null;
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return null;
+    }
+    
+    return user.id;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
+    // STRICT GATING: Certificate generation is Pro-only feature
+    const userId = await getUserFromRequest(req);
+    
+    if (!userId) {
+      return NextResponse.json({
+        error: 'Please sign in to generate certificates.',
+        errorCode: 'AUTH_REQUIRED'
+      }, { status: 401 });
+    }
+    
+    // Check if user is Pro
+    const isPro = await isUserPro(userId);
+    
+    if (!isPro) {
+      return NextResponse.json({
+        error: 'PDF Certificate Generation is a Pro feature. Upgrade to Pro to unlock this feature.',
+        errorCode: 'PRO_REQUIRED',
+        upgradeUrl: '/pricing'
+      }, { status: 403 });
+    }
+    
     const body = await req.json();
-    const { verificationId, humanScore, content, userId } = body;
+    const { verificationId, humanScore, content } = body;
     
     // Support both 'humanScore' and 'score' for backwards compatibility
     const score = humanScore ?? body.score;

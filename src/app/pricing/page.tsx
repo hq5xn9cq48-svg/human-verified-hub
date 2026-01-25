@@ -12,9 +12,11 @@ import {
   Infinity
 } from 'lucide-react'
 
-// Lemon Squeezy checkout URL - use environment variable or direct link
-const LEMONSQUEEZY_CHECKOUT_URL = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
+// Lemon Squeezy checkout URLs from environment variables
+const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
   'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID'
+const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 
+  'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID_YEARLY'
 
 interface PlanFeature {
   name: { en: string; ar: string }
@@ -32,18 +34,18 @@ const features: PlanFeature[] = [
   },
   {
     name: { en: 'AI Image Detection', ar: 'كشف الصور بالذكاء الاصطناعي' },
-    free: true,
+    free: false,
     pro: true,
     icon: <Image className="w-4 h-4" />
   },
   {
     name: { en: 'Image to Prompt', ar: 'تحويل الصورة إلى نص' },
-    free: true,
+    free: false,
     pro: true,
     icon: <Wand2 className="w-4 h-4" />
   },
   {
-    name: { en: 'Daily Analyses', ar: 'التحليلات اليومية' },
+    name: { en: 'Daily Text Analyses', ar: 'التحليلات النصية اليومية' },
     free: '2 / day',
     pro: 'Unlimited',
     icon: <Zap className="w-4 h-4" />
@@ -92,6 +94,12 @@ export default function PricingPage() {
 
   const isPro = usageStatus?.isPro ?? false
 
+  // Pricing details
+  const monthlyPrice = 9.99
+  const yearlyPrice = 69.99
+  const yearlySavings = Math.round(((monthlyPrice * 12) - yearlyPrice) / (monthlyPrice * 12) * 100)
+  const yearlyPerMonth = (yearlyPrice / 12).toFixed(2)
+
   // Handle checkout
   const handleUpgrade = () => {
     if (!user) {
@@ -100,13 +108,18 @@ export default function PricingPage() {
       return
     }
     
-    // Redirect to Lemon Squeezy checkout
-    // Add user email as prefill parameter
-    const checkoutUrl = new URL(LEMONSQUEEZY_CHECKOUT_URL)
+    // Select the correct checkout URL based on billing cycle
+    const checkoutBaseUrl = billingCycle === 'yearly' 
+      ? LEMONSQUEEZY_CHECKOUT_URL_YEARLY 
+      : LEMONSQUEEZY_CHECKOUT_URL_MONTHLY
+    
+    // Redirect to Lemon Squeezy checkout with user info
+    const checkoutUrl = new URL(checkoutBaseUrl)
     if (user.email) {
       checkoutUrl.searchParams.set('checkout[email]', user.email)
     }
     checkoutUrl.searchParams.set('checkout[custom][user_id]', user.id)
+    checkoutUrl.searchParams.set('checkout[custom][billing_cycle]', billingCycle)
     
     window.location.href = checkoutUrl.toString()
   }
@@ -153,29 +166,31 @@ export default function PricingPage() {
             transition={{ delay: 0.2 }}
             className="flex items-center justify-center gap-4 mb-12"
           >
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                billingCycle === 'monthly'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {language === 'ar' ? 'شهري' : 'Monthly'}
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-                billingCycle === 'yearly'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {language === 'ar' ? 'سنوي' : 'Yearly'}
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                {language === 'ar' ? 'وفر 20%' : 'Save 20%'}
-              </span>
-            </button>
+            <div className="relative flex items-center p-1 bg-gray-900 rounded-xl border border-purple-900/30">
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`relative px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  billingCycle === 'monthly'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {language === 'ar' ? 'شهري' : 'Monthly'}
+              </button>
+              <button
+                onClick={() => setBillingCycle('yearly')}
+                className={`relative px-6 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  billingCycle === 'yearly'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {language === 'ar' ? 'سنوي' : 'Yearly'}
+                <span className="absolute -top-2 -right-2 text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-0.5 rounded-full font-bold shadow-lg">
+                  -{yearlySavings}%
+                </span>
+              </button>
+            </div>
           </motion.div>
 
           {/* Pricing Cards */}
@@ -217,9 +232,9 @@ export default function PricingPage() {
                 {features.map((feature, idx) => (
                   <li key={idx} className="flex items-center gap-3">
                     {feature.free ? (
-                      <Check className="w-5 h-5 text-green-400" />
+                      <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
                     ) : (
-                      <X className="w-5 h-5 text-gray-600" />
+                      <X className="w-5 h-5 text-gray-600 flex-shrink-0" />
                     )}
                     <span className={feature.free ? 'text-gray-300' : 'text-gray-500'}>
                       {language === 'ar' ? feature.name.ar : feature.name.en}
@@ -279,29 +294,42 @@ export default function PricingPage() {
               </div>
 
               <div className="mb-6">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-white">
-                    ${billingCycle === 'monthly' ? '9' : '7'}
-                  </span>
-                  <span className="text-gray-400">
-                    /{language === 'ar' ? 'شهر' : 'month'}
-                  </span>
-                </div>
-                {billingCycle === 'yearly' && (
-                  <p className="text-sm text-green-400 mt-1">
-                    {language === 'ar' ? 'يُدفع $84 سنويًا' : 'Billed $84 yearly'}
-                  </p>
+                {billingCycle === 'monthly' ? (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-white">${monthlyPrice}</span>
+                      <span className="text-gray-400">/{language === 'ar' ? 'شهر' : 'month'}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {language === 'ar' ? 'يُدفع شهريًا' : 'Billed monthly'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-white">${yearlyPerMonth}</span>
+                      <span className="text-gray-400">/{language === 'ar' ? 'شهر' : 'month'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-sm text-green-400">
+                        {language === 'ar' ? `يُدفع $${yearlyPrice} سنويًا` : `Billed $${yearlyPrice} yearly`}
+                      </p>
+                      <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                        {language === 'ar' ? `وفر ${yearlySavings}%` : `Save ${yearlySavings}%`}
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
 
               <ul className="space-y-3 mb-8">
                 {features.map((feature, idx) => (
                   <li key={idx} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-purple-400" />
+                    <Check className="w-5 h-5 text-purple-400 flex-shrink-0" />
                     <span className="text-gray-300">
                       {language === 'ar' ? feature.name.ar : feature.name.en}
                       {typeof feature.pro === 'string' && feature.pro !== 'true' && (
-                        <span className="ml-2 text-xs text-purple-400 flex items-center gap-1">
+                        <span className="ml-2 text-xs text-purple-400 inline-flex items-center gap-1">
                           ({feature.pro === 'Unlimited' ? (
                             <><Infinity className="w-3 h-3" /> {feature.pro}</>
                           ) : feature.pro})
@@ -320,9 +348,13 @@ export default function PricingPage() {
               ) : (
                 <button
                   onClick={handleUpgrade}
-                  className="w-full py-3 px-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2 group"
+                  className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2 group shadow-lg shadow-purple-500/25"
                 >
-                  {language === 'ar' ? 'ترقية للبرو' : 'Upgrade to Pro'}
+                  {billingCycle === 'yearly' ? (
+                    language === 'ar' ? `ترقية للبرو - $${yearlyPrice}/سنة` : `Upgrade to Pro - $${yearlyPrice}/year`
+                  ) : (
+                    language === 'ar' ? `ترقية للبرو - $${monthlyPrice}/شهر` : `Upgrade to Pro - $${monthlyPrice}/mo`
+                  )}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
               )}
@@ -347,8 +379,8 @@ export default function PricingPage() {
                 </h3>
                 <p className="text-gray-400 text-sm">
                   {language === 'ar' 
-                    ? 'يُعاد تعيين الحد اليومي كل يوم عند الساعة 00:00 بتوقيت UTC.'
-                    : 'The daily limit resets every day at 00:00 UTC (midnight).'}
+                    ? 'يُعاد تعيين الحد اليومي بعد 24 ساعة من آخر استخدام.'
+                    : 'The daily limit resets 24 hours after your last use (rolling window).'}
                 </p>
               </div>
               

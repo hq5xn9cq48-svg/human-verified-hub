@@ -230,7 +230,7 @@ export default function UsageCounter({
                 {language === 'ar' ? 'الاستخدام اليومي' : 'Daily Usage'}
               </span>
               <p className="text-xs text-gray-500">
-                {language === 'ar' ? 'يتجدد عند منتصف الليل UTC' : 'Resets at midnight UTC'}
+                {language === 'ar' ? 'يتجدد بعد 24 ساعة من آخر استخدام' : 'Resets 24h after last use'}
               </p>
             </div>
           </div>

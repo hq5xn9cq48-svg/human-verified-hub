@@ -80,18 +80,20 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <Image 
-              src="/logo-new.png" 
-              alt="Human-Verified Hub Logo" 
-              width={48} 
-              height={48} 
-              className="h-12 w-auto object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:drop-shadow-[0_0_16px_rgba(168,85,247,0.8)] transition-all"
-              priority
-            />
+          {/* Logo - Clean circle with proper sizing */}
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="h-11 w-11 rounded-full bg-black flex items-center justify-center overflow-hidden border border-gray-800/80 group-hover:border-purple-500/50 transition-all flex-shrink-0">
+              <Image 
+                src="/logo-new.png" 
+                alt="Human-Verified Hub Logo" 
+                width={36} 
+                height={36} 
+                className="h-9 w-9 object-contain"
+                priority
+              />
+            </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-gradient">Human-Verified Hub</h1>
+              <h1 className="text-lg font-bold text-gradient leading-tight">Human-Verified Hub</h1>
               <p className="text-[10px] text-gray-500">{t.header.subtitle}</p>
             </div>
           </Link>
@@ -240,9 +242,9 @@ export default function Navbar() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="md:hidden mt-4 pt-4 border-t border-purple-900/30 overflow-hidden"
+              className="md:hidden mt-4 pt-4 border-t border-purple-900/30 overflow-visible"
             >
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 max-h-[calc(100vh-120px)] overflow-y-auto pb-4">
                 {/* Main Navigation Items */}
                 {navItems.map((item) => {
                   const Icon = item.icon

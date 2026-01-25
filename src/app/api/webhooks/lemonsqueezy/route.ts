@@ -8,7 +8,11 @@ import { updateUserToPro, downgradeUserFromPro } from '@/lib/freemium'
 
 const LEMONSQUEEZY_WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET || ''
 const LEMONSQUEEZY_STORE_ID = process.env.LEMONSQUEEZY_STORE_ID || '271076'
-const LEMONSQUEEZY_VARIANT_ID = process.env.LEMONSQUEEZY_VARIANT_ID || '1207172'
+const LEMONSQUEEZY_VARIANT_ID_MONTHLY = process.env.LEMONSQUEEZY_VARIANT_ID || '1207172'
+const LEMONSQUEEZY_VARIANT_ID_YEARLY = process.env.LEMONSQUEEZY_VARIANT_ID_YEARLY || '1207173'
+
+// Valid variant IDs for Pro subscription
+const VALID_VARIANT_IDS = [LEMONSQUEEZY_VARIANT_ID_MONTHLY, LEMONSQUEEZY_VARIANT_ID_YEARLY]
 
 // ============================================================================
 // LOGGING UTILITIES
@@ -103,13 +107,27 @@ export async function POST(request: NextRequest) {
         const customerId = data?.attributes?.customer_id?.toString()
         const userEmail = data?.attributes?.user_email
         const status = data?.attributes?.status
+        const variantId = data?.attributes?.variant_id?.toString()
 
         logWebhook('Processing subscription activation', {
           subscriptionId,
           customerId,
           userEmail,
-          status
+          status,
+          variantId
         })
+
+        // Validate variant ID is one of our Pro variants (monthly or yearly)
+        if (variantId && !VALID_VARIANT_IDS.includes(variantId)) {
+          logError('Invalid variant ID - not a Pro subscription', { variantId, validIds: VALID_VARIANT_IDS })
+          return NextResponse.json(
+            { error: 'Invalid variant ID' },
+            { status: 400 }
+          )
+        }
+
+        // Determine billing cycle from variant ID
+        const billingCycle = variantId === LEMONSQUEEZY_VARIANT_ID_YEARLY ? 'yearly' : 'monthly'
 
         // Only activate for active/trialing subscriptions
         if (status === 'active' || status === 'trialing' || status === 'on_trial') {
@@ -117,13 +135,14 @@ export async function POST(request: NextRequest) {
             null, // userId - we'll find by email
             userEmail,
             subscriptionId,
-            customerId
+            customerId,
+            variantId // Pass variant ID for tracking
           )
 
           if (success) {
-            logWebhook('User upgraded to Pro successfully', { userEmail })
+            logWebhook('User upgraded to Pro successfully', { userEmail, billingCycle, variantId })
           } else {
-            logError('Failed to upgrade user', { userEmail, subscriptionId })
+            logError('Failed to upgrade user', { userEmail, subscriptionId, variantId })
           }
         }
         break

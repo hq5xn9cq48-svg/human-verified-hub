@@ -172,9 +172,22 @@ export default function HomePage() {
     setVerificationId(null)
 
     try {
+      // Get the user's access token for authenticated requests
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = { 
+        'Content-Type': 'application/json'
+      }
+      
+      // Add authorization header if user is logged in
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           text: inputMode === 'text' ? text : undefined, 
           url: inputMode === 'url' ? url : undefined,
@@ -226,6 +239,12 @@ export default function HomePage() {
 
   const generateCertificate = async () => {
     if (!result || result.humanScore < 90) return
+    
+    // SECURITY: Check if user is Pro before allowing certificate generation
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
     
     setCertificateLoading(true)
     
@@ -381,9 +400,15 @@ export default function HomePage() {
     }
   }
 
-  // Download Report PDF for any score
+  // Download Report PDF - Pro feature only
   const downloadReport = async () => {
     if (!result) return
+    
+    // SECURITY: Check if user is Pro before allowing PDF download
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
     
     setCertificateLoading(true)
     
@@ -518,29 +543,31 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Beta Access Banner - Thin & Glassy */}
-      <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-purple-900/40 backdrop-blur-md border-b border-purple-500/20">
-        <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+      {/* Status Banner - Professional styling with proper padding */}
+      <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-purple-900/50 via-purple-900/60 to-purple-900/50 backdrop-blur-md border-b border-purple-500/20">
+        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0">
             {usageStatus?.isPro ? (
               <>
-                <Crown className="w-3 h-3 text-yellow-400" />
-                <span className="text-yellow-400 text-xs font-medium">
+                <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                <span className="text-yellow-400 text-sm font-medium truncate">
                   {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
                 </span>
               </>
             ) : (
               <>
-                <Sparkles className="w-3 h-3 text-yellow-300/80" />
-                <span className="text-white/90 text-xs font-medium">
+                <Zap className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                <span className="text-gray-200 text-sm font-medium truncate">
                   {language === 'ar' 
-                    ? 'بيتا: جميع الميزات المميزة مجانية!' 
-                    : 'BETA: All Premium Features FREE for limited time'}
+                    ? 'تحليل النصوص (2/يوم)' 
+                    : 'Text Analysis Only (2/day)'}
                 </span>
               </>
             )}
           </div>
-          <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
+          <div className="flex-shrink-0">
+            <UsageCounter variant="badge" showUpgrade={!usageStatus?.isPro} />
+          </div>
         </div>
       </div>
 
@@ -773,40 +800,80 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Download Report Button (Always available) */}
+              {/* Download Report Button - Pro Feature */}
               <div className="flex gap-3">
                 <button
                   onClick={downloadReport}
                   disabled={certificateLoading}
-                  className="flex-1 py-3 px-4 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                    usageStatus?.isPro 
+                      ? 'bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300' 
+                      : 'bg-gradient-to-r from-purple-600/20 to-fuchsia-600/20 border border-purple-500/40 text-purple-300 hover:border-purple-400/60'
+                  }`}
                 >
-                  {certificateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  {language === 'ar' ? 'تحميل التقرير' : 'Download Report'}
+                  {certificateLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : usageStatus?.isPro ? (
+                    <Download className="w-4 h-4" />
+                  ) : (
+                    <Crown className="w-4 h-4 text-fuchsia-400" />
+                  )}
+                  {usageStatus?.isPro 
+                    ? (language === 'ar' ? 'تحميل التقرير' : 'Download Report')
+                    : (language === 'ar' ? 'تقرير PDF (Pro)' : 'PDF Report (Pro)')}
                 </button>
               </div>
 
-              {/* Certificate Button (Score >= 90) */}
+              {/* Certificate Button (Score >= 90) - Pro Feature */}
               {result.humanScore >= 90 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="p-4 rounded-xl bg-green-900/20 border border-green-500/30"
+                  className={`p-4 rounded-xl ${
+                    usageStatus?.isPro 
+                      ? 'bg-green-900/20 border border-green-500/30' 
+                      : 'bg-gradient-to-r from-purple-900/20 to-fuchsia-900/20 border border-purple-500/30'
+                  }`}
                 >
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
-                      <Award className="w-6 h-6 text-green-400" />
+                      {usageStatus?.isPro ? (
+                        <Award className="w-6 h-6 text-green-400" />
+                      ) : (
+                        <Crown className="w-6 h-6 text-fuchsia-400" />
+                      )}
                       <div>
-                        <h4 className="text-green-400 font-bold">{language === 'ar' ? 'شهادة متاحة!' : 'Certificate Available!'}</h4>
-                        <p className="text-gray-400 text-sm">{language === 'ar' ? 'محتواك مؤهل للحصول على شهادة PDF رسمية' : 'Your content qualifies for an official PDF certificate'}</p>
+                        <h4 className={usageStatus?.isPro ? 'text-green-400 font-bold' : 'text-fuchsia-400 font-bold'}>
+                          {usageStatus?.isPro 
+                            ? (language === 'ar' ? 'شهادة متاحة!' : 'Certificate Available!') 
+                            : (language === 'ar' ? 'ميزة Pro - شهادة متاحة!' : 'Pro Feature - Certificate Available!')}
+                        </h4>
+                        <p className="text-gray-400 text-sm">
+                          {usageStatus?.isPro 
+                            ? (language === 'ar' ? 'محتواك مؤهل للحصول على شهادة PDF رسمية' : 'Your content qualifies for an official PDF certificate')
+                            : (language === 'ar' ? 'ترقية للحصول على شهادات PDF رسمية' : 'Upgrade to get official PDF certificates')}
+                        </p>
                       </div>
                     </div>
                     <button
                       onClick={generateCertificate}
                       disabled={certificateLoading}
-                      className="px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                      className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+                        usageStatus?.isPro 
+                          ? 'bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300'
+                          : 'bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 border border-purple-500/50 text-purple-300 hover:border-purple-400/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                      }`}
                     >
-                      {certificateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
-                      {language === 'ar' ? 'تحميل الشهادة' : 'Download Certificate'}
+                      {certificateLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : usageStatus?.isPro ? (
+                        <FileCheck className="w-4 h-4" />
+                      ) : (
+                        <Crown className="w-4 h-4 text-fuchsia-400" />
+                      )}
+                      {usageStatus?.isPro 
+                        ? (language === 'ar' ? 'تحميل الشهادة' : 'Download Certificate')
+                        : (language === 'ar' ? 'ترقية للحصول على الشهادة' : 'Upgrade for Certificate')}
                     </button>
                   </div>
                 </motion.div>

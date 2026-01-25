@@ -308,11 +308,11 @@ export default function AccountPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {t.subscription.features.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-2 text-gray-300 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    {feature}
+                  <div key={i} className="flex items-start gap-2 text-gray-300 text-sm p-2 rounded-lg bg-white/5">
+                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                    <span className="break-words">{feature}</span>
                   </div>
                 ))}
               </div>

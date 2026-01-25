@@ -81,15 +81,15 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
-          {/* Logo - Clean transparent logo, properly sized and centered */}
+          {/* Logo - Clean transparent logo, properly sized without background */}
           <Link href="/" className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
-            <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105">
+            <div className="relative w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center overflow-visible transition-transform group-hover:scale-105">
               <Image 
                 src="/logo.png" 
                 alt="Human-Verified Hub Logo" 
-                width={48} 
-                height={48} 
-                className="w-full h-full object-contain"
+                width={56} 
+                height={56} 
+                className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]"
                 priority
               />
             </div>
@@ -123,25 +123,24 @@ export default function Navbar() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Free Uses Remaining Counter - Compact on mobile */}
+            {/* Free Uses Remaining Counter - Very compact on mobile */}
             {user && usageStatus && !usageStatus.isPro && (
-              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-purple-900/30 border border-purple-500/30">
-                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
-                <span className={`text-xs sm:text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
+              <div className="flex items-center gap-1 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-purple-900/30 border border-purple-500/30">
+                <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-purple-400" />
+                <span className={`text-[10px] sm:text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
                   {usageStatus.remaining}/{usageStatus.limit}
                 </span>
-                <span className="text-[10px] sm:text-xs text-gray-400 hidden sm:inline">{language === 'ar' ? 'متبقي' : 'free'}</span>
               </div>
             )}
             
-            {/* Upgrade to Pro Button - Compact on mobile, full on desktop */}
+            {/* Upgrade to Pro Button - Icon only on small mobile, with text on larger */}
             {user && !usageStatus?.isPro && (
               <Link
                 href="/pricing"
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg sm:rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all text-white text-xs sm:text-sm font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40"
+                className="flex items-center justify-center gap-1 p-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg sm:rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all text-white text-xs sm:text-sm font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40"
               >
                 <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
+                <span className="hidden sm:inline">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
               </Link>
             )}
 

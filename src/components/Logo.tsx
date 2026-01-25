@@ -6,14 +6,11 @@ interface LogoProps {
   size?: 'sm' | 'md' | 'lg'
 }
 
-// Use external logo URL as specified in requirements
-const LOGO_URL = 'https://i.postimg.cc/nrxFXPRs/IMG-8462.png'
-
 export default function Logo({ size = 'md' }: LogoProps) {
   const sizeClasses = {
-    sm: { img: 28, container: 'w-8 h-8' },
-    md: { img: 36, container: 'w-10 h-10' },
-    lg: { img: 48, container: 'w-14 h-14' },
+    sm: { img: 32, container: 'w-9 h-9' },
+    md: { img: 44, container: 'w-12 h-12' },
+    lg: { img: 56, container: 'w-16 h-16' },
   }
 
   const textSizes = {
@@ -24,14 +21,14 @@ export default function Logo({ size = 'md' }: LogoProps) {
 
   return (
     <div className="flex items-center gap-2 group">
-      {/* Logo container: full circle with black background, no glow/shadows */}
-      <div className={`${sizeClasses[size].container} relative rounded-full bg-black border border-gray-800 flex items-center justify-center overflow-hidden`}>
+      {/* Logo container: transparent background, no border */}
+      <div className={`${sizeClasses[size].container} relative flex items-center justify-center overflow-visible`}>
         <Image 
-          src={LOGO_URL}
+          src="/logo.png"
           alt="Human-Verified Hub Logo" 
           width={sizeClasses[size].img} 
           height={sizeClasses[size].img} 
-          className="object-contain"
+          className="object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]"
           priority
         />
       </div>

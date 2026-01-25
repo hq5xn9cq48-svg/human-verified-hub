@@ -83,7 +83,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto"
           onClick={onClose}
         >
           <motion.div
@@ -91,7 +91,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md sm:max-w-lg rounded-2xl overflow-hidden my-4"
+            className="relative w-full max-w-[95vw] sm:max-w-md md:max-w-lg rounded-2xl overflow-hidden my-2 sm:my-4"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Glassmorphism container */}
@@ -111,7 +111,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               </button>
 
               {/* Content */}
-              <div className="relative p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+              <div className="relative p-3 sm:p-6 md:p-8 max-h-[85vh] overflow-y-auto">
                 {/* Header */}
                 <div className="text-center mb-4 sm:mb-6">
                   <div className="relative inline-flex mb-3 sm:mb-4">
@@ -138,19 +138,19 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                   )}
                 </div>
 
-                {/* Features grid - responsive */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                {/* Features grid - responsive, 2 cols on mobile, 3 on tablet+ */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-3 mb-3 sm:mb-6">
                   {features.map((feature, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 * index }}
-                      className="p-2.5 sm:p-3 bg-white/5 rounded-lg sm:rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-colors"
+                      transition={{ delay: 0.03 * index }}
+                      className="p-2 sm:p-3 bg-white/5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-colors"
                     >
-                      <feature.icon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 mb-1.5 sm:mb-2" />
-                      <h4 className="text-white font-semibold text-xs sm:text-sm leading-tight">{feature.title}</h4>
-                      <p className="text-gray-400 text-[10px] sm:text-xs mt-0.5 hidden sm:block">{feature.description}</p>
+                      <feature.icon className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-purple-400 mb-1 sm:mb-2" />
+                      <h4 className="text-white font-semibold text-[10px] sm:text-sm leading-tight line-clamp-1">{feature.title}</h4>
+                      <p className="text-gray-400 text-[9px] sm:text-xs mt-0.5 hidden sm:block">{feature.description}</p>
                     </motion.div>
                   ))}
                 </div>
@@ -185,20 +185,20 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 </div>
 
                 {/* Pricing */}
-                <div className="text-center mb-4 sm:mb-6 p-3 sm:p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
-                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                <div className="text-center mb-3 sm:mb-6 p-2.5 sm:p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                  <div className="flex items-center justify-center gap-1 sm:gap-2 mb-1 sm:mb-2">
                     {billingCycle === 'yearly' && (
-                      <span className="text-gray-400 line-through text-sm sm:text-lg">${(PRICE_MONTHLY * 12).toFixed(0)}</span>
+                      <span className="text-gray-400 line-through text-xs sm:text-lg">${(PRICE_MONTHLY * 12).toFixed(0)}</span>
                     )}
-                    <span className="text-3xl sm:text-4xl font-bold text-white">
+                    <span className="text-2xl sm:text-4xl font-bold text-white">
                       ${billingCycle === 'yearly' ? PRICE_YEARLY : PRICE_MONTHLY}
                     </span>
-                    <span className="text-gray-400 text-sm">
+                    <span className="text-gray-400 text-xs sm:text-sm">
                       /{billingCycle === 'yearly' ? (language === 'ar' ? 'سنة' : 'yr') : (language === 'ar' ? 'شهر' : 'mo')}
                     </span>
                   </div>
-                  <p className="text-purple-400 text-xs sm:text-sm flex items-center justify-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <p className="text-purple-400 text-[10px] sm:text-sm flex items-center justify-center gap-1">
+                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4" />
                     {billingCycle === 'yearly' 
                       ? (language === 'ar' ? `وفر ${SAVINGS_PERCENT}%` : `Save ${SAVINGS_PERCENT}%`)
                       : (language === 'ar' ? 'مرونة شهرية' : 'Flexible')}
@@ -206,8 +206,8 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                 </div>
 
                 {/* Guarantee */}
-                <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-gray-400 text-xs sm:text-sm mb-4 sm:mb-6">
-                  <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />
+                <div className="flex items-center justify-center gap-1 sm:gap-2 text-gray-400 text-[10px] sm:text-sm mb-3 sm:mb-6">
+                  <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-400 flex-shrink-0" />
                   <span>{language === 'ar' ? 'ضمان استرداد 14 يوم' : '14-day money-back'}</span>
                 </div>
 

@@ -235,20 +235,27 @@ export default function PricingPage() {
                 </p>
               </div>
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-2.5 mb-8">
                 {features.map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-3">
-                    {feature.free ? (
-                      <Check className="w-5 h-5 text-green-400" />
-                    ) : (
-                      <X className="w-5 h-5 text-gray-600" />
-                    )}
-                    <span className={feature.free ? 'text-gray-300' : 'text-gray-500'}>
-                      {language === 'ar' ? feature.name.ar : feature.name.en}
-                      {typeof feature.free === 'string' && feature.free !== 'true' && (
-                        <span className="ml-2 text-xs text-purple-400">({feature.free})</span>
+                  <li key={idx} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {feature.free ? (
+                        <Check className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <X className="w-4 h-4 text-gray-600" />
                       )}
-                    </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="flex-shrink-0 text-gray-400">{feature.icon}</span>
+                      <span className={`text-sm ${feature.free ? 'text-gray-300' : 'text-gray-500'}`}>
+                        {language === 'ar' ? feature.name.ar : feature.name.en}
+                      </span>
+                      {typeof feature.free === 'string' && feature.free !== 'true' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                          {feature.free}
+                        </span>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -322,20 +329,25 @@ export default function PricingPage() {
                 )}
               </div>
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-2.5 mb-8">
                 {features.map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-3">
-                    <Check className="w-5 h-5 text-purple-400" />
-                    <span className="text-gray-300">
-                      {language === 'ar' ? feature.name.ar : feature.name.en}
+                  <li key={idx} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Check className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="flex-shrink-0 text-purple-400">{feature.icon}</span>
+                      <span className="text-sm text-gray-300">
+                        {language === 'ar' ? feature.name.ar : feature.name.en}
+                      </span>
                       {typeof feature.pro === 'string' && feature.pro !== 'true' && (
-                        <span className="ml-2 text-xs text-purple-400 flex items-center gap-1">
-                          ({feature.pro === 'Unlimited' ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                          {feature.pro === 'Unlimited' ? (
                             <><Infinity className="w-3 h-3" /> {feature.pro}</>
-                          ) : feature.pro})
+                          ) : feature.pro}
                         </span>
                       )}
-                    </span>
+                    </div>
                   </li>
                 ))}
               </ul>

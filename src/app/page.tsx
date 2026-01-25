@@ -430,6 +430,30 @@ export default function HomePage() {
     setCertificateLoading(true)
     
     try {
+      // Server-side Pro verification before generating PDF
+      let accessToken: string | null = null
+      if (user && isSupabaseConfigured()) {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        accessToken = session?.access_token || null
+      }
+      
+      // Verify Pro status server-side
+      const verifyResponse = await fetch('/api/user/usage', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+        },
+        cache: 'no-store'
+      })
+      const verifyData = await verifyResponse.json()
+      
+      if (!verifyData.isPro) {
+        setShowUpgradeModal(true)
+        setCertificateLoading(false)
+        return
+      }
+      
       const jsPDF = (await import('jspdf')).default
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
       
@@ -560,29 +584,36 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Usage Status Banner - Clean production design */}
-      <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-black/80 backdrop-blur-md border-b border-purple-500/20">
-        <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+      {/* Usage Status Banner - Clean production design, responsive for mobile */}
+      <div className="fixed top-16 left-0 right-0 z-40 h-auto min-h-[40px] bg-black/80 backdrop-blur-md border-b border-purple-500/20">
+        <div className="h-full max-w-5xl mx-auto px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0">
             {usageStatus?.isPro ? (
               <>
-                <Crown className="w-3 h-3 text-yellow-400" />
-                <span className="text-yellow-400 text-xs font-medium">
-                  {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
+                <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-400 flex-shrink-0" />
+                <span className="text-yellow-400 text-[10px] sm:text-xs font-medium truncate">
+                  {language === 'ar' ? 'Pro - غير محدود' : 'Pro - Unlimited'}
                 </span>
               </>
             ) : (
               <>
-                <Shield className="w-3 h-3 text-purple-400" />
-                <span className="text-gray-300 text-xs font-medium">
-                  {language === 'ar' 
-                    ? 'الخطة المجانية: تحليل النص فقط (2/يوم)' 
-                    : 'Free Plan: Text Analysis Only (2/day)'}
+                <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-400 flex-shrink-0" />
+                <span className="text-gray-300 text-[10px] sm:text-xs font-medium">
+                  <span className="hidden xs:inline">
+                    {language === 'ar' 
+                      ? 'الخطة المجانية: تحليل النص فقط' 
+                      : 'Free Plan: Text Analysis Only'}
+                  </span>
+                  <span className="xs:hidden">
+                    {language === 'ar' ? 'مجاني' : 'Free'}
+                  </span>
                 </span>
               </>
             )}
           </div>
-          <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
+          <div className="flex-shrink-0">
+            <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
+          </div>
         </div>
       </div>
 

@@ -52,8 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
 
-      const response = await fetch('/api/user/usage', { headers })
+      const response = await fetch('/api/user/usage', { 
+        headers,
+        cache: 'no-store' // Ensure fresh data on every fetch
+      })
       const data = await response.json()
+      console.log('[AUTH] Usage status fetched:', data) // Debug log
       setUsageStatus(data)
     } catch (err) {
       console.error('Error fetching usage status:', err)

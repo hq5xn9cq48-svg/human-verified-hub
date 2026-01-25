@@ -398,14 +398,51 @@ export async function updateUserToPro(
     // Try to find user by ID first, then by email
     let targetUserId = userId
 
+    console.log(`[FREEMIUM] updateUserToPro called with userId: ${userId}, email: ${email}`)
+
+    // If we have a userId, verify it exists
+    if (targetUserId) {
+      const { data: existingProfile } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', targetUserId)
+        .single()
+      
+      if (!existingProfile) {
+        console.log(`[FREEMIUM] User ID ${targetUserId} not found in profiles, will try email`)
+        targetUserId = null
+      }
+    }
+
+    // If no userId or it wasn't found, try to find by email
     if (!targetUserId && email) {
-      const { data: authUser } = await supabase.auth.admin.listUsers()
-      const foundUser = authUser?.users?.find(u => u.email === email)
-      targetUserId = foundUser?.id ?? null
+      // First try to find in user_profiles by looking up auth users
+      try {
+        const { data: authUsers } = await supabase.auth.admin.listUsers()
+        const foundUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
+        if (foundUser) {
+          targetUserId = foundUser.id
+          console.log(`[FREEMIUM] Found user by email lookup: ${targetUserId}`)
+        }
+      } catch (adminError) {
+        console.warn('[FREEMIUM] Could not use admin API, trying direct profile lookup')
+        
+        // Fallback: check if there's already a profile with this subscription
+        const { data: existingSubProfile } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('subscription_id', subscriptionId)
+          .single()
+        
+        if (existingSubProfile) {
+          targetUserId = existingSubProfile.id
+          console.log(`[FREEMIUM] Found user by subscription ID: ${targetUserId}`)
+        }
+      }
     }
 
     if (!targetUserId) {
-      console.error('[FREEMIUM] Cannot find user to update Pro status')
+      console.error('[FREEMIUM] Cannot find user to update Pro status - no userId or email match')
       return false
     }
 
@@ -427,7 +464,7 @@ export async function updateUserToPro(
       return false
     }
 
-    console.log(`[FREEMIUM] User ${targetUserId} upgraded to Pro`)
+    console.log(`[FREEMIUM] User ${targetUserId} upgraded to Pro successfully`)
     return true
   } catch (err) {
     console.error('[FREEMIUM] Exception updating Pro status:', err)

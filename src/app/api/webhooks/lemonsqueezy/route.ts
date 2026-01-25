@@ -111,13 +111,19 @@ export async function POST(request: NextRequest) {
         const userEmail = data?.attributes?.user_email
         const status = data?.attributes?.status
         const variantId = data?.attributes?.variant_id?.toString()
+        // Get user_id from custom data if passed during checkout
+        const customUserId = payload.meta?.custom_data?.user_id || 
+                            data?.attributes?.custom_data?.user_id || 
+                            null
 
         logWebhook('Processing subscription activation', {
           subscriptionId,
           customerId,
           userEmail,
           status,
-          variantId
+          variantId,
+          customUserId,
+          eventName
         })
 
         // Validate variant ID (monthly or yearly)
@@ -128,17 +134,19 @@ export async function POST(request: NextRequest) {
         // Only activate for active/trialing subscriptions
         if (status === 'active' || status === 'trialing' || status === 'on_trial') {
           const success = await updateUserToPro(
-            null, // userId - we'll find by email
+            customUserId, // Try using the custom user_id first
             userEmail,
             subscriptionId,
             customerId
           )
 
           if (success) {
-            logWebhook('User upgraded to Pro successfully', { userEmail, variantId })
+            logWebhook('User upgraded to Pro successfully', { userEmail, variantId, customUserId })
           } else {
-            logError('Failed to upgrade user', { userEmail, subscriptionId, variantId })
+            logError('Failed to upgrade user', { userEmail, subscriptionId, variantId, customUserId })
           }
+        } else {
+          logWebhook('Subscription status not active, skipping upgrade', { status })
         }
         break
       }

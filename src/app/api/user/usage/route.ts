@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getUsageStatus } from '@/lib/freemium'
@@ -52,8 +54,15 @@ export async function GET(request: NextRequest) {
     // Get usage status for authenticated user
     const status = await getUsageStatus(user.id)
 
+    // Ensure canUse is included and remaining is properly calculated
     return NextResponse.json({
-      ...status,
+      isPro: status.isPro,
+      remaining: status.remaining,
+      usedToday: status.usedToday,
+      limit: status.limit,
+      canUse: status.canUse,
+      message: status.message,
+      resetTime: status.resetTime,
       isGuest: false,
       userId: user.id
     })

@@ -36,48 +36,81 @@ function ResetPasswordContent() {
       try {
         const supabase = createClient()
         
-        // Check if we have a valid session from the recovery link
+        // First, try to handle the hash fragment for recovery (Supabase sends tokens in URL hash)
+        const hash = window.location.hash
+        if (hash && hash.includes('access_token')) {
+          console.log('[RESET] Found hash fragment, attempting to set session')
+          
+          // Extract tokens from hash and set session
+          const params = new URLSearchParams(hash.substring(1))
+          const accessToken = params.get('access_token')
+          const refreshToken = params.get('refresh_token')
+          const type = params.get('type')
+          
+          console.log('[RESET] Token type:', type)
+          
+          if (accessToken) {
+            const { data, error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            })
+            
+            if (!setSessionError && data.session) {
+              console.log('[RESET] Session set successfully')
+              // Clear the hash to prevent issues on refresh
+              window.history.replaceState(null, '', window.location.pathname)
+              setSessionReady(true)
+              setCheckingSession(false)
+              return
+            } else {
+              console.error('[RESET] Error setting session:', setSessionError)
+            }
+          }
+        }
+        
+        // Check URL search params (some email clients might convert hash to query params)
+        const urlParams = new URLSearchParams(window.location.search)
+        const tokenFromQuery = urlParams.get('access_token')
+        const typeFromQuery = urlParams.get('type')
+        
+        if (tokenFromQuery && (typeFromQuery === 'recovery' || !typeFromQuery)) {
+          console.log('[RESET] Found token in query params')
+          const refreshFromQuery = urlParams.get('refresh_token')
+          
+          const { data, error: setSessionError } = await supabase.auth.setSession({
+            access_token: tokenFromQuery,
+            refresh_token: refreshFromQuery || ''
+          })
+          
+          if (!setSessionError && data.session) {
+            console.log('[RESET] Session set from query params')
+            // Clear the URL params
+            window.history.replaceState(null, '', window.location.pathname)
+            setSessionReady(true)
+            setCheckingSession(false)
+            return
+          }
+        }
+        
+        // Check if we have a valid session already (user might have refreshed)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
-          console.error('Session error:', sessionError)
+          console.error('[RESET] Session error:', sessionError)
           setError(language === 'ar' ? 'انتهت صلاحية الرابط أو غير صالح' : 'Link has expired or is invalid')
           setCheckingSession(false)
           return
         }
 
         if (session) {
+          console.log('[RESET] Found existing session')
           setSessionReady(true)
         } else {
-          // Try to handle the hash fragment for recovery
-          const hash = window.location.hash
-          if (hash && hash.includes('access_token')) {
-            // Extract tokens from hash and set session
-            const params = new URLSearchParams(hash.substring(1))
-            const accessToken = params.get('access_token')
-            const refreshToken = params.get('refresh_token')
-            const type = params.get('type')
-            
-            if (type === 'recovery' && accessToken) {
-              const { error: setSessionError } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken || ''
-              })
-              
-              if (!setSessionError) {
-                setSessionReady(true)
-              } else {
-                setError(language === 'ar' ? 'فشل في التحقق من الرابط' : 'Failed to verify link')
-              }
-            } else {
-              setError(language === 'ar' ? 'رابط غير صالح' : 'Invalid link')
-            }
-          } else {
-            setError(language === 'ar' ? 'لم يتم العثور على جلسة صالحة. يرجى طلب رابط إعادة تعيين جديد.' : 'No valid session found. Please request a new reset link.')
-          }
+          console.log('[RESET] No valid session found')
+          setError(language === 'ar' ? 'لم يتم العثور على جلسة صالحة. يرجى طلب رابط إعادة تعيين جديد.' : 'No valid session found. Please request a new reset link.')
         }
       } catch (err) {
-        console.error('Session check error:', err)
+        console.error('[RESET] Session check error:', err)
         setError(language === 'ar' ? 'حدث خطأ في التحقق' : 'Verification error occurred')
       }
       
@@ -85,7 +118,8 @@ function ResetPasswordContent() {
     }
 
     if (isLoaded) {
-      checkSession()
+      // Small delay to ensure hash is available
+      setTimeout(checkSession, 100)
     }
   }, [isLoaded, language])
 

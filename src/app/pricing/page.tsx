@@ -12,9 +12,16 @@ import {
   Infinity
 } from 'lucide-react'
 
-// Lemon Squeezy checkout URL - use environment variable or direct link
-const LEMONSQUEEZY_CHECKOUT_URL = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
+// Lemon Squeezy checkout URLs - use environment variables
+const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
   'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID'
+const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 
+  'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID_YEARLY'
+
+// Pricing constants
+const PRICE_MONTHLY = 9.99
+const PRICE_YEARLY = 69.99
+const SAVINGS_PERCENT = Math.round((1 - (PRICE_YEARLY / (PRICE_MONTHLY * 12))) * 100) // ~42% savings
 
 interface PlanFeature {
   name: { en: string; ar: string }
@@ -26,21 +33,27 @@ interface PlanFeature {
 const features: PlanFeature[] = [
   {
     name: { en: 'AI Text Detection', ar: 'كشف النصوص بالذكاء الاصطناعي' },
-    free: true,
+    free: '2/day',
     pro: true,
     icon: <FileText className="w-4 h-4" />
   },
   {
     name: { en: 'AI Image Detection', ar: 'كشف الصور بالذكاء الاصطناعي' },
-    free: true,
+    free: false, // LOCKED for free users
     pro: true,
     icon: <Image className="w-4 h-4" />
   },
   {
-    name: { en: 'Image to Prompt', ar: 'تحويل الصورة إلى نص' },
-    free: true,
+    name: { en: 'Humanizer Tool', ar: 'أداة التحويل البشري' },
+    free: false, // LOCKED for free users
     pro: true,
     icon: <Wand2 className="w-4 h-4" />
+  },
+  {
+    name: { en: 'Image to Prompt', ar: 'تحويل الصورة إلى نص' },
+    free: false, // LOCKED for free users
+    pro: true,
+    icon: <Sparkles className="w-4 h-4" />
   },
   {
     name: { en: 'Daily Analyses', ar: 'التحليلات اليومية' },
@@ -92,7 +105,7 @@ export default function PricingPage() {
 
   const isPro = usageStatus?.isPro ?? false
 
-  // Handle checkout
+  // Handle checkout - uses the selected billing cycle
   const handleUpgrade = () => {
     if (!user) {
       // Redirect to auth first
@@ -100,9 +113,14 @@ export default function PricingPage() {
       return
     }
     
+    // Select checkout URL based on billing cycle
+    const baseUrl = billingCycle === 'yearly' 
+      ? LEMONSQUEEZY_CHECKOUT_URL_YEARLY 
+      : LEMONSQUEEZY_CHECKOUT_URL_MONTHLY
+    
     // Redirect to Lemon Squeezy checkout
     // Add user email as prefill parameter
-    const checkoutUrl = new URL(LEMONSQUEEZY_CHECKOUT_URL)
+    const checkoutUrl = new URL(baseUrl)
     if (user.email) {
       checkoutUrl.searchParams.set('checkout[email]', user.email)
     }
@@ -146,36 +164,40 @@ export default function PricingPage() {
             </p>
           </motion.div>
 
-          {/* Billing Toggle */}
+          {/* Billing Toggle - Updated with actual pricing */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="flex items-center justify-center gap-4 mb-12"
+            className="flex items-center justify-center mb-12"
           >
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                billingCycle === 'monthly'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {language === 'ar' ? 'شهري' : 'Monthly'}
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
-                billingCycle === 'yearly'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {language === 'ar' ? 'سنوي' : 'Yearly'}
-              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
-                {language === 'ar' ? 'وفر 20%' : 'Save 20%'}
-              </span>
-            </button>
+            <div className="inline-flex items-center p-1 bg-gray-900/80 rounded-xl border border-purple-500/20">
+              <button
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-6 py-3 rounded-lg transition-all font-medium ${
+                  billingCycle === 'monthly'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span className="block text-sm">{language === 'ar' ? 'شهري' : 'Monthly'}</span>
+                <span className="block text-lg font-bold">${PRICE_MONTHLY}</span>
+              </button>
+              <button
+                onClick={() => setBillingCycle('yearly')}
+                className={`px-6 py-3 rounded-lg transition-all font-medium relative ${
+                  billingCycle === 'yearly'
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                  {language === 'ar' ? `وفر ${SAVINGS_PERCENT}%` : `Save ${SAVINGS_PERCENT}%`}
+                </span>
+                <span className="block text-sm">{language === 'ar' ? 'سنوي' : 'Yearly'}</span>
+                <span className="block text-lg font-bold">${PRICE_YEARLY}</span>
+              </button>
+            </div>
           </motion.div>
 
           {/* Pricing Cards */}
@@ -281,15 +303,21 @@ export default function PricingPage() {
               <div className="mb-6">
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold text-white">
-                    ${billingCycle === 'monthly' ? '9' : '7'}
+                    ${billingCycle === 'monthly' ? PRICE_MONTHLY.toFixed(2) : (PRICE_YEARLY / 12).toFixed(2)}
                   </span>
                   <span className="text-gray-400">
                     /{language === 'ar' ? 'شهر' : 'month'}
                   </span>
                 </div>
                 {billingCycle === 'yearly' && (
-                  <p className="text-sm text-green-400 mt-1">
-                    {language === 'ar' ? 'يُدفع $84 سنويًا' : 'Billed $84 yearly'}
+                  <p className="text-sm text-green-400 mt-1 flex items-center gap-2">
+                    <span className="line-through text-gray-500">${(PRICE_MONTHLY * 12).toFixed(2)}</span>
+                    {language === 'ar' ? `يُدفع $${PRICE_YEARLY} سنويًا` : `Billed $${PRICE_YEARLY} yearly`}
+                  </p>
+                )}
+                {billingCycle === 'monthly' && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {language === 'ar' ? 'تُجدد شهريًا' : 'Billed monthly'}
                   </p>
                 )}
               </div>

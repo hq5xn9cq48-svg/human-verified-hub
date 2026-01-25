@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
+import AuthGuard from '@/components/AuthGuard'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -168,6 +169,7 @@ export default function ImageToPromptPage() {
   }
 
   return (
+    <AuthGuard featureName={language === 'ar' ? 'مولد الأوامر' : 'Image to Prompt'}>
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
@@ -502,5 +504,6 @@ export default function ImageToPromptPage() {
         </div>
       </footer>
     </div>
+    </AuthGuard>
   )
 }

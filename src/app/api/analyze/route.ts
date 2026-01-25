@@ -596,11 +596,13 @@ export async function POST(req: Request) {
 
   try {
     // Check user authentication and freemium limits
+    // Text Analysis is the ONLY feature allowed for free users (2/day limit)
     const { userId } = await getUserFromRequest(req);
     
     let usageStatus: UsageStatus | null = null;
     if (userId) {
-      usageStatus = await checkAndIncrementUsage(userId);
+      // Text analysis is allowed for free users with limit
+      usageStatus = await checkAndIncrementUsage(userId, 'text-analysis');
       
       if (!usageStatus.canUse) {
         logStep('Usage limit reached', { userId, usageStatus });
@@ -611,7 +613,8 @@ export async function POST(req: Request) {
             remaining: usageStatus.remaining,
             limit: usageStatus.limit,
             isPro: usageStatus.isPro,
-            message: usageStatus.message
+            message: usageStatus.message,
+            resetTime: usageStatus.resetTime
           }
         }, { status: 429 });
       }

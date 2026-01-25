@@ -23,22 +23,23 @@ import {
   Info,
   Mail,
   BookOpen,
-  Crown
+  Crown,
+  Zap
 } from 'lucide-react'
 
 export default function Navbar() {
   const { language, setLanguage, t, availableLanguages, isLoaded } = useLanguage()
-  const { user, signOut } = useAuth()
+  const { user, signOut, usageStatus } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [langMenuOpen, setLangMenuOpen] = useState(false)
-  const langMenuRef = useRef<HTMLDivElement>(null)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
 
-  // Close language menu when clicking outside - MUST be called before any conditional returns
+  // Close account menu when clicking outside - MUST be called before any conditional returns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
-        setLangMenuOpen(false)
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -80,16 +81,18 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
-          {/* Logo */}
+          {/* Logo - Transparent standard logo for header (black circle only for favicon/og:image) */}
           <Link href="/" className="flex items-center gap-2 group">
-            <Image 
-              src="/logo-new.png" 
-              alt="Human-Verified Hub Logo" 
-              width={48} 
-              height={48} 
-              className="h-12 w-auto object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:drop-shadow-[0_0_16px_rgba(168,85,247,0.8)] transition-all"
-              priority
-            />
+            <div className="relative w-12 h-12 flex items-center justify-center overflow-hidden">
+              <Image 
+                src="/logo.png" 
+                alt="Human-Verified Hub Logo" 
+                width={48} 
+                height={48} 
+                className="w-12 h-12 object-contain"
+                priority
+              />
+            </div>
             <div className="hidden sm:block">
               <h1 className="text-lg font-bold text-gradient">Human-Verified Hub</h1>
               <p className="text-[10px] text-gray-500">{t.header.subtitle}</p>
@@ -120,101 +123,115 @@ export default function Navbar() {
 
           {/* Right Side Actions */}
           <div className="flex items-center gap-3">
-            {/* Language Switcher Dropdown */}
-            <div className="relative" ref={langMenuRef}>
-              <button
-                onClick={() => setLangMenuOpen(!langMenuOpen)}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-gray-400 hover:text-purple-300 bg-white/5 hover:bg-purple-600/10 transition-all border border-transparent hover:border-purple-500/30"
+            {/* Free Uses Remaining Counter - Always visible in header */}
+            {user && usageStatus && !usageStatus.isPro && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900/30 border border-purple-500/30">
+                <Zap className="w-4 h-4 text-purple-400" />
+                <span className={`text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
+                  {usageStatus.remaining}/{usageStatus.limit}
+                </span>
+                <span className="text-xs text-gray-400">{language === 'ar' ? 'متبقي' : 'free'}</span>
+              </div>
+            )}
+            
+            {/* Upgrade to Pro Button - visible for non-Pro users */}
+            {user && !usageStatus?.isPro && (
+              <Link
+                href="/pricing"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all text-white text-sm font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40"
               >
-                <Globe className="w-4 h-4" />
-                <span className="text-xs font-medium uppercase hidden sm:inline">{language}</span>
-                <ChevronDown className={`w-3 h-3 transition-transform ${langMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              
-              <AnimatePresence>
-                {langMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-40 py-2 bg-black/95 backdrop-blur-xl border border-purple-900/50 rounded-xl shadow-lg shadow-purple-500/10 z-50"
-                  >
-                    {availableLanguages.map((lang) => (
-                      <button
-                        key={lang.code}
-                        onClick={() => {
-                          setLanguage(lang.code)
-                          setLangMenuOpen(false)
-                        }}
-                        className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center justify-between ${
-                          language === lang.code
-                            ? 'bg-purple-600/20 text-purple-300'
-                            : 'text-gray-400 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <span>{lang.nativeName}</span>
-                        {language === lang.code && (
-                          <span className="w-2 h-2 rounded-full bg-purple-400" />
-                        )}
-                      </button>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                <Crown className="w-4 h-4" />
+                <span>{language === 'ar' ? 'ترقية للبرو' : 'Upgrade to Pro'}</span>
+              </Link>
+            )}
 
-            {/* User Profile Section - Desktop */}
+            {/* User Profile Section - Desktop with My Account Dropdown */}
             <div className="hidden md:flex items-center">
               {user ? (
-                <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-white/5 border border-purple-900/30">
-                  {/* User Avatar - Google profile picture or letter fallback */}
-                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
-                    <img 
-                      src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
-                      alt="Profile" 
-                      className="w-8 h-8 rounded-full object-cover border border-purple-500/30"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        {user.email?.charAt(0).toUpperCase() || 'U'}
-                      </span>
-                    </div>
-                  )}
-                  {/* My Account Link */}
-                  <Link
-                    href="/account"
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      pathname === '/account'
-                        ? 'text-purple-300 bg-purple-600/20'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    {language === 'ar' ? 'حسابي' : 'My Account'}
-                  </Link>
-                  {/* Upgrade to Pro Button - Neon Purple Theme */}
-                  <div className="relative group">
-                    <button
-                      disabled
-                      className="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-300 border border-purple-500/40 flex items-center gap-1.5 cursor-not-allowed hover:border-purple-400/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-all"
-                    >
-                      <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
-                      <span className="hidden lg:inline bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent font-semibold">Pro</span>
-                    </button>
-                    {/* Tooltip */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-black/95 border border-purple-500/40 rounded-lg text-xs text-purple-300 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
-                      {language === 'ar' ? 'قريباً' : 'Coming Soon'}
-                    </div>
-                  </div>
-                  {/* Sign Out Button */}
+                <div className="relative" ref={accountMenuRef}>
                   <button
-                    onClick={signOut}
-                    className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                    title={t.nav.signOut}
+                    onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-purple-900/30 hover:border-purple-500/30 transition-all"
                   >
-                    <LogOut className="w-4 h-4" />
+                    {/* User Avatar */}
+                    {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                      <img 
+                        src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
+                        alt="Profile" 
+                        className="w-8 h-8 rounded-full object-cover border border-purple-500/30"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">
+                          {user.email?.charAt(0).toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-sm font-medium text-gray-300">
+                      {language === 'ar' ? 'حسابي' : 'My Account'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
+                  
+                  {/* Account Dropdown Menu */}
+                  <AnimatePresence>
+                    {accountMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 mt-2 w-56 py-2 bg-black/95 backdrop-blur-xl border border-purple-900/50 rounded-xl shadow-lg shadow-purple-500/10 z-50"
+                      >
+                        {/* Account Settings */}
+                        <Link
+                          href="/account"
+                          onClick={() => setAccountMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/5 transition-all"
+                        >
+                          <User className="w-4 h-4" />
+                          {language === 'ar' ? 'إعدادات الحساب' : 'Account Settings'}
+                        </Link>
+                        
+                        {/* Language Switcher Section */}
+                        <div className="px-4 py-2 border-t border-purple-900/30 mt-1">
+                          <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                            <Globe className="w-3 h-3" />
+                            {language === 'ar' ? 'اللغة' : 'Language'}
+                          </p>
+                          <div className="flex gap-2">
+                            {availableLanguages.map((lang) => (
+                              <button
+                                key={lang.code}
+                                onClick={() => {
+                                  setLanguage(lang.code)
+                                }}
+                                className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                  language === lang.code
+                                    ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                                }`}
+                              >
+                                {lang.nativeName}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Sign Out */}
+                        <button
+                          onClick={() => {
+                            setAccountMenuOpen(false)
+                            signOut()
+                          }}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all w-full mt-1 border-t border-purple-900/30"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          {language === 'ar' ? 'تسجيل الخروج' : 'Sign Out'}
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               ) : (
                 <Link
@@ -298,18 +315,60 @@ export default function Navbar() {
                         </div>
                       </div>
                       
-                      {/* Upgrade to Pro - Neon Purple Theme */}
-                      <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-purple-600/15 to-fuchsia-600/15 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all">
-                        <div className="flex items-center justify-between">
+                      {/* Free Uses Counter - Mobile */}
+                      {usageStatus && !usageStatus.isPro && (
+                        <div className="mb-3 p-3 rounded-xl bg-purple-900/20 border border-purple-500/30">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Zap className="w-4 h-4 text-purple-400" />
+                              <span className="text-sm text-gray-300">
+                                {language === 'ar' ? 'الاستخدام المتبقي' : 'Free Uses'}
+                              </span>
+                            </div>
+                            <span className={`text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-300'}`}>
+                              {usageStatus.remaining}/{usageStatus.limit}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Upgrade to Pro - Mobile */}
+                      {!usageStatus?.isPro && (
+                        <Link
+                          href="/pricing"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="mb-3 p-3 rounded-xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 hover:border-purple-400/50 transition-all flex items-center justify-between"
+                        >
                           <div className="flex items-center gap-2">
                             <Crown className="w-4 h-4 text-fuchsia-400" />
                             <span className="bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent text-sm font-semibold">
                               {language === 'ar' ? 'الترقية للاحترافي' : 'Upgrade to Pro'}
                             </span>
                           </div>
-                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-medium border border-purple-500/30">
-                            {language === 'ar' ? 'قريباً' : 'Coming Soon'}
-                          </span>
+                          <span className="text-purple-400 text-xs">→</span>
+                        </Link>
+                      )}
+                      
+                      {/* Language Switcher - Mobile */}
+                      <div className="mb-3 p-3 rounded-xl bg-white/5 border border-purple-900/30">
+                        <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                          <Globe className="w-3 h-3" />
+                          {language === 'ar' ? 'اللغة' : 'Language'}
+                        </p>
+                        <div className="flex gap-2">
+                          {availableLanguages.map((lang) => (
+                            <button
+                              key={lang.code}
+                              onClick={() => setLanguage(lang.code)}
+                              className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                                language === lang.code
+                                  ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40'
+                                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                              }`}
+                            >
+                              {lang.nativeName}
+                            </button>
+                          ))}
                         </div>
                       </div>
                       

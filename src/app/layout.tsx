@@ -17,8 +17,8 @@ export const metadata: Metadata = {
   creator: 'Human-Verified Hub',
   publisher: 'Human-Verified Hub',
   icons: {
-    icon: '/logo.png',
-    apple: '/logo.png',
+    icon: '/favicon.png',
+    apple: '/favicon.png',
   },
   openGraph: {
     type: 'website',
@@ -79,7 +79,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <link rel="icon" href="/logo.png" type="image/png" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
         {/* Organization Schema for SEO */}
         <script
           type="application/ld+json"

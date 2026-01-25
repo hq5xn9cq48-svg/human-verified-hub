@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import UpgradeModal from '@/components/UpgradeModal'
+import AuthGuard from '@/components/AuthGuard'
 import { 
   Wand2, 
   Clipboard, 
@@ -126,6 +127,11 @@ export default function HumanizerPage() {
           setShowUpgradeModal(true)
           throw new Error(language === 'ar' ? 'وصلت للحد اليومي. الترقية للحصول على تحليلات غير محدودة.' : 'Daily limit reached. Upgrade for unlimited analyses.')
         }
+        // Check for feature locked error (Pro-only feature)
+        if (data.errorCode === 'FEATURE_LOCKED' || data.requiresUpgrade) {
+          setShowUpgradeModal(true)
+          throw new Error(data.error || (language === 'ar' ? 'هذه الميزة متاحة فقط للمشتركين Pro.' : 'This feature is only available for Pro subscribers.'))
+        }
         throw new Error(data.error || 'Humanization failed')
       }
       
@@ -161,6 +167,7 @@ export default function HumanizerPage() {
   const selectedIntent = intentOptions.find((o) => o.id === intent)
 
   return (
+    <AuthGuard featureName={language === 'ar' ? 'أداة التحويل البشري' : 'the Humanizer tool'}>
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
@@ -444,5 +451,6 @@ export default function HumanizerPage() {
         </div>
       </footer>
     </div>
+    </AuthGuard>
   )
 }

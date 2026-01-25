@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
+import { checkAndIncrementUsage, UsageStatus, getFeatureLockedResponse } from '@/lib/freemium';
 
 // ============================================================================
 // CONFIGURATION - STABILITY FIRST
@@ -306,12 +306,25 @@ export async function POST(req: Request) {
   logStep('API key validated', { keyLength: GEMINI_API_KEY.length });
 
   try {
+    // Parse body early to get language for error messages
+    const body = await req.json();
+    const { image, language = 'en' } = body;
+    
     // Check user authentication and freemium limits
     const { userId } = await getUserFromRequest(req);
     
+    // STRICT GATE: Image-to-Text is PRO-ONLY feature
     let usageStatus: UsageStatus | null = null;
     if (userId) {
-      usageStatus = await checkAndIncrementUsage(userId);
+      // Check with feature-specific gate
+      usageStatus = await checkAndIncrementUsage(userId, 'image-to-text');
+      
+      // Check if feature is locked (non-Pro trying to access Pro feature)
+      if (!usageStatus.isPro) {
+        logStep('Feature locked for non-Pro user', { userId, feature: 'image-to-text' });
+        const lockedResponse = getFeatureLockedResponse('image-to-text', language);
+        return NextResponse.json(lockedResponse, { status: 403 });
+      }
       
       if (!usageStatus.canUse) {
         logStep('Usage limit reached', { userId, usageStatus });
@@ -333,11 +346,16 @@ export async function POST(req: Request) {
         isPro: usageStatus.isPro 
       });
     } else {
-      logStep('Guest user - allowing access without tracking');
+      // STRICT: Guest users cannot use Pro features
+      logStep('Guest user blocked from Pro feature: image-to-text');
+      const lockedResponse = getFeatureLockedResponse('image-to-text', language);
+      return NextResponse.json({
+        ...lockedResponse,
+        error: language === 'ar' 
+          ? 'يرجى تسجيل الدخول والترقية للوصول إلى تحويل الصورة لنص.'
+          : 'Please sign in and upgrade to Pro to access Image to Text.'
+      }, { status: 403 });
     }
-
-    const body = await req.json();
-    const { image, language = 'en' } = body;
     
     logStep('Request received', { 
       hasImage: !!image, 

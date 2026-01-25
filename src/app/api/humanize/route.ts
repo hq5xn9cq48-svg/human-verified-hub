@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
+import { checkAndIncrementUsage, UsageStatus, getFeatureLockedResponse } from '@/lib/freemium';
 
 // Use environment variable with fallback (server-side)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
@@ -151,12 +151,25 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Parse body early to get language for error messages
+    const body = await req.json();
+    const { text, intent = 'default', language = 'en' } = body;
+    
     // Check user authentication and freemium limits
     const { userId } = await getUserFromRequest(req);
     
+    // STRICT GATE: Humanizer is PRO-ONLY feature
     let usageStatus: UsageStatus | null = null;
     if (userId) {
-      usageStatus = await checkAndIncrementUsage(userId);
+      // Check with feature-specific gate
+      usageStatus = await checkAndIncrementUsage(userId, 'humanizer');
+      
+      // Check if feature is locked (non-Pro trying to access Pro feature)
+      if (!usageStatus.isPro) {
+        logStep('Feature locked for non-Pro user', { userId, feature: 'humanizer' });
+        const lockedResponse = getFeatureLockedResponse('humanizer', language);
+        return NextResponse.json(lockedResponse, { status: 403 });
+      }
       
       if (!usageStatus.canUse) {
         logStep('Usage limit reached', { userId, usageStatus });
@@ -178,11 +191,16 @@ export async function POST(req: Request) {
         isPro: usageStatus.isPro 
       });
     } else {
-      logStep('Guest user - allowing access without tracking');
+      // STRICT: Guest users cannot use Pro features
+      logStep('Guest user blocked from Pro feature: humanizer');
+      const lockedResponse = getFeatureLockedResponse('humanizer', language);
+      return NextResponse.json({
+        ...lockedResponse,
+        error: language === 'ar' 
+          ? 'يرجى تسجيل الدخول والترقية للوصول إلى المحول البشري.'
+          : 'Please sign in and upgrade to Pro to access the Humanizer.'
+      }, { status: 403 });
     }
-
-    const body = await req.json();
-    const { text, intent = 'default', language = 'en' } = body;
     logStep('Request received', { textLength: text?.length, intent, language });
 
     if (!text || typeof text !== 'string' || text.trim().length < 20) {

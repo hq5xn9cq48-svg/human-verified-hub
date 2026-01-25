@@ -9,6 +9,13 @@ import { updateUserToPro, downgradeUserFromPro } from '@/lib/freemium'
 const LEMONSQUEEZY_WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET || ''
 const LEMONSQUEEZY_STORE_ID = process.env.LEMONSQUEEZY_STORE_ID || '271076'
 const LEMONSQUEEZY_VARIANT_ID = process.env.LEMONSQUEEZY_VARIANT_ID || '1207172'
+const LEMONSQUEEZY_VARIANT_ID_YEARLY = process.env.LEMONSQUEEZY_VARIANT_ID_YEARLY || ''
+
+// All valid variant IDs that grant Pro status
+const VALID_PRO_VARIANTS = [
+  LEMONSQUEEZY_VARIANT_ID,
+  LEMONSQUEEZY_VARIANT_ID_YEARLY
+].filter(Boolean) // Remove empty strings
 
 // ============================================================================
 // LOGGING UTILITIES
@@ -103,13 +110,20 @@ export async function POST(request: NextRequest) {
         const customerId = data?.attributes?.customer_id?.toString()
         const userEmail = data?.attributes?.user_email
         const status = data?.attributes?.status
+        const variantId = data?.attributes?.variant_id?.toString()
 
         logWebhook('Processing subscription activation', {
           subscriptionId,
           customerId,
           userEmail,
-          status
+          status,
+          variantId
         })
+
+        // Validate variant ID (monthly or yearly)
+        if (variantId && VALID_PRO_VARIANTS.length > 0 && !VALID_PRO_VARIANTS.includes(variantId)) {
+          logWebhook('Unknown variant ID, but processing anyway', { variantId, validVariants: VALID_PRO_VARIANTS })
+        }
 
         // Only activate for active/trialing subscriptions
         if (status === 'active' || status === 'trialing' || status === 'on_trial') {
@@ -121,9 +135,9 @@ export async function POST(request: NextRequest) {
           )
 
           if (success) {
-            logWebhook('User upgraded to Pro successfully', { userEmail })
+            logWebhook('User upgraded to Pro successfully', { userEmail, variantId })
           } else {
-            logError('Failed to upgrade user', { userEmail, subscriptionId })
+            logError('Failed to upgrade user', { userEmail, subscriptionId, variantId })
           }
         }
         break

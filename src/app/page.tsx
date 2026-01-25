@@ -30,8 +30,11 @@ import {
   Shield,
   Sparkles,
   FileCheck,
-  Crown
+  Crown,
+  Image as ImageIcon,
+  Wand2
 } from 'lucide-react'
+import Link from 'next/link'
 import Script from 'next/script'
 import UpgradeModal from '@/components/UpgradeModal'
 import UsageCounter from '@/components/UsageCounter'
@@ -149,12 +152,6 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Auth check on submit - redirect to login if not authenticated
-    if (!user && !authLoading) {
-      router.push('/auth')
-      return
-    }
     
     if (inputMode === 'text' && (!text.trim() || text.length < 20)) {
       setError(language === 'ar' ? 'أدخل 20 حرفاً على الأقل' : 'Please enter at least 20 characters')
@@ -518,8 +515,8 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Beta Access Banner - Thin & Glassy */}
-      <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-purple-900/40 backdrop-blur-md border-b border-purple-500/20">
+      {/* Usage Status Banner - Clean production design */}
+      <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-black/80 backdrop-blur-md border-b border-purple-500/20">
         <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             {usageStatus?.isPro ? (
@@ -531,11 +528,11 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <Sparkles className="w-3 h-3 text-yellow-300/80" />
-                <span className="text-white/90 text-xs font-medium">
+                <Shield className="w-3 h-3 text-purple-400" />
+                <span className="text-gray-300 text-xs font-medium">
                   {language === 'ar' 
-                    ? 'بيتا: جميع الميزات المميزة مجانية!' 
-                    : 'BETA: All Premium Features FREE for limited time'}
+                    ? 'الخطة المجانية: تحليل النص فقط (2/يوم)' 
+                    : 'Free Plan: Text Analysis Only (2/day)'}
                 </span>
               </>
             )}
@@ -548,37 +545,230 @@ export default function HomePage() {
 
       {/* Main content with top padding for fixed navbar + thin banner */}
       <main className="max-w-5xl mx-auto px-4 py-8 pt-28">
-        {/* Hero Header */}
-        <div className="text-center mb-8">
+        
+        {/* HERO SECTION for non-logged in users */}
+        {!user && !authLoading && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/20 border border-purple-500/30 mb-4"
+            className="mb-12 text-center"
           >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
-            </span>
-            <span className="text-xs text-gray-300">{t.analyzer.badge}</span>
+            {/* Hero Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/20 border border-purple-500/30 mb-6">
+              <Shield className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-purple-300">
+                {language === 'ar' ? 'كشف الذكاء الاصطناعي بدقة جنائية' : 'Forensic AI Detection'}
+              </span>
+            </div>
+
+            {/* Hero Title */}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+              {language === 'ar' ? (
+                <>
+                  اكتشف المحتوى المولّد
+                  <br />
+                  <span className="text-gradient">بالذكاء الاصطناعي</span>
+                </>
+              ) : (
+                <>
+                  Detect AI-Generated
+                  <br />
+                  <span className="text-gradient">Content with Forensic Accuracy</span>
+                </>
+              )}
+            </h1>
+
+            {/* Hero Description */}
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+              {language === 'ar' 
+                ? 'Human Verified Hub يساعدك على كشف النصوص والصور المولدة بالذكاء الاصطناعي بدقة جنائية. تحليل متقدم يكشف الأنماط الخفية التي تفوت الأدوات الأخرى.'
+                : 'Human Verified Hub helps you detect AI-generated text and images with forensic accuracy. Advanced analysis reveals hidden patterns that other tools miss.'}
+            </p>
+
+            {/* Hero CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+              <Link
+                href="/auth"
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 flex items-center gap-2 text-lg"
+              >
+                {language === 'ar' ? 'ابدأ الآن - مجاني' : 'Get Started - Free'}
+                <Zap className="w-5 h-5" />
+              </Link>
+              <button
+                onClick={() => {
+                  // Scroll to analyzer section
+                  document.getElementById('analyzer-section')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="px-8 py-4 border border-purple-500/30 text-purple-300 font-medium rounded-xl hover:bg-purple-900/20 transition-all flex items-center gap-2"
+              >
+                {language === 'ar' ? 'جرب الأداة' : 'Try the Tool'}
+                <Search className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Hero Features */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+              <div className="p-4 rounded-xl bg-white/5 border border-purple-500/20">
+                <FileText className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                <h3 className="text-white font-medium mb-1">
+                  {language === 'ar' ? 'تحليل النصوص' : 'Text Analysis'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {language === 'ar' ? 'كشف ChatGPT, Claude, Gemini' : 'Detect ChatGPT, Claude, Gemini'}
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-white/5 border border-purple-500/20 relative">
+                <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-full">PRO</div>
+                <ImageIcon className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                <h3 className="text-white font-medium mb-1">
+                  {language === 'ar' ? 'كشف الصور' : 'Image Detection'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {language === 'ar' ? 'DALL-E, Midjourney, SD' : 'DALL-E, Midjourney, SD'}
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-white/5 border border-purple-500/20 relative">
+                <div className="absolute -top-2 -right-2 px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-full">PRO</div>
+                <Wand2 className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                <h3 className="text-white font-medium mb-1">
+                  {language === 'ar' ? 'محول بشري' : 'Humanizer'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {language === 'ar' ? 'تحويل AI لنص بشري' : 'Convert AI to human text'}
+                </p>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="my-12 h-px bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
           </motion.div>
+        )}
 
-          <motion.h1
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-3xl md:text-4xl font-bold text-white mb-3"
+        {/* Analyzer Section Header - Only shown to logged-in users */}
+        {user && (
+          <div id="analyzer-section" className="text-center mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-900/20 border border-purple-500/30 mb-4"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
+              </span>
+              <span className="text-xs text-gray-300">{t.analyzer.badge}</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-3xl md:text-4xl font-bold text-white mb-3"
+            >
+              {t.analyzer.title}{' '}
+              <span className="text-gradient neon-text-glow">
+                {t.analyzer.titleHighlight}
+              </span>
+            </motion.h1>
+
+            <p className="text-gray-400 max-w-xl mx-auto text-sm">
+              {t.analyzer.description}
+            </p>
+          </div>
+        )}
+        
+        {/* How It Works Section - For non-logged in users instead of analyzer */}
+        {!user && !authLoading && (
+          <motion.div
+            id="how-it-works"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12"
           >
-            {t.analyzer.title}{' '}
-            <span className="text-gradient neon-text-glow">
-              {t.analyzer.titleHighlight}
-            </span>
-          </motion.h1>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                {language === 'ar' ? 'كيف يعمل' : 'How It Works'}
+              </h2>
+              <p className="text-gray-400 max-w-xl mx-auto text-sm">
+                {language === 'ar' 
+                  ? 'ثلاث خطوات بسيطة للتحقق من محتواك'
+                  : 'Three simple steps to verify your content'}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              {/* Step 1 */}
+              <div className="p-6 rounded-2xl bg-gradient-to-b from-purple-900/20 to-transparent border border-purple-500/20 text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-purple-400" />
+                </div>
+                <div className="text-purple-400 text-sm font-medium mb-2">
+                  {language === 'ar' ? 'الخطوة 1' : 'Step 1'}
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {language === 'ar' ? 'رفع المحتوى' : 'Upload Content'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {language === 'ar' 
+                    ? 'الصق النص أو أدخل رابط المقال للتحليل'
+                    : 'Paste your text or enter an article URL to analyze'}
+                </p>
+              </div>
+              
+              {/* Step 2 */}
+              <div className="p-6 rounded-2xl bg-gradient-to-b from-purple-900/20 to-transparent border border-purple-500/20 text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center">
+                  <Brain className="w-6 h-6 text-purple-400" />
+                </div>
+                <div className="text-purple-400 text-sm font-medium mb-2">
+                  {language === 'ar' ? 'الخطوة 2' : 'Step 2'}
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {language === 'ar' ? 'التحليل الذكي' : 'AI Analysis'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {language === 'ar' 
+                    ? 'محركنا يحلل الأنماط اللغوية والبصرية'
+                    : 'Our engine analyzes linguistic patterns and forensic markers'}
+                </p>
+              </div>
+              
+              {/* Step 3 */}
+              <div className="p-6 rounded-2xl bg-gradient-to-b from-purple-900/20 to-transparent border border-purple-500/20 text-center">
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-600/20 border border-purple-500/40 flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-purple-400" />
+                </div>
+                <div className="text-purple-400 text-sm font-medium mb-2">
+                  {language === 'ar' ? 'الخطوة 3' : 'Step 3'}
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  {language === 'ar' ? 'احصل على التقرير' : 'Get Results'}
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  {language === 'ar' 
+                    ? 'احصل على نتيجتك وتقرير PDF مفصل'
+                    : 'Receive your score and detailed PDF report'}
+                </p>
+              </div>
+            </div>
+            
+            {/* CTA */}
+            <div className="text-center">
+              <Link
+                href="/auth"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 text-lg"
+              >
+                {language === 'ar' ? 'ابدأ الآن - مجاني' : 'Get Started - Free'}
+                <Zap className="w-5 h-5" />
+              </Link>
+              <p className="text-gray-500 text-sm mt-3">
+                {language === 'ar' ? 'تحليلان مجانيان يومياً' : '2 free analyses per day'}
+              </p>
+            </div>
+          </motion.div>
+        )}
 
-          <p className="text-gray-400 max-w-xl mx-auto text-sm">
-            {t.analyzer.description}
-          </p>
-        </div>
-
-        {/* Main Card */}
+        {/* Main Card - Only shown to logged-in users */}
+        {user && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -952,8 +1142,10 @@ export default function HomePage() {
             </div>
           )}
         </motion.div>
+        )}
 
-        {/* Results Guide - Fixed for mobile */}
+        {/* Results Guide - Only shown to logged-in users */}
+        {user && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -983,6 +1175,7 @@ export default function HomePage() {
             </div>
           </div>
         </motion.div>
+        )}
 
       </main>
 

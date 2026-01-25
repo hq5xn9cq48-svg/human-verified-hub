@@ -62,43 +62,74 @@ export default function UsageCounter({
   const limit = usageStatus.limit
   const isLimitReached = remaining <= 0
   const isLow = remaining <= 1 && remaining > 0
+  const usagePercentage = ((limit - remaining) / limit) * 100
 
   if (variant === 'compact') {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
+        {/* GLASSMORPHISM Free Uses Remaining Badge - Visually Distinct */}
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${
+          className={`relative flex items-center gap-2 px-4 py-2 rounded-2xl backdrop-blur-xl border-2 ${
             isLimitReached 
-              ? 'bg-red-500/20 border-red-500/30' 
+              ? 'bg-gradient-to-r from-red-500/15 to-red-600/10 border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' 
               : isLow 
-                ? 'bg-yellow-500/20 border-yellow-500/30' 
-                : 'bg-purple-900/30 border-purple-500/30'
+                ? 'bg-gradient-to-r from-yellow-500/15 to-orange-500/10 border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.3),inset_0_1px_0_rgba(255,255,255,0.1)]' 
+                : 'bg-gradient-to-r from-purple-500/15 to-pink-500/10 border-purple-400/50 shadow-[0_0_20px_rgba(168,85,247,0.25),inset_0_1px_0_rgba(255,255,255,0.1)]'
           }`}
         >
+          {/* Subtle shimmer overlay for glassmorphism effect */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+          
+          {/* Progress bar track */}
+          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/40 rounded-b-2xl overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${usagePercentage}%` }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className={`h-full ${
+                isLimitReached 
+                  ? 'bg-gradient-to-r from-red-500 to-red-400' 
+                  : isLow 
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-400' 
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500'
+              }`}
+            />
+          </div>
+          
           {isLimitReached ? (
-            <AlertCircle className="w-4 h-4 text-red-400" />
+            <AlertCircle className="w-4 h-4 text-red-400 animate-pulse" />
           ) : (
             <Zap className={`w-4 h-4 ${isLow ? 'text-yellow-400' : 'text-purple-400'}`} />
           )}
-          <span className={`text-sm font-medium ${
-            isLimitReached ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-gray-300'
+          
+          {/* Usage count with label */}
+          <div className="flex items-baseline gap-1.5 relative z-10">
+            <span className={`text-base font-bold tabular-nums ${
+              isLimitReached ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
+            }`}>
+              {remaining}
+            </span>
+            <span className="text-gray-400 text-xs">/</span>
+            <span className="text-gray-400 text-xs font-medium">{limit}</span>
+          </div>
+          
+          <span className={`text-xs font-medium relative z-10 ${
+            isLimitReached ? 'text-red-300' : isLow ? 'text-yellow-300' : 'text-purple-200'
           }`}>
-            {language === 'ar' 
-              ? `${remaining}/${limit} متبقي`
-              : `${remaining}/${limit} left`}
+            {language === 'ar' ? 'متبقي' : 'free'}
           </span>
         </motion.div>
         
         {showUpgrade && (
           <Link 
             href="/pricing"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-full hover:from-purple-600/30 hover:to-pink-600/30 transition-all group"
+            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl hover:from-purple-500 hover:to-pink-500 transition-all group shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 border border-purple-400/30"
           >
-            <Crown className="w-4 h-4 text-purple-400 group-hover:text-purple-300" />
-            <span className="text-sm text-purple-400 group-hover:text-purple-300">
-              {language === 'ar' ? 'ترقية' : 'Upgrade'}
+            <Crown className="w-4 h-4 text-white" />
+            <span className="text-sm font-semibold text-white">
+              {language === 'ar' ? 'Pro' : 'Pro'}
             </span>
           </Link>
         )}

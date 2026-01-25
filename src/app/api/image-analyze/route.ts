@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
+import { checkAndIncrementUsage, UsageStatus, isFeatureAllowed, getFeatureLockedResponse } from '@/lib/freemium';
 
 // ============================================================================
 // CONFIGURATION - STABILITY FIRST
@@ -327,9 +327,23 @@ export async function POST(req: Request) {
     // Check user authentication and freemium limits
     const { userId } = await getUserFromRequest(req);
     
+    // Parse body early to get language for error messages
+    const body = await req.json();
+    const { image, language = 'en' } = body;
+    
+    // STRICT GATE: Image Analysis is PRO-ONLY feature
+    // Free users must be blocked immediately
     let usageStatus: UsageStatus | null = null;
     if (userId) {
-      usageStatus = await checkAndIncrementUsage(userId);
+      // Check with feature-specific gate
+      usageStatus = await checkAndIncrementUsage(userId, 'image-analysis');
+      
+      // Check if feature is locked (non-Pro trying to access Pro feature)
+      if (!usageStatus.isPro) {
+        logStep('Feature locked for non-Pro user', { userId, feature: 'image-analysis' });
+        const lockedResponse = getFeatureLockedResponse('image-analysis', language);
+        return NextResponse.json(lockedResponse, { status: 403 });
+      }
       
       if (!usageStatus.canUse) {
         logStep('Usage limit reached', { userId, usageStatus });
@@ -351,12 +365,17 @@ export async function POST(req: Request) {
         isPro: usageStatus.isPro 
       });
     } else {
-      logStep('Guest user - allowing access without tracking');
+      // STRICT: Guest users cannot use Pro features
+      logStep('Guest user blocked from Pro feature: image-analysis');
+      const lockedResponse = getFeatureLockedResponse('image-analysis', language);
+      return NextResponse.json({
+        ...lockedResponse,
+        error: language === 'ar' 
+          ? 'يرجى تسجيل الدخول والترقية للوصول إلى تحليل الصور.'
+          : 'Please sign in and upgrade to Pro to access Image Analysis.'
+      }, { status: 403 });
     }
 
-    const body = await req.json();
-    const { image, language = 'en' } = body;
-    
     logStep('Request received', { 
       hasImage: !!image, 
       imageType: typeof image,

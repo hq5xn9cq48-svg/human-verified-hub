@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,13 +12,21 @@ interface UpgradeModalProps {
   onClose: () => void
 }
 
-// Lemon Squeezy checkout URL from environment or default
-const CHECKOUT_URL = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
+// Lemon Squeezy checkout URLs from environment
+const CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
   'https://human-verified-hub.lemonsqueezy.com/checkout/buy/e6bf03be-7d02-4457-bcd2-e4d34260fdc7'
+const CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 
+  'https://human-verified-hub.lemonsqueezy.com/checkout/buy/yearly-variant'
+
+// Pricing
+const PRICE_MONTHLY = 9.99
+const PRICE_YEARLY = 69.99
+const SAVINGS_PERCENT = Math.round((1 - (PRICE_YEARLY / (PRICE_MONTHLY * 12))) * 100)
 
 export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const { language } = useLanguage()
   const { user, usageStatus } = useAuth()
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly') // Default to yearly for better value
 
   const features = [
     {
@@ -43,15 +52,18 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   ]
 
   const handleUpgrade = () => {
+    // Select checkout URL based on billing cycle
+    const baseUrl = billingCycle === 'yearly' ? CHECKOUT_URL_YEARLY : CHECKOUT_URL_MONTHLY
+    
     // Build checkout URL with user info for prefilling
-    let url = CHECKOUT_URL
+    let url = baseUrl
     
     if (user) {
       const params = new URLSearchParams()
       if (user.email) params.append('checkout[email]', user.email)
       params.append('checkout[custom][user_id]', user.id)
       
-      url = `${CHECKOUT_URL}?${params.toString()}`
+      url = `${baseUrl}?${params.toString()}`
     }
     
     window.open(url, '_blank')
@@ -137,16 +149,53 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
                   ))}
                 </div>
 
+                {/* Billing Cycle Toggle */}
+                <div className="flex items-center justify-center mb-4">
+                  <div className="inline-flex p-1 bg-black/50 rounded-lg border border-purple-500/20">
+                    <button
+                      onClick={() => setBillingCycle('monthly')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                        billingCycle === 'monthly'
+                          ? 'bg-purple-600 text-white'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {language === 'ar' ? 'شهري' : 'Monthly'}
+                    </button>
+                    <button
+                      onClick={() => setBillingCycle('yearly')}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-all relative ${
+                        billingCycle === 'yearly'
+                          ? 'bg-purple-600 text-white'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {language === 'ar' ? 'سنوي' : 'Yearly'}
+                      <span className="absolute -top-2 -right-2 text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">
+                        -{SAVINGS_PERCENT}%
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Pricing */}
                 <div className="text-center mb-6 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <span className="text-gray-400 line-through text-lg">$19</span>
-                    <span className="text-4xl font-bold text-white">$9</span>
-                    <span className="text-gray-400">/month</span>
+                    {billingCycle === 'yearly' && (
+                      <span className="text-gray-400 line-through text-lg">${(PRICE_MONTHLY * 12).toFixed(0)}</span>
+                    )}
+                    <span className="text-4xl font-bold text-white">
+                      ${billingCycle === 'yearly' ? PRICE_YEARLY : PRICE_MONTHLY}
+                    </span>
+                    <span className="text-gray-400">
+                      /{billingCycle === 'yearly' ? (language === 'ar' ? 'سنة' : 'year') : (language === 'ar' ? 'شهر' : 'month')}
+                    </span>
                   </div>
                   <p className="text-purple-400 text-sm flex items-center justify-center gap-1">
                     <Sparkles className="w-4 h-4" />
-                    {language === 'ar' ? 'خصم 53% لفترة محدودة' : '53% off - Limited time'}
+                    {billingCycle === 'yearly' 
+                      ? (language === 'ar' ? `وفر ${SAVINGS_PERCENT}% - أفضل قيمة!` : `Save ${SAVINGS_PERCENT}% - Best value!`)
+                      : (language === 'ar' ? 'مرونة شهرية' : 'Monthly flexibility')}
                   </p>
                 </div>
 

@@ -1,6 +1,13 @@
 /**
  * Freemium System Utilities
  * Handles usage limits for free users and Pro access
+ * 
+ * PRODUCTION RULES:
+ * - Free users get exactly 2 uses per 24-hour rolling window
+ * - Timer resets 24 hours after the LAST use, not at midnight
+ * - Only Text Analysis is allowed for free users
+ * - Image Analysis, Humanizer, and Image-to-Text are Pro-only
+ * - PDF Reports, History Export, Priority Support are Pro-only
  */
 
 import { createServerClient, isServerSupabaseConfigured } from './supabase/server'
@@ -12,6 +19,7 @@ export interface UsageStatus {
   usedToday: number
   limit: number
   message: string
+  resetTime?: string // ISO timestamp when limit resets
 }
 
 export interface UserProfile {
@@ -25,15 +33,89 @@ export interface UserProfile {
   subscription_status: string | null
   daily_usage_count: number
   last_usage_date: string | null
+  last_usage_timestamp: string | null // New: precise timestamp for 24h rolling reset
 }
 
+// Feature access control
+export type FeatureType = 'text-analysis' | 'image-analysis' | 'humanizer' | 'image-to-text' | 'pdf-report' | 'history-export' | 'priority-support'
+
+// Features available to free users (only text analysis with 2/day limit)
+const FREE_ALLOWED_FEATURES: FeatureType[] = ['text-analysis']
+
+// Pro-only features
+const PRO_ONLY_FEATURES: FeatureType[] = ['image-analysis', 'humanizer', 'image-to-text', 'pdf-report', 'history-export', 'priority-support']
+
 const FREE_DAILY_LIMIT = 2
+const RESET_WINDOW_HOURS = 24
+
+/**
+ * Check if a feature is allowed for the user based on their Pro status
+ * STRICT: Non-Pro users can ONLY use text-analysis
+ */
+export function isFeatureAllowed(isPro: boolean, feature: FeatureType): boolean {
+  if (isPro) return true
+  return FREE_ALLOWED_FEATURES.includes(feature)
+}
+
+/**
+ * Get a 403 Forbidden response for locked features
+ */
+export function getFeatureLockedResponse(feature: FeatureType, language: string = 'en'): { error: string; errorCode: string; requiresUpgrade: boolean } {
+  const featureNames: Record<FeatureType, { en: string; ar: string }> = {
+    'text-analysis': { en: 'Text Analysis', ar: 'تحليل النص' },
+    'image-analysis': { en: 'Image Analysis', ar: 'تحليل الصور' },
+    'humanizer': { en: 'Humanizer', ar: 'المحول البشري' },
+    'image-to-text': { en: 'Image to Text', ar: 'تحويل الصورة لنص' },
+    'pdf-report': { en: 'PDF Reports', ar: 'تقارير PDF' },
+    'history-export': { en: 'History Export', ar: 'تصدير السجل' },
+    'priority-support': { en: 'Priority Support', ar: 'دعم الأولوية' }
+  }
+
+  const name = language === 'ar' ? featureNames[feature].ar : featureNames[feature].en
+  
+  return {
+    error: language === 'ar' 
+      ? `${name} متاح فقط للمشتركين Pro. قم بالترقية للحصول على وصول كامل.`
+      : `${name} is only available for Pro subscribers. Upgrade to get full access.`,
+    errorCode: 'FEATURE_LOCKED',
+    requiresUpgrade: true
+  }
+}
+
+/**
+ * Calculate remaining time until usage reset (24h from last use)
+ */
+function calculateResetTime(lastUsageTimestamp: string | null): string | null {
+  if (!lastUsageTimestamp) return null
+  
+  const lastUse = new Date(lastUsageTimestamp)
+  const resetTime = new Date(lastUse.getTime() + RESET_WINDOW_HOURS * 60 * 60 * 1000)
+  return resetTime.toISOString()
+}
+
+/**
+ * Check if usage count should be reset based on 24h rolling window
+ */
+function shouldResetUsage(lastUsageTimestamp: string | null): boolean {
+  if (!lastUsageTimestamp) return true
+  
+  const lastUse = new Date(lastUsageTimestamp)
+  const now = new Date()
+  const hoursSinceLastUse = (now.getTime() - lastUse.getTime()) / (1000 * 60 * 60)
+  
+  return hoursSinceLastUse >= RESET_WINDOW_HOURS
+}
 
 /**
  * Check if user can perform an analysis and increment usage if allowed
  * This is the main function called by API routes before processing
+ * 
+ * PRODUCTION RULES:
+ * - Pro users: unlimited access, always allowed
+ * - Free users: exactly 2 uses per 24-hour rolling window
+ * - 24h timer resets from the LAST use, not midnight
  */
-export async function checkAndIncrementUsage(userId: string): Promise<UsageStatus> {
+export async function checkAndIncrementUsage(userId: string, feature: FeatureType = 'text-analysis'): Promise<UsageStatus> {
   // If Supabase not configured, allow unlimited access (dev mode)
   if (!isServerSupabaseConfigured()) {
     return {
@@ -59,41 +141,114 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
   }
 
   try {
-    // Call the database function
-    const { data, error } = await supabase.rpc('check_and_increment_usage', {
-      p_user_id: userId
-    })
+    // First, get the user's profile to check Pro status
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_pro, daily_usage_count, last_usage_timestamp')
+      .eq('id', userId)
+      .single()
 
-    if (error) {
-      console.error('[FREEMIUM] Error checking usage:', error)
-      // On error, be permissive
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('[FREEMIUM] Error fetching profile:', profileError)
+    }
+
+    const isPro = profile?.is_pro ?? false
+    
+    // STRICT FEATURE GATE: Check if feature is allowed for this user
+    if (!isFeatureAllowed(isPro, feature)) {
+      console.log(`[FREEMIUM] Feature ${feature} blocked for non-Pro user ${userId}`)
       return {
-        canUse: true,
+        canUse: false,
         isPro: false,
-        remaining: -1,
+        remaining: 0,
         usedToday: 0,
-        limit: -1,
-        message: 'Usage check failed, allowing access'
+        limit: FREE_DAILY_LIMIT,
+        message: `This feature requires Pro. Upgrade to unlock ${feature}.`
       }
     }
 
-    return {
-      canUse: data.canUse ?? true,
-      isPro: data.isPro ?? false,
-      remaining: data.remaining ?? -1,
-      usedToday: data.usedToday ?? 0,
-      limit: data.limit ?? FREE_DAILY_LIMIT,
-      message: data.message ?? ''
+    // Pro users: unlimited access
+    if (isPro) {
+      return {
+        canUse: true,
+        isPro: true,
+        remaining: -1, // Unlimited
+        usedToday: 0,
+        limit: -1,
+        message: 'Unlimited Pro access'
+      }
     }
-  } catch (err) {
-    console.error('[FREEMIUM] Exception checking usage:', err)
+
+    // Free users: strict 2 uses per 24h rolling window
+    const lastUsageTimestamp = profile?.last_usage_timestamp
+    let currentUsageCount = profile?.daily_usage_count ?? 0
+
+    // Check if we should reset the counter (24h since last use)
+    if (shouldResetUsage(lastUsageTimestamp)) {
+      currentUsageCount = 0
+    }
+
+    // STRICT GATE: Check if user has exceeded limit
+    if (currentUsageCount >= FREE_DAILY_LIMIT) {
+      const resetTime = calculateResetTime(lastUsageTimestamp)
+      console.log(`[FREEMIUM] Usage limit reached for user ${userId}. Reset at: ${resetTime}`)
+      return {
+        canUse: false,
+        isPro: false,
+        remaining: 0,
+        usedToday: currentUsageCount,
+        limit: FREE_DAILY_LIMIT,
+        message: 'Daily limit reached. Upgrade to Pro for unlimited analyses.',
+        resetTime: resetTime ?? undefined
+      }
+    }
+
+    // Increment usage count and update timestamp
+    const newUsageCount = currentUsageCount + 1
+    const now = new Date().toISOString()
+
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        id: userId,
+        daily_usage_count: newUsageCount,
+        last_usage_timestamp: now,
+        updated_at: now
+      }, {
+        onConflict: 'id'
+      })
+
+    if (updateError) {
+      console.error('[FREEMIUM] Error updating usage:', updateError)
+      // On update error, still allow the request but log it
+    }
+
+    const remaining = FREE_DAILY_LIMIT - newUsageCount
+    const resetTime = calculateResetTime(now)
+
+    console.log(`[FREEMIUM] Usage updated for user ${userId}: ${newUsageCount}/${FREE_DAILY_LIMIT}, remaining: ${remaining}`)
+
     return {
       canUse: true,
       isPro: false,
-      remaining: -1,
+      remaining: remaining,
+      usedToday: newUsageCount,
+      limit: FREE_DAILY_LIMIT,
+      message: remaining > 0 
+        ? `${remaining} ${remaining === 1 ? 'analysis' : 'analyses'} remaining`
+        : 'This was your last free analysis. Upgrade to Pro for unlimited access.',
+      resetTime: resetTime ?? undefined
+    }
+  } catch (err) {
+    console.error('[FREEMIUM] Exception checking usage:', err)
+    // STRICT MODE: On error, DENY access to prevent abuse
+    return {
+      canUse: false,
+      isPro: false,
+      remaining: 0,
       usedToday: 0,
-      limit: -1,
-      message: 'Exception occurred, allowing access'
+      limit: FREE_DAILY_LIMIT,
+      message: 'Usage check failed. Please try again.'
     }
   }
 }
@@ -101,6 +256,7 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
 /**
  * Get user's current usage status without incrementing
  * Used for displaying remaining uses in UI
+ * Implements 24h rolling window logic
  */
 export async function getUsageStatus(userId: string): Promise<UsageStatus> {
   if (!isServerSupabaseConfigured()) {
@@ -127,39 +283,64 @@ export async function getUsageStatus(userId: string): Promise<UsageStatus> {
   }
 
   try {
-    const { data, error } = await supabase.rpc('get_usage_status', {
-      p_user_id: userId
-    })
+    // Direct query instead of RPC for more control
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_pro, daily_usage_count, last_usage_timestamp')
+      .eq('id', userId)
+      .single()
 
-    if (error) {
-      console.error('[FREEMIUM] Error getting status:', error)
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('[FREEMIUM] Error getting status:', profileError)
+    }
+
+    const isPro = profile?.is_pro ?? false
+
+    // Pro users: unlimited
+    if (isPro) {
       return {
         canUse: true,
-        isPro: false,
-        remaining: FREE_DAILY_LIMIT,
+        isPro: true,
+        remaining: -1,
         usedToday: 0,
-        limit: FREE_DAILY_LIMIT,
-        message: 'Status check failed'
+        limit: -1,
+        message: 'Unlimited Pro access'
       }
     }
 
+    // Free users: check 24h rolling window
+    const lastUsageTimestamp = profile?.last_usage_timestamp
+    let usedToday = profile?.daily_usage_count ?? 0
+
+    // Reset counter if 24h have passed since last use
+    if (shouldResetUsage(lastUsageTimestamp)) {
+      usedToday = 0
+    }
+
+    const remaining = Math.max(0, FREE_DAILY_LIMIT - usedToday)
+    const canUse = remaining > 0
+    const resetTime = calculateResetTime(lastUsageTimestamp)
+
     return {
-      canUse: (data.remaining ?? FREE_DAILY_LIMIT) > 0 || data.isPro,
-      isPro: data.isPro ?? false,
-      remaining: data.remaining ?? FREE_DAILY_LIMIT,
-      usedToday: data.usedToday ?? 0,
-      limit: data.limit ?? FREE_DAILY_LIMIT,
-      message: data.isPro ? 'Unlimited Pro access' : `${data.remaining ?? FREE_DAILY_LIMIT} uses remaining today`
+      canUse,
+      isPro: false,
+      remaining,
+      usedToday,
+      limit: FREE_DAILY_LIMIT,
+      message: canUse 
+        ? `${remaining} ${remaining === 1 ? 'use' : 'uses'} remaining (resets 24h after last use)`
+        : 'Daily limit reached. Upgrade for unlimited access.',
+      resetTime: resetTime ?? undefined
     }
   } catch (err) {
     console.error('[FREEMIUM] Exception getting status:', err)
     return {
-      canUse: true,
+      canUse: false,
       isPro: false,
-      remaining: FREE_DAILY_LIMIT,
+      remaining: 0,
       usedToday: 0,
       limit: FREE_DAILY_LIMIT,
-      message: 'Exception occurred'
+      message: 'Status check failed'
     }
   }
 }

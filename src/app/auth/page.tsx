@@ -8,7 +8,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Loader2, Mail, ArrowLeft, CheckCircle, Lock, User, Eye, EyeOff } from 'lucide-react'
 
-type AuthMode = 'login' | 'signup' | 'magic-link' | 'sent' | 'email-confirm'
+type AuthMode = 'login' | 'signup' | 'magic-link' | 'sent' | 'email-confirm' | 'forgot-password' | 'reset-sent'
 
 export default function AuthPage() {
   const { t, isRTL, language, isLoaded } = useLanguage()
@@ -182,7 +182,7 @@ export default function AuthPage() {
     
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -196,7 +196,21 @@ export default function AuthPage() {
       })
       
       if (error) {
-        setError(error.message)
+        // Handle specific error cases
+        if (error.message.toLowerCase().includes('already registered') || 
+            error.message.toLowerCase().includes('already exists') ||
+            error.message.toLowerCase().includes('user already')) {
+          setError(language === 'ar' 
+            ? 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.'
+            : 'User already exists. Please log in instead.')
+        } else {
+          setError(error.message)
+        }
+      } else if (data?.user?.identities?.length === 0) {
+        // Supabase returns empty identities when user already exists
+        setError(language === 'ar' 
+          ? 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.'
+          : 'User already exists. Please log in instead.')
       } else {
         setAuthMode('email-confirm')
       }
@@ -220,16 +234,15 @@ export default function AuthPage() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md relative z-10"
       >
-        {/* Logo */}
+        {/* Logo - Transparent standard logo for header (black circle only for favicon/og:image) */}
         <Link href="/" className="flex items-center justify-center gap-3 mb-8 group">
-          <div className="h-12 relative">
-            <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-lg group-hover:bg-purple-600/40 transition-all" />
+          <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
             <Image 
-              src="/logo-new.png" 
+              src="/logo.png" 
               alt="Human-Verified Hub Logo" 
               width={48} 
               height={48} 
-              className="h-12 w-auto object-contain relative z-10 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all"
+              className="w-12 h-12 object-contain"
               priority
             />
           </div>
@@ -364,6 +377,15 @@ export default function AuthPage() {
                   </button>
                 </form>
 
+                {/* Forgot Password Link */}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('forgot-password'); setError(null); }}
+                  className="w-full py-1 text-gray-500 hover:text-purple-400 text-sm transition-all"
+                >
+                  {language === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
+                </button>
+
                 {/* Magic Link Option */}
                 <button
                   type="button"
@@ -371,7 +393,7 @@ export default function AuthPage() {
                   className="w-full py-2 text-purple-400 hover:text-purple-300 text-sm transition-all flex items-center justify-center gap-1"
                 >
                   <Mail className="w-4 h-4" />
-                  {language === 'ar' ? 'تسجيل الدخول برابط سحري' : 'Sign in with Magic Link instead'}
+                  {language === 'ar' ? 'تسجيل الدخول برابط البريد' : 'Sign in via Email Link'}
                 </button>
 
                 {/* Sign Up Link */}
@@ -618,6 +640,156 @@ export default function AuthPage() {
                 >
                   <ArrowLeft className="w-4 h-4" />
                   {language === 'ar' ? 'العودة لتسجيل الدخول بكلمة مرور' : 'Back to password login'}
+                </button>
+              </motion.div>
+            )}
+
+            {/* Forgot Password Mode */}
+            {authMode === 'forgot-password' && (
+              <motion.div
+                key="forgot-password-step"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white">
+                    {language === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
+                  </h2>
+                  <p className="text-gray-400 text-sm mt-2">
+                    {language === 'ar' ? 'أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين' : "Enter your email and we'll send you a reset link"}
+                  </p>
+                </div>
+
+                <form onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (!email.trim()) return
+                  if (!isSupabaseConfigured()) {
+                    setError('Authentication service not configured')
+                    return
+                  }
+                  setLoading(true)
+                  setError(null)
+                  try {
+                    const supabase = createClient()
+                    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+                      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+                    })
+                    if (error) {
+                      setError(error.message)
+                    } else {
+                      setAuthMode('reset-sent')
+                    }
+                  } catch (err: any) {
+                    setError(err.message || 'Failed to send reset email')
+                  }
+                  setLoading(false)
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <Mail className="w-4 h-4 inline mr-2" />
+                      {t.auth.email}
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={language === 'ar' ? 'أدخل بريدك الإلكتروني' : 'Enter your email address'}
+                      className="w-full px-4 py-3 bg-black/80 border border-purple-900/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30 transition-all"
+                      required
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button
+                    type="submit"
+                    disabled={loading || !email.trim()}
+                    className="w-full py-3.5 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-medium rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        {language === 'ar' ? 'جارِ الإرسال...' : 'Sending...'}
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4" />
+                        {language === 'ar' ? 'إرسال رابط إعادة التعيين' : 'Send Reset Link'}
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('login'); setError(null); }}
+                  className="w-full py-2 text-gray-400 hover:text-white text-sm transition-all flex items-center justify-center gap-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {language === 'ar' ? 'العودة لتسجيل الدخول' : 'Back to Sign In'}
+                </button>
+              </motion.div>
+            )}
+
+            {/* Reset Password Email Sent */}
+            {authMode === 'reset-sent' && (
+              <motion.div
+                key="reset-sent-step"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6 text-center"
+              >
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+                  <CheckCircle className="w-8 h-8 text-green-400" />
+                </div>
+                
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">
+                    {language === 'ar' ? 'تحقق من بريدك!' : 'Check Your Email!'}
+                  </h2>
+                  <p className="text-gray-400 text-sm">
+                    {language === 'ar' 
+                      ? 'لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى'
+                      : "We've sent a password reset link to"}
+                  </p>
+                  <p className="text-purple-400 font-medium mt-1">{email}</p>
+                </div>
+
+                <div className="p-4 bg-purple-900/20 border border-purple-500/20 rounded-xl">
+                  <p className="text-gray-300 text-sm">
+                    {language === 'ar' 
+                      ? 'انقر على الرابط في البريد الإلكتروني لإعادة تعيين كلمة المرور.'
+                      : 'Click the link in the email to reset your password.'}
+                  </p>
+                </div>
+
+                <div className="text-gray-500 text-xs">
+                  {language === 'ar' 
+                    ? 'لم تستلم البريد؟ تحقق من مجلد الرسائل غير المرغوب فيها.'
+                    : "Didn't receive it? Check your spam folder."}
+                </div>
+
+                <button
+                  onClick={resetAuth}
+                  className="w-full py-2 text-gray-400 hover:text-white text-sm transition-all flex items-center justify-center gap-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {language === 'ar' ? 'العودة لتسجيل الدخول' : 'Back to Sign In'}
                 </button>
               </motion.div>
             )}

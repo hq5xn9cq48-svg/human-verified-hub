@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import Link from 'next/link'
+import AuthGuard from '@/components/AuthGuard'
 import { 
   Scroll, 
   User, 
@@ -120,6 +121,7 @@ export default function HistoryPage() {
   }
 
   return (
+    <AuthGuard featureName={t.nav.history}>
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -320,5 +322,6 @@ export default function HistoryPage() {
         </div>
       </footer>
     </div>
+    </AuthGuard>
   )
 }

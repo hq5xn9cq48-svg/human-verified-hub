@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import ScoreGauge from '@/components/ScoreGauge'
+import AuthGuard from '@/components/AuthGuard'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -136,6 +137,11 @@ export default function ImageDetectorPage() {
           setShowUpgradeModal(true)
           throw new Error(language === 'ar' ? 'وصلت للحد اليومي. الترقية للحصول على تحليلات غير محدودة.' : 'Daily limit reached. Upgrade for unlimited analyses.')
         }
+        // Check for feature locked error (Pro-only feature)
+        if (data.errorCode === 'FEATURE_LOCKED' || data.requiresUpgrade) {
+          setShowUpgradeModal(true)
+          throw new Error(data.error || (language === 'ar' ? 'هذه الميزة متاحة فقط للمشتركين Pro.' : 'This feature is only available for Pro subscribers.'))
+        }
         throw new Error(data.error || (language === 'ar' ? 'فشل التحليل' : 'Analysis failed'))
       }
       
@@ -205,6 +211,7 @@ export default function ImageDetectorPage() {
   }
 
   return (
+    <AuthGuard featureName={language === 'ar' ? 'كاشف الصور' : 'the Image Detector'}>
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
@@ -602,5 +609,6 @@ export default function ImageDetectorPage() {
         </div>
       </footer>
     </div>
+    </AuthGuard>
   )
 }

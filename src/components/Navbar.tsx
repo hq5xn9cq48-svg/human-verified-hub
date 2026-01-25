@@ -81,21 +81,21 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
-          {/* Logo - Transparent standard logo for header (black circle only for favicon/og:image) */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative w-12 h-12 flex items-center justify-center overflow-hidden">
+          {/* Logo - Clean transparent logo, properly sized and centered */}
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105">
               <Image 
                 src="/logo.png" 
                 alt="Human-Verified Hub Logo" 
                 width={48} 
                 height={48} 
-                className="w-12 h-12 object-contain"
+                className="w-full h-full object-contain"
                 priority
               />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-gradient">Human-Verified Hub</h1>
-              <p className="text-[10px] text-gray-500">{t.header.subtitle}</p>
+              <h1 className="text-base sm:text-lg font-bold text-gradient leading-tight">Human-Verified Hub</h1>
+              <p className="text-[9px] sm:text-[10px] text-gray-500 leading-tight">{t.header.subtitle}</p>
             </div>
           </Link>
 
@@ -122,26 +122,26 @@ export default function Navbar() {
           </nav>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-3">
-            {/* Free Uses Remaining Counter - Always visible in header */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Free Uses Remaining Counter - Compact on mobile */}
             {user && usageStatus && !usageStatus.isPro && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-900/30 border border-purple-500/30">
-                <Zap className="w-4 h-4 text-purple-400" />
-                <span className={`text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-purple-900/30 border border-purple-500/30">
+                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
+                <span className={`text-xs sm:text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
                   {usageStatus.remaining}/{usageStatus.limit}
                 </span>
-                <span className="text-xs text-gray-400">{language === 'ar' ? 'متبقي' : 'free'}</span>
+                <span className="text-[10px] sm:text-xs text-gray-400 hidden sm:inline">{language === 'ar' ? 'متبقي' : 'free'}</span>
               </div>
             )}
             
-            {/* Upgrade to Pro Button - visible for non-Pro users */}
+            {/* Upgrade to Pro Button - Compact on mobile, full on desktop */}
             {user && !usageStatus?.isPro && (
               <Link
                 href="/pricing"
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all text-white text-sm font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg sm:rounded-xl hover:from-purple-500 hover:to-pink-500 transition-all text-white text-xs sm:text-sm font-medium shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40"
               >
-                <Crown className="w-4 h-4" />
-                <span>{language === 'ar' ? 'ترقية للبرو' : 'Upgrade to Pro'}</span>
+                <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
               </Link>
             )}
 

@@ -6,6 +6,44 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(req: Request) {
   try {
+    // Check for Pro status - PDF certificates are Pro-only
+    const authHeader = req.headers.get('authorization')
+    const token = authHeader?.replace('Bearer ', '')
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Verify user and check Pro status
+    if (token) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+      
+      if (!authError && user) {
+        // Check if user is Pro
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('is_pro')
+          .eq('id', user.id)
+          .single()
+        
+        if (!profile?.is_pro) {
+          return NextResponse.json({
+            error: "PDF Certificates are only available for Pro subscribers. Upgrade to unlock this feature.",
+            errorCode: "FEATURE_LOCKED",
+            requiresUpgrade: true
+          }, { status: 403 });
+        }
+      } else {
+        return NextResponse.json({
+          error: "Authentication required for PDF generation",
+          errorCode: "AUTH_REQUIRED"
+        }, { status: 401 });
+      }
+    } else {
+      return NextResponse.json({
+        error: "Authentication required for PDF generation",
+        errorCode: "AUTH_REQUIRED"
+      }, { status: 401 });
+    }
+
     const body = await req.json();
     const { verificationId, humanScore, content, userId } = body;
     
@@ -24,8 +62,6 @@ export async function POST(req: Request) {
         error: "Certificate only available for Human scores above 90%" 
       }, { status: 400 });
     }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Generate certificate ID
     const certificateId = `HVC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;

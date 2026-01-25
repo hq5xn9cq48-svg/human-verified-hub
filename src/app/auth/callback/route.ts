@@ -3,9 +3,16 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams, origin, hash } = new URL(request.url)
   const code = searchParams.get('code')
+  const type = searchParams.get('type')
   const next = searchParams.get('next') ?? '/'
+
+  // Handle password recovery redirect
+  if (type === 'recovery') {
+    // Redirect to reset password page - the hash fragment with tokens will be preserved
+    return NextResponse.redirect(`${origin}/reset-password`)
+  }
 
   if (code) {
     const cookieStore = cookies()
@@ -27,9 +34,14 @@ export async function GET(request: Request) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
+      // Check if this is a recovery session
+      if (data?.session?.user?.aud === 'authenticated' && 
+          data?.session?.user?.recovery_sent_at) {
+        return NextResponse.redirect(`${origin}/reset-password`)
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

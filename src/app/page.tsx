@@ -169,9 +169,22 @@ export default function HomePage() {
     setVerificationId(null)
 
     try {
+      // Get access token for authenticated requests
+      let accessToken: string | null = null
+      if (user && isSupabaseConfigured()) {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        accessToken = session?.access_token || null
+      }
+
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           text: inputMode === 'text' ? text : undefined, 
           url: inputMode === 'url' ? url : undefined,
@@ -224,15 +237,34 @@ export default function HomePage() {
   const generateCertificate = async () => {
     if (!result || result.humanScore < 90) return
     
+    // Check if user is Pro - PDF is Pro-only feature
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
+    
     setCertificateLoading(true)
     
     try {
+      // Get access token for authenticated requests
+      let accessToken: string | null = null
+      if (user && isSupabaseConfigured()) {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        accessToken = session?.access_token || null
+      }
+      
       const jsPDF = (await import('jspdf')).default
       const QRCode = await import('qrcode')
       
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+      
       const certResponse = await fetch('/api/certificate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           verificationId,
           humanScore: result.humanScore,
@@ -243,8 +275,15 @@ export default function HomePage() {
       
       const certData = await certResponse.json()
       
+      // Check for Pro-only restriction
+      if (certData.errorCode === 'FEATURE_LOCKED') {
+        setShowUpgradeModal(true)
+        setCertificateLoading(false)
+        return
+      }
+      
       if (!certData.certificateId) {
-        throw new Error('Failed to generate certificate')
+        throw new Error(certData.error || 'Failed to generate certificate')
       }
 
       const verifyUrl = `${window.location.origin}/verify/${certData.certificateId}`
@@ -378,9 +417,15 @@ export default function HomePage() {
     }
   }
 
-  // Download Report PDF for any score
+  // Download Report PDF for any score - Pro only feature
   const downloadReport = async () => {
     if (!result) return
+    
+    // Check if user is Pro - PDF is Pro-only feature
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
     
     setCertificateLoading(true)
     
@@ -963,19 +1008,30 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Download Report Button (Always available) */}
+              {/* Download Report Button - Pro Only */}
               <div className="flex gap-3">
                 <button
                   onClick={downloadReport}
                   disabled={certificateLoading}
-                  className="flex-1 py-3 px-4 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                  className={`flex-1 py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
+                    usageStatus?.isPro 
+                      ? 'bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300'
+                      : 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 hover:border-purple-400/50 text-purple-300'
+                  }`}
                 >
-                  {certificateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {certificateLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : usageStatus?.isPro ? (
+                    <Download className="w-4 h-4" />
+                  ) : (
+                    <Crown className="w-4 h-4 text-yellow-400" />
+                  )}
                   {language === 'ar' ? 'تحميل التقرير' : 'Download Report'}
+                  {!usageStatus?.isPro && <span className="text-xs text-yellow-400 ml-1">(Pro)</span>}
                 </button>
               </div>
 
-              {/* Certificate Button (Score >= 90) */}
+              {/* Certificate Button (Score >= 90) - Pro Only */}
               {result.humanScore >= 90 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -987,16 +1043,34 @@ export default function HomePage() {
                       <Award className="w-6 h-6 text-green-400" />
                       <div>
                         <h4 className="text-green-400 font-bold">{language === 'ar' ? 'شهادة متاحة!' : 'Certificate Available!'}</h4>
-                        <p className="text-gray-400 text-sm">{language === 'ar' ? 'محتواك مؤهل للحصول على شهادة PDF رسمية' : 'Your content qualifies for an official PDF certificate'}</p>
+                        <p className="text-gray-400 text-sm">
+                          {usageStatus?.isPro 
+                            ? (language === 'ar' ? 'محتواك مؤهل للحصول على شهادة PDF رسمية' : 'Your content qualifies for an official PDF certificate')
+                            : (language === 'ar' ? 'ترقية للحصول على شهادة PDF رسمية' : 'Upgrade to Pro to get an official PDF certificate')
+                          }
+                        </p>
                       </div>
                     </div>
                     <button
                       onClick={generateCertificate}
                       disabled={certificateLoading}
-                      className="px-4 py-2 bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+                      className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${
+                        usageStatus?.isPro 
+                          ? 'bg-green-600/20 hover:bg-green-600/30 border border-green-500/50 text-green-300'
+                          : 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/40 hover:border-purple-400/50 text-purple-300'
+                      }`}
                     >
-                      {certificateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
-                      {language === 'ar' ? 'تحميل الشهادة' : 'Download Certificate'}
+                      {certificateLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : usageStatus?.isPro ? (
+                        <FileCheck className="w-4 h-4" />
+                      ) : (
+                        <Crown className="w-4 h-4 text-yellow-400" />
+                      )}
+                      {usageStatus?.isPro 
+                        ? (language === 'ar' ? 'تحميل الشهادة' : 'Download Certificate')
+                        : (language === 'ar' ? 'ترقية للشهادة' : 'Upgrade for Certificate')
+                      }
                     </button>
                   </div>
                 </motion.div>

@@ -12,10 +12,11 @@ import {
   Infinity
 } from 'lucide-react'
 
-// Lemon Squeezy checkout URLs - use environment variables
-// IMPORTANT: Set these in Vercel Environment Variables:
+// Lemon Squeezy checkout URLs - MUST be configured in Vercel Environment Variables
+// Set these in Vercel Environment Variables for production:
 // - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL (monthly)
 // - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY (yearly)
+// NO FALLBACKS - will show clear error if not configured
 const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || ''
 const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || ''
 
@@ -35,6 +36,18 @@ const features: PlanFeature[] = [
   {
     name: { en: 'AI Text Detection', ar: 'كشف النصوص بالذكاء الاصطناعي' },
     free: '2/day',
+    pro: true,
+    icon: <FileText className="w-4 h-4" />
+  },
+  {
+    name: { en: 'URL Analysis', ar: 'تحليل الروابط' },
+    free: false, // LOCKED for free users - Pro only
+    pro: true,
+    icon: <Zap className="w-4 h-4" />
+  },
+  {
+    name: { en: 'File Analysis (PDF/Word)', ar: 'تحليل الملفات (PDF/Word)' },
+    free: false, // LOCKED for free users - Pro only
     pro: true,
     icon: <FileText className="w-4 h-4" />
   },
@@ -69,22 +82,10 @@ const features: PlanFeature[] = [
     icon: <History className="w-4 h-4" />
   },
   {
-    name: { en: 'Priority Processing', ar: 'معالجة بالأولوية' },
-    free: false,
-    pro: true,
-    icon: <Clock className="w-4 h-4" />
-  },
-  {
     name: { en: 'Export Reports (PDF)', ar: 'تصدير التقارير (PDF)' },
     free: false,
     pro: true,
     icon: <Download className="w-4 h-4" />
-  },
-  {
-    name: { en: 'API Access', ar: 'الوصول للواجهة البرمجية' },
-    free: false,
-    pro: 'Coming Soon',
-    icon: <Shield className="w-4 h-4" />
   },
 ]
 

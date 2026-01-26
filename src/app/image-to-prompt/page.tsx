@@ -35,7 +35,7 @@ interface PromptResult {
 export default function ImageToPromptPage() {
   const router = useRouter()
   const { language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, usageStatus, refreshUsageStatus } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [mounted, setMounted] = useState(false)
   
@@ -87,6 +87,12 @@ export default function ImageToPromptPage() {
     // Auth check on submit - redirect to login if not authenticated
     if (!user && !authLoading) {
       router.push('/auth')
+      return
+    }
+    
+    // PRO CHECK: Show upgrade modal IMMEDIATELY before any processing
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
       return
     }
 

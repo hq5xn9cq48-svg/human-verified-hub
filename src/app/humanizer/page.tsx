@@ -60,7 +60,7 @@ const loadingMessagesAr = [
 export default function HumanizerPage() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, usageStatus, refreshUsageStatus } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')
@@ -93,6 +93,12 @@ export default function HumanizerPage() {
     // Auth check on submit - redirect to login if not authenticated
     if (!user && !authLoading) {
       router.push('/auth')
+      return
+    }
+    
+    // PRO CHECK: Show upgrade modal IMMEDIATELY before any processing
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
       return
     }
     

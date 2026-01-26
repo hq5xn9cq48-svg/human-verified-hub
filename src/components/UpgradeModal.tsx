@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { Crown, X, Zap, Infinity, Check, Sparkles, Shield, Clock, FileText, Image as ImageIcon, Wand2 } from 'lucide-react'
+import { Crown, X, Zap, Infinity, Check, Sparkles, Shield, Clock, FileText, Image as ImageIcon, Wand2, Link as LinkIcon, Upload } from 'lucide-react'
 import Link from 'next/link'
 
 interface UpgradeModalProps {
@@ -12,10 +12,8 @@ interface UpgradeModalProps {
   onClose: () => void
 }
 
-// Lemon Squeezy checkout URLs from environment
-// IMPORTANT: Set these in Vercel Environment Variables:
-// - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL (monthly)
-// - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY (yearly)
+// Lemon Squeezy checkout URLs - MUST be configured in Vercel Environment Variables
+// NO FALLBACKS - will show error if not configured
 const CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || ''
 const CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || ''
 
@@ -36,6 +34,16 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       description: language === 'ar' ? 'بدون حدود يومية' : 'No daily limits'
     },
     {
+      icon: LinkIcon,
+      title: language === 'ar' ? 'تحليل الروابط' : 'URL Analysis',
+      description: language === 'ar' ? 'تحليل من رابط' : 'Analyze from URL'
+    },
+    {
+      icon: Upload,
+      title: language === 'ar' ? 'تحليل الملفات' : 'File Analysis',
+      description: language === 'ar' ? 'PDF/Word' : 'PDF/Word files'
+    },
+    {
       icon: ImageIcon,
       title: language === 'ar' ? 'تحليل الصور' : 'Image Analysis',
       description: language === 'ar' ? 'كشف AI في الصور' : 'AI detection in images'
@@ -49,16 +57,6 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       icon: FileText,
       title: language === 'ar' ? 'تقارير PDF' : 'PDF Reports',
       description: language === 'ar' ? 'تقارير وشهادات' : 'Reports & certificates'
-    },
-    {
-      icon: Clock,
-      title: language === 'ar' ? 'سجل دائم' : 'Forever History',
-      description: language === 'ar' ? 'حفظ التحليلات' : 'Keep all analyses'
-    },
-    {
-      icon: Zap,
-      title: language === 'ar' ? 'معالجة سريعة' : 'Priority Speed',
-      description: language === 'ar' ? 'نتائج أسرع' : 'Faster results'
     }
   ]
 

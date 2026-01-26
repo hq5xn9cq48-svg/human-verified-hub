@@ -79,7 +79,10 @@ export default function HomePage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
-  const [inputMode, setInputMode] = useState<'text' | 'url'>('text')
+  const [inputMode, setInputMode] = useState<'text' | 'url' | 'file'>('text')
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [fileContent, setFileContent] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
   const [result, setResult] = useState<AnalysisResult | null>(null)
@@ -150,8 +153,63 @@ export default function HomePage() {
     setShowCookieConsent(false)
   }
 
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Check if Pro for file upload
+    if (!usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      e.target.value = ''
+      return
+    }
+    
+    // Check file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+    if (!allowedTypes.includes(file.type)) {
+      setError(language === 'ar' ? 'نوع الملف غير مدعوم. استخدم PDF أو Word أو TXT' : 'Unsupported file type. Use PDF, Word, or TXT')
+      e.target.value = ''
+      return
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError(language === 'ar' ? 'الملف كبير جداً. الحد الأقصى 5MB' : 'File too large. Maximum size is 5MB')
+      e.target.value = ''
+      return
+    }
+    
+    setUploadedFile(file)
+    setError(null)
+    
+    // Read file content
+    try {
+      if (file.type === 'text/plain') {
+        const text = await file.text()
+        setFileContent(text)
+      } else {
+        // For PDF/Word, we'll send the file to the server
+        setFileContent(`[${file.name}]`)
+      }
+    } catch (err) {
+      setError(language === 'ar' ? 'خطأ في قراءة الملف' : 'Error reading file')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Check Pro requirement for URL and File modes BEFORE any processing
+    if (inputMode === 'url' && !usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
+    
+    if (inputMode === 'file' && !usageStatus?.isPro) {
+      setShowUpgradeModal(true)
+      return
+    }
     
     if (inputMode === 'text' && (!text.trim() || text.length < 20)) {
       setError(language === 'ar' ? 'أدخل 20 حرفاً على الأقل' : 'Please enter at least 20 characters')
@@ -160,6 +218,11 @@ export default function HomePage() {
     
     if (inputMode === 'url' && !url.trim()) {
       setError(language === 'ar' ? 'أدخل رابطاً صالحاً' : 'Please enter a valid URL')
+      return
+    }
+    
+    if (inputMode === 'file' && !uploadedFile) {
+      setError(language === 'ar' ? 'يرجى رفع ملف' : 'Please upload a file')
       return
     }
 
@@ -182,12 +245,21 @@ export default function HomePage() {
         headers['Authorization'] = `Bearer ${accessToken}`
       }
 
+      // Determine what to send based on input mode
+      let analysisText = inputMode === 'text' ? text : undefined
+      let analysisUrl = inputMode === 'url' ? url : undefined
+      
+      // For file mode, use the file content if it's text, otherwise send file info
+      if (inputMode === 'file' && fileContent && !fileContent.startsWith('[')) {
+        analysisText = fileContent
+      }
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          text: inputMode === 'text' ? text : undefined, 
-          url: inputMode === 'url' ? url : undefined,
+          text: analysisText, 
+          url: analysisUrl,
           language,
           turnstileToken 
         }),
@@ -204,10 +276,19 @@ export default function HomePage() {
         throw new Error(data.error || 'Analysis failed')
       }
       
-      // Refresh usage status after successful analysis
-      console.log('[HOME] Analysis successful, refreshing usage status...')
+      // Refresh usage status IMMEDIATELY after successful analysis
+      // This ensures the counter updates without page refresh
+      console.log('[HOME] Analysis successful, refreshing usage status IMMEDIATELY...')
+      
+      // Force refresh with slight delay to ensure DB has committed the change
+      setTimeout(async () => {
+        await refreshUsageStatus()
+        console.log('[HOME] Usage status refreshed after delay')
+      }, 500)
+      
+      // Also refresh immediately for faster UI update
       await refreshUsageStatus()
-      console.log('[HOME] Usage status refreshed')
+      console.log('[HOME] Usage status refreshed immediately')
 
       setResult(data)
 
@@ -531,6 +612,9 @@ export default function HomePage() {
   const clearInput = () => {
     setText('')
     setUrl('')
+    setUploadedFile(null)
+    setFileContent('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
     textareaRef.current?.focus()
   }
 
@@ -586,35 +670,59 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Usage Status Banner - Clean production design, responsive for mobile */}
-      <div className="fixed top-16 left-0 right-0 z-40 h-auto min-h-[40px] bg-black/80 backdrop-blur-md border-b border-purple-500/20">
-        <div className="h-full max-w-5xl mx-auto px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink min-w-0">
-            {usageStatus?.isPro ? (
-              <>
-                <Crown className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-400 flex-shrink-0" />
-                <span className="text-yellow-400 text-[10px] sm:text-xs font-medium truncate">
-                  {language === 'ar' ? 'Pro - غير محدود' : 'Pro - Unlimited'}
-                </span>
-              </>
-            ) : (
-              <>
-                <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-purple-400 flex-shrink-0" />
-                <span className="text-gray-300 text-[10px] sm:text-xs font-medium">
-                  <span className="hidden xs:inline">
-                    {language === 'ar' 
-                      ? 'الخطة المجانية: تحليل النص فقط' 
-                      : 'Free Plan: Text Analysis Only'}
+      {/* Usage Status Banner - Premium Glass Design with Enhanced Visibility */}
+      <div className="fixed top-16 left-0 right-0 z-40">
+        <div className="relative bg-gradient-to-r from-black/95 via-purple-900/30 to-black/95 backdrop-blur-2xl border-b border-purple-500/40 shadow-lg shadow-purple-500/10">
+          {/* Subtle glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/5 via-pink-600/5 to-purple-600/5 pointer-events-none" />
+          
+          <div className="relative max-w-5xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-3">
+            {/* Plan Status Badge - Enhanced Design */}
+            <div className="flex items-center gap-2">
+              {usageStatus?.isPro ? (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 border border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
+                  <div className="relative">
+                    <Crown className="w-4 h-4 text-yellow-400" />
+                    <div className="absolute inset-0 animate-ping">
+                      <Crown className="w-4 h-4 text-yellow-400/30" />
+                    </div>
+                  </div>
+                  <span className="text-yellow-300 text-sm font-bold tracking-wide">
+                    Pro
                   </span>
-                  <span className="xs:hidden">
+                  <span className="hidden sm:flex items-center gap-1 text-yellow-400/80 text-xs">
+                    <Sparkles className="w-3 h-3" />
+                    {language === 'ar' ? 'غير محدود' : 'Unlimited'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600/15 via-purple-500/10 to-pink-600/15 border border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.15)]">
+                  <Shield className="w-4 h-4 text-purple-400" />
+                  <span className="text-purple-300 text-sm font-semibold">
                     {language === 'ar' ? 'مجاني' : 'Free'}
                   </span>
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex-shrink-0">
-            <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
+                  <span className="hidden sm:inline text-purple-400/70 text-xs border-l border-purple-500/30 pl-2 ml-1">
+                    {language === 'ar' ? 'تحليل النص فقط' : 'Text Analysis Only'}
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* Usage Counter - Enhanced with better visibility */}
+            <div className="flex items-center gap-3">
+              {!usageStatus?.isPro && usageStatus && (
+                <div className="hidden xs:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-purple-500/20">
+                  <Activity className="w-3.5 h-3.5 text-purple-400" />
+                  <span className={`text-xs font-medium ${
+                    usageStatus.remaining <= 0 ? 'text-red-400' : 
+                    usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-gray-300'
+                  }`}>
+                    {usageStatus.remaining}/{usageStatus.limit} {language === 'ar' ? 'متبقي' : 'left'}
+                  </span>
+                </div>
+              )}
+              <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
+            </div>
           </div>
         </div>
       </div>
@@ -856,30 +964,56 @@ export default function HomePage() {
           {!result ? (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Input Mode Toggle */}
-              <div className="flex justify-center gap-2 p-1 bg-black/50 rounded-xl w-fit mx-auto border border-purple-900/30">
+              <div className="flex justify-center gap-1 sm:gap-2 p-1 bg-black/50 rounded-xl w-fit mx-auto border border-purple-900/30">
                 <button
                   type="button"
                   onClick={() => setInputMode('text')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 sm:gap-2 ${
                     inputMode === 'text' 
                       ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40' 
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <FileText className="w-4 h-4" />
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   {language === 'ar' ? 'نص' : 'Text'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInputMode('url')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  onClick={() => {
+                    if (!usageStatus?.isPro) {
+                      setShowUpgradeModal(true)
+                      return
+                    }
+                    setInputMode('url')
+                  }}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 sm:gap-2 relative ${
                     inputMode === 'url' 
                       ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40' 
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <LinkIcon className="w-4 h-4" />
+                  <LinkIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   {language === 'ar' ? 'رابط' : 'URL'}
+                  {!usageStatus?.isPro && <Crown className="w-3 h-3 text-yellow-400" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!usageStatus?.isPro) {
+                      setShowUpgradeModal(true)
+                      return
+                    }
+                    setInputMode('file')
+                  }}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 sm:gap-2 relative ${
+                    inputMode === 'file' 
+                      ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  {language === 'ar' ? 'ملف' : 'File'}
+                  {!usageStatus?.isPro && <Crown className="w-3 h-3 text-yellow-400" />}
                 </button>
               </div>
 
@@ -929,16 +1063,22 @@ export default function HomePage() {
                       <span className={text.length >= 20 ? 'text-green-400' : ''}>{text.length} {t.analyzer.characters}</span>
                     </div>
                   </motion.div>
-                ) : (
+                ) : inputMode === 'url' ? (
                   <motion.div
                     key="url"
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                   >
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      {language === 'ar' ? 'رابط المقال' : 'Article URL'}
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-300">
+                        {language === 'ar' ? 'رابط المقال' : 'Article URL'}
+                      </label>
+                      <span className="flex items-center gap-1 text-xs text-yellow-400">
+                        <Crown className="w-3 h-3" />
+                        Pro
+                      </span>
+                    </div>
                     <div className="relative">
                       <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                       <input
@@ -949,6 +1089,66 @@ export default function HomePage() {
                         placeholder="https://example.com/article"
                         dir="ltr"
                       />
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="file"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-300">
+                        {language === 'ar' ? 'رفع ملف (PDF/Word/TXT)' : 'Upload File (PDF/Word/TXT)'}
+                      </label>
+                      <span className="flex items-center gap-1 text-xs text-yellow-400">
+                        <Crown className="w-3 h-3" />
+                        Pro
+                      </span>
+                    </div>
+                    <div 
+                      className="relative border-2 border-dashed border-purple-500/30 rounded-xl p-6 text-center hover:border-purple-500/50 transition-all cursor-pointer bg-black/30"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      {uploadedFile ? (
+                        <div className="flex items-center justify-center gap-3">
+                          <FileText className="w-8 h-8 text-purple-400" />
+                          <div className="text-left">
+                            <p className="text-white font-medium">{uploadedFile.name}</p>
+                            <p className="text-gray-400 text-sm">{(uploadedFile.size / 1024).toFixed(1)} KB</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setUploadedFile(null)
+                              setFileContent('')
+                              if (fileInputRef.current) fileInputRef.current.value = ''
+                            }}
+                            className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <Upload className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                          <p className="text-gray-300 font-medium mb-1">
+                            {language === 'ar' ? 'اضغط لرفع ملف أو اسحبه هنا' : 'Click to upload or drag and drop'}
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            PDF, Word, TXT (max 5MB)
+                          </p>
+                        </>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -984,7 +1184,7 @@ export default function HomePage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || (inputMode === 'text' ? text.length < 20 : !url.trim())}
+                disabled={loading || (inputMode === 'text' ? text.length < 20 : inputMode === 'url' ? !url.trim() : !uploadedFile)}
                 className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-3"
               >
                 {loading ? (

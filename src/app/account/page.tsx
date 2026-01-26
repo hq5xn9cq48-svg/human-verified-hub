@@ -35,6 +35,7 @@ interface ScanHistoryItem {
 
 export default function AccountPage() {
   const { language, isRTL } = useLanguage()
+  // language is available for use in JSX
   const { user, signOut, loading: authLoading } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'settings'>('overview')
@@ -56,17 +57,20 @@ export default function AccountPage() {
       subscription: {
         title: 'Subscription Status',
         currentPlan: 'Current Plan',
-        freePlan: 'Free (Beta)',
-        freePlanDesc: 'All premium features unlocked during beta',
+        freePlan: 'Free',
+        freePlanDesc: '2 text analyses per day',
         proPlan: 'Pro',
         features: [
           'Unlimited text analysis',
-          'Unlimited image analysis',
-          'PDF certificate generation',
-          'Scan history',
+          'URL analysis (Pro)',
+          'File analysis - PDF/Word (Pro)',
+          'AI image detection (Pro)',
+          'Humanizer tool (Pro)',
+          'PDF reports & certificates',
+          'Forever scan history',
           'Priority support'
         ],
-        upgradeNote: 'Pro subscriptions coming soon!'
+        upgradeNote: 'Upgrade to Pro for unlimited access!'
       },
       stats: {
         title: 'Your Statistics',
@@ -108,17 +112,20 @@ export default function AccountPage() {
       subscription: {
         title: 'حالة الاشتراك',
         currentPlan: 'الخطة الحالية',
-        freePlan: 'مجاني (بيتا)',
-        freePlanDesc: 'جميع الميزات المميزة مفتوحة خلال البيتا',
+        freePlan: 'مجاني',
+        freePlanDesc: 'تحليلان للنصوص يومياً',
         proPlan: 'برو',
         features: [
           'تحليل نصوص غير محدود',
-          'تحليل صور غير محدود',
-          'إنشاء شهادات PDF',
-          'سجل الفحوصات',
+          'تحليل الروابط (Pro)',
+          'تحليل الملفات - PDF/Word (Pro)',
+          'كشف الصور بالذكاء الاصطناعي (Pro)',
+          'أداة التحويل البشري (Pro)',
+          'تقارير وشهادات PDF',
+          'سجل الفحوصات للأبد',
           'دعم أولوية'
         ],
-        upgradeNote: 'اشتراكات Pro قادمة قريباً!'
+        upgradeNote: 'ترقية للبرو للوصول غير المحدود!'
       },
       stats: {
         title: 'إحصائياتك',
@@ -308,20 +315,45 @@ export default function AccountPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {t.subscription.features.map((feature, i) => (
-                  <div key={i} className="flex items-start gap-2 text-gray-300 text-sm p-2 rounded-lg bg-white/5">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
-                    <span className="break-words">{feature}</span>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {t.subscription.features.map((feature, i) => {
+                  const isPro = feature.includes('(Pro)') || feature.includes('(Pro)')
+                  return (
+                    <div key={i} className={`flex items-start gap-3 text-sm p-3 rounded-xl border transition-all ${
+                      isPro 
+                        ? 'bg-gradient-to-r from-purple-900/20 to-pink-900/10 border-purple-500/30 hover:border-purple-400/50' 
+                        : 'bg-white/5 border-purple-900/20 hover:border-purple-500/30'
+                    }`}>
+                      <CheckCircle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isPro ? 'text-purple-400' : 'text-green-400'}`} />
+                      <div>
+                        <span className={`break-words ${isPro ? 'text-purple-200' : 'text-gray-300'}`}>
+                          {feature.replace(' (Pro)', '').replace(' (Pro)', '')}
+                        </span>
+                        {isPro && (
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-purple-500/30 text-purple-300 rounded-full font-medium">
+                            PRO
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
               
-              <div className="mt-4 p-3 bg-purple-900/10 rounded-lg border border-purple-500/20">
-                <p className="text-purple-300 text-sm flex items-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  {t.subscription.upgradeNote}
-                </p>
+              <div className="mt-5 p-4 bg-gradient-to-r from-purple-900/20 to-pink-900/10 rounded-xl border border-purple-500/30">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <p className="text-purple-300 text-sm flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-yellow-400" />
+                    {t.subscription.upgradeNote}
+                  </p>
+                  <a 
+                    href="/pricing" 
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all flex items-center gap-2"
+                  >
+                    <Crown className="w-4 h-4" />
+                    {language === 'ar' ? 'ترقية للبرو' : 'Upgrade to Pro'}
+                  </a>
+                </div>
               </div>
             </motion.div>
 

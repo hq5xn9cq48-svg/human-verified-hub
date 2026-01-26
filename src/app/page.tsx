@@ -543,38 +543,36 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Status Banner - Professional styling with proper padding */}
-      <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-purple-900/50 via-purple-900/60 to-purple-900/50 backdrop-blur-md border-b border-purple-500/20">
-        <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 min-w-0">
-            {usageStatus?.isPro ? (
-              <>
-                <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
-                <span className="text-yellow-400 text-sm font-medium truncate">
-                  {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
-                </span>
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                <span className="text-gray-200 text-sm font-medium truncate">
-                  {language === 'ar' 
-                    ? 'تحليل النصوص (2/يوم)' 
-                    : 'Text Analysis Only (2/day)'}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex-shrink-0">
-            <UsageCounter variant="badge" showUpgrade={!usageStatus?.isPro} />
+      {/* Status Banner - Only show for logged-in users, clean header for guests */}
+      {user && (
+        <div className="fixed top-16 left-0 right-0 z-40 bg-gradient-to-r from-purple-900/40 via-purple-900/50 to-purple-900/40 backdrop-blur-md border-b border-purple-500/15">
+          <div className="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 min-w-0">
+              {usageStatus?.isPro ? (
+                <>
+                  <Crown className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+                  <span className="text-yellow-400 text-sm font-medium truncate">
+                    {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                  <span className="text-gray-300 text-sm truncate">
+                    {language === 'ar' ? 'خطة مجانية' : 'Free Plan'}
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex-shrink-0">
+              <UsageCounter variant="badge" showUpgrade={!usageStatus?.isPro} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-
-
-      {/* Main content with top padding for fixed navbar + thin banner */}
-      <main className="max-w-5xl mx-auto px-4 py-8 pt-28">
+      {/* Main content with top padding - reduced for guests (no banner), normal for logged-in users */}
+      <main className={`max-w-5xl mx-auto px-4 py-8 ${user ? 'pt-28' : 'pt-20'}`}>
         {/* Hero Header */}
         <div className="text-center mb-8">
           <motion.div

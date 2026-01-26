@@ -166,49 +166,38 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* User Profile Section - Desktop */}
+            {/* User Profile Section - Desktop (Compact & Modern) */}
             <div className="hidden md:flex items-center">
               {user ? (
-                <div className="flex items-center gap-1 px-2 py-1.5 rounded-xl bg-white/5 border border-purple-900/30">
-                  {/* User Avatar - Google profile picture or letter fallback */}
-                  {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
-                    <img 
-                      src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
-                      alt="Profile" 
-                      className="w-8 h-8 rounded-full object-cover border border-purple-500/30"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">
-                        {user.email?.charAt(0).toUpperCase() || 'U'}
-                      </span>
-                    </div>
-                  )}
-                  {/* My Account Link */}
-                  <Link
-                    href="/account"
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      pathname === '/account'
-                        ? 'text-purple-300 bg-purple-600/20'
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    {language === 'ar' ? 'حسابي' : 'My Account'}
+                <div className="flex items-center gap-1.5">
+                  {/* User Avatar */}
+                  <Link href="/account" className="relative group">
+                    {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                      <img 
+                        src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
+                        alt="Profile" 
+                        className="w-8 h-8 rounded-full object-cover border border-purple-500/30 group-hover:border-purple-400/60 transition-all"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center group-hover:from-purple-400 group-hover:to-purple-600 transition-all">
+                        <span className="text-white text-xs font-bold">
+                          {user.email?.charAt(0).toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    )}
                   </Link>
-                  {/* Upgrade to Pro Button - Active with redirect */}
+                  {/* Upgrade Button */}
                   <Link
                     href="/pricing"
-                    className="px-2.5 py-1.5 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-300 border border-purple-500/40 flex items-center gap-1.5 hover:border-purple-400/60 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)] hover:from-purple-600/40 hover:to-fuchsia-600/40 transition-all"
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600/40 to-fuchsia-600/40 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 hover:border-purple-400/50 hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all"
                   >
-                    <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
-                    <span className="hidden lg:inline bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent font-semibold">
-                      {language === 'ar' ? 'ترقية' : 'Upgrade'}
-                    </span>
+                    <Crown className="w-3 h-3 text-fuchsia-400" />
+                    <span className="hidden lg:inline">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
                   </Link>
-                  {/* Sign Out Button */}
+                  {/* Sign Out */}
                   <button
                     onClick={signOut}
-                    className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
                     title={t.nav.signOut}
                   >
                     <LogOut className="w-4 h-4" />
@@ -217,7 +206,7 @@ export default function Navbar() {
               ) : (
                 <Link
                   href="/auth"
-                  className="px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center gap-2"
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center gap-2"
                 >
                   <LogIn className="w-4 h-4" />
                   <span>{t.nav.signIn}</span>
@@ -266,78 +255,59 @@ export default function Navbar() {
                   )
                 })}
 
-                {/* User Profile Section - Mobile */}
-                <div className="mt-4 pt-4 border-t border-purple-900/30">
+                {/* User Profile Section - Mobile (Compact) */}
+                <div className="mt-3 pt-3 border-t border-purple-900/20">
                   {user ? (
-                    <div className="p-4 rounded-xl bg-white/5 border border-purple-900/30">
-                      {/* User Info */}
-                      <div className="flex items-center gap-3 mb-4">
-                        {/* User Avatar - Google profile picture or letter fallback */}
+                    <div className="p-3 rounded-xl bg-white/[0.03]">
+                      {/* User Info Row */}
+                      <div className="flex items-center gap-3 mb-3">
                         {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
                           <img 
                             src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
                             alt="Profile" 
-                            className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/30"
+                            className="w-10 h-10 rounded-full object-cover border border-purple-500/30"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
-                            <span className="text-white text-lg font-bold">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
+                            <span className="text-white text-sm font-bold">
                               {user.email?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-medium truncate">
-                            {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
+                            {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
                           </p>
-                          <p className="text-gray-400 text-xs truncate">
-                            {user.email}
-                          </p>
+                          <p className="text-gray-500 text-xs truncate">{user.email}</p>
                         </div>
                       </div>
                       
-                      {/* Upgrade to Pro - Active Link */}
-                      <Link
-                        href="/pricing"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="mb-3 p-3 rounded-xl bg-gradient-to-r from-purple-600/15 to-fuchsia-600/15 border border-purple-500/30 hover:border-purple-400/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all block"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Crown className="w-4 h-4 text-fuchsia-400" />
-                            <span className="bg-gradient-to-r from-purple-300 to-fuchsia-300 bg-clip-text text-transparent text-sm font-semibold">
-                              {language === 'ar' ? 'ترقية للبرو' : 'Upgrade to Pro'}
-                            </span>
-                          </div>
-                          <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500/30 to-fuchsia-500/30 text-purple-200 text-[10px] font-medium border border-purple-500/30">
-                            {language === 'ar' ? 'غير محدود' : 'Unlimited'}
-                          </span>
-                        </div>
-                      </Link>
-                      
-                      {/* Action Buttons */}
+                      {/* Quick Actions */}
                       <div className="flex gap-2">
                         <Link
                           href="/account"
                           onClick={() => setMobileMenuOpen(false)}
-                          className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                            pathname === '/account'
-                              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
-                              : 'bg-purple-600/20 text-gray-300 hover:text-white border border-purple-900/30'
-                          }`}
+                          className="flex-1 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 transition-all flex items-center justify-center gap-1.5"
                         >
-                          <User className="w-4 h-4" />
-                          {language === 'ar' ? 'حسابي' : 'My Account'}
+                          <User className="w-3.5 h-3.5" />
+                          {language === 'ar' ? 'حسابي' : 'Account'}
+                        </Link>
+                        <Link
+                          href="/pricing"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-200 border border-purple-500/30 flex items-center justify-center gap-1.5"
+                        >
+                          <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
+                          {language === 'ar' ? 'ترقية' : 'Upgrade'}
                         </Link>
                         <button
                           onClick={() => {
                             signOut()
                             setMobileMenuOpen(false)
                           }}
-                          className="px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 transition-all flex items-center justify-center gap-2"
+                          className="px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition-all"
                         >
                           <LogOut className="w-4 h-4" />
-                          {language === 'ar' ? 'خروج' : 'Sign Out'}
                         </button>
                       </div>
                     </div>
@@ -345,7 +315,7 @@ export default function Navbar() {
                     <Link
                       href="/auth"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="w-full px-4 py-3 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
+                      className="w-full px-4 py-2.5 rounded-xl text-sm font-medium bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-2"
                     >
                       <LogIn className="w-4 h-4" />
                       {t.nav.signIn}

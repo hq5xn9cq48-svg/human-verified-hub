@@ -186,11 +186,36 @@ export async function POST(request: NextRequest) {
       }
 
       case 'order_created': {
+        const orderId = data?.id?.toString()
+        const userEmail = data?.attributes?.user_email
+        const variantId = data?.attributes?.first_order_item?.variant_id?.toString()
+        const customerId = data?.attributes?.customer_id?.toString()
+
         logWebhook('Order created', {
-          orderId: data?.id,
+          orderId,
           total: data?.attributes?.total,
-          email: data?.attributes?.user_email
+          email: userEmail,
+          variantId
         })
+
+        // IMMEDIATE PRO ACTIVATION: Grant Pro access on order_created for instant activation
+        // This ensures the user gets Pro status immediately after checkout completes
+        if (variantId && VALID_VARIANT_IDS.includes(variantId)) {
+          logWebhook('Granting immediate Pro access on order', { userEmail, variantId })
+          const success = await updateUserToPro(
+            null,
+            userEmail,
+            `order_${orderId}`, // Use order ID as temporary subscription ID
+            customerId || `customer_order_${orderId}`,
+            variantId
+          )
+
+          if (success) {
+            logWebhook('User upgraded to Pro via order_created', { userEmail, orderId })
+          } else {
+            logError('Failed to upgrade user via order_created', { userEmail, orderId })
+          }
+        }
         break
       }
 

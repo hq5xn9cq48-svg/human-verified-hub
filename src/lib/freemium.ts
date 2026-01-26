@@ -363,6 +363,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 /**
  * Update user to Pro status (called by webhook)
  * Supports both monthly and yearly subscriptions
+ * Uses multiple strategies to find the user: by ID, by email lookup in auth, by email in profiles
  */
 export async function updateUserToPro(
   userId: string | null,
@@ -382,24 +383,54 @@ export async function updateUserToPro(
   }
 
   try {
-    // Try to find user by ID first, then by email
     let targetUserId = userId
 
-    if (!targetUserId && email) {
-      const { data: authUser } = await supabase.auth.admin.listUsers()
-      const foundUser = authUser?.users?.find(u => u.email === email)
-      targetUserId = foundUser?.id ?? null
+    // Strategy 1: If we have a userId, use it directly
+    if (targetUserId) {
+      console.log(`[FREEMIUM] Using provided userId: ${targetUserId}`)
     }
 
+    // Strategy 2: Try to find user by email in auth.users
+    if (!targetUserId && email) {
+      console.log(`[FREEMIUM] Looking up user by email: ${email}`)
+      try {
+        const { data: authUser } = await supabase.auth.admin.listUsers()
+        const foundUser = authUser?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
+        if (foundUser) {
+          targetUserId = foundUser.id
+          console.log(`[FREEMIUM] Found user by email in auth: ${targetUserId}`)
+        }
+      } catch (adminErr) {
+        console.log('[FREEMIUM] Admin API not available, trying alternative lookup')
+      }
+    }
+
+    // Strategy 3: Look for existing profile with this email
+    if (!targetUserId && email) {
+      const { data: existingProfile } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .single()
+
+      if (existingProfile?.id) {
+        targetUserId = existingProfile.id
+        console.log(`[FREEMIUM] Found user by email in profiles: ${targetUserId}`)
+      }
+    }
+
+    // If we still can't find the user, log and return false
     if (!targetUserId) {
-      console.error('[FREEMIUM] Cannot find user to update Pro status')
+      console.warn(`[FREEMIUM] Pro grant pending for email: ${email}, subscription: ${subscriptionId}`)
       return false
     }
 
+    // Update the user profile to Pro status
     const { error } = await supabase
       .from('user_profiles')
       .upsert({
         id: targetUserId,
+        email: email?.toLowerCase(),
         is_pro: true,
         subscription_id: subscriptionId,
         customer_id: customerId,
@@ -414,7 +445,8 @@ export async function updateUserToPro(
       return false
     }
 
-    console.log(`[FREEMIUM] User ${targetUserId} upgraded to Pro (variant: ${variantId || 'monthly'})`)
+    const billingCycle = variantId?.includes('yearly') || variantId === '1207173' ? 'yearly' : 'monthly'
+    console.log(`[FREEMIUM] ✅ User ${targetUserId} upgraded to Pro (${billingCycle}, variant: ${variantId || 'monthly'})`)
     return true
   } catch (err) {
     console.error('[FREEMIUM] Exception updating Pro status:', err)

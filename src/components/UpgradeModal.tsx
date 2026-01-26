@@ -13,10 +13,11 @@ interface UpgradeModalProps {
 }
 
 // Lemon Squeezy checkout URLs from environment
-const CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
-  'https://human-verified-hub.lemonsqueezy.com/checkout/buy/e6bf03be-7d02-4457-bcd2-e4d34260fdc7'
-const CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 
-  'https://human-verified-hub.lemonsqueezy.com/checkout/buy/yearly-variant'
+// IMPORTANT: Set these in Vercel Environment Variables:
+// - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL (monthly)
+// - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY (yearly)
+const CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || ''
+const CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || ''
 
 // Pricing
 const PRICE_MONTHLY = 9.99
@@ -63,17 +64,40 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
   const handleUpgrade = () => {
     const baseUrl = billingCycle === 'yearly' ? CHECKOUT_URL_YEARLY : CHECKOUT_URL_MONTHLY
-    let url = baseUrl
     
-    if (user) {
-      const params = new URLSearchParams()
-      if (user.email) params.append('checkout[email]', user.email)
-      params.append('checkout[custom][user_id]', user.id)
-      url = `${baseUrl}?${params.toString()}`
+    // Debug logging
+    console.log('[UpgradeModal] Checkout attempt:', {
+      billingCycle,
+      baseUrl: baseUrl || 'NOT SET',
+      monthlyUrl: CHECKOUT_URL_MONTHLY || 'NOT SET',
+      yearlyUrl: CHECKOUT_URL_YEARLY || 'NOT SET'
+    })
+    
+    // Check if URL is configured
+    if (!baseUrl) {
+      alert(language === 'ar' 
+        ? 'عذراً، رابط الدفع غير متوفر حالياً.' 
+        : 'Checkout not available. Please try again later.')
+      return
     }
     
-    window.open(url, '_blank')
-    onClose()
+    try {
+      let url = baseUrl
+      
+      if (user) {
+        const params = new URLSearchParams()
+        if (user.email) params.append('checkout[email]', user.email)
+        params.append('checkout[custom][user_id]', user.id)
+        url = `${baseUrl}?${params.toString()}`
+      }
+      
+      console.log('[UpgradeModal] Opening checkout:', url)
+      window.open(url, '_blank')
+      onClose()
+    } catch (error) {
+      console.error('[UpgradeModal] Checkout error:', error)
+      alert(language === 'ar' ? 'خطأ في الدفع' : 'Checkout error')
+    }
   }
 
   return (

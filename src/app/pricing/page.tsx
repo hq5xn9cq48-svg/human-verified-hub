@@ -13,10 +13,11 @@ import {
 } from 'lucide-react'
 
 // Lemon Squeezy checkout URLs - use environment variables
-const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
-  'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID'
-const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 
-  'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID_YEARLY'
+// IMPORTANT: Set these in Vercel Environment Variables:
+// - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL (monthly)
+// - NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY (yearly)
+const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || ''
+const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || ''
 
 // Pricing constants
 const PRICE_MONTHLY = 9.99
@@ -118,15 +119,41 @@ export default function PricingPage() {
       ? LEMONSQUEEZY_CHECKOUT_URL_YEARLY 
       : LEMONSQUEEZY_CHECKOUT_URL_MONTHLY
     
-    // Redirect to Lemon Squeezy checkout
-    // Add user email as prefill parameter
-    const checkoutUrl = new URL(baseUrl)
-    if (user.email) {
-      checkoutUrl.searchParams.set('checkout[email]', user.email)
-    }
-    checkoutUrl.searchParams.set('checkout[custom][user_id]', user.id)
+    // Debug logging to help troubleshoot environment variable issues
+    console.log('[Pricing] Checkout attempt:', {
+      billingCycle,
+      baseUrl: baseUrl || 'NOT SET',
+      monthlyUrl: LEMONSQUEEZY_CHECKOUT_URL_MONTHLY || 'NOT SET',
+      yearlyUrl: LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 'NOT SET',
+      userId: user.id,
+      userEmail: user.email
+    })
     
-    window.location.href = checkoutUrl.toString()
+    // Check if URL is configured
+    if (!baseUrl) {
+      alert(language === 'ar' 
+        ? 'عذراً، رابط الدفع غير متوفر حالياً. يرجى المحاولة لاحقاً.' 
+        : 'Sorry, checkout is not available at the moment. Please try again later.')
+      console.error('[Pricing] Checkout URL not configured for:', billingCycle)
+      return
+    }
+    
+    // Build checkout URL with user info
+    try {
+      const checkoutUrl = new URL(baseUrl)
+      if (user.email) {
+        checkoutUrl.searchParams.set('checkout[email]', user.email)
+      }
+      checkoutUrl.searchParams.set('checkout[custom][user_id]', user.id)
+      
+      console.log('[Pricing] Redirecting to:', checkoutUrl.toString())
+      window.location.href = checkoutUrl.toString()
+    } catch (error) {
+      console.error('[Pricing] Invalid checkout URL:', baseUrl, error)
+      alert(language === 'ar' 
+        ? 'خطأ في رابط الدفع. يرجى التواصل مع الدعم.' 
+        : 'Invalid checkout URL. Please contact support.')
+    }
   }
 
   return (

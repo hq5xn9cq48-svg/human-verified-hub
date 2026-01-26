@@ -205,7 +205,9 @@ export default function HomePage() {
       }
       
       // Refresh usage status after successful analysis
-      refreshUsageStatus()
+      console.log('[HOME] Analysis successful, refreshing usage status...')
+      await refreshUsageStatus()
+      console.log('[HOME] Usage status refreshed')
 
       setResult(data)
 

@@ -207,20 +207,65 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
     const newUsageCount = currentUsageCount + 1
     const now = new Date().toISOString()
 
-    const { error: updateError } = await supabase
+    console.log(`[FREEMIUM] Incrementing usage for user ${userId}: ${currentUsageCount} -> ${newUsageCount}`)
+
+    // First, try to update if profile exists
+    const { data: existingProfile, error: checkError } = await supabase
       .from('user_profiles')
-      .upsert({
-        id: userId,
-        daily_usage_count: newUsageCount,
-        last_usage_timestamp: now,
-        updated_at: now
-      }, {
-        onConflict: 'id'
-      })
+      .select('id')
+      .eq('id', userId)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('[FREEMIUM] Error checking profile existence:', checkError)
+    }
+
+    let updateError;
+    if (existingProfile) {
+      // Profile exists, update it
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          updated_at: now
+        })
+        .eq('id', userId)
+      updateError = error
+    } else {
+      // Profile doesn't exist, insert it
+      console.log(`[FREEMIUM] Creating new profile for user ${userId}`)
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          is_pro: false,
+          updated_at: now
+        })
+      updateError = error
+    }
 
     if (updateError) {
       console.error('[FREEMIUM] Error updating usage:', updateError)
-      // On update error, still allow the request but log it
+      // Try one more time with upsert as fallback
+      const { error: upsertError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          id: userId,
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          updated_at: now
+        }, {
+          onConflict: 'id'
+        })
+      
+      if (upsertError) {
+        console.error('[FREEMIUM] Upsert fallback also failed:', upsertError)
+      } else {
+        console.log('[FREEMIUM] Upsert fallback succeeded')
+      }
     }
 
     const remaining = FREE_DAILY_LIMIT - newUsageCount

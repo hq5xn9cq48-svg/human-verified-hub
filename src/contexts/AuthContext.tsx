@@ -54,10 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await fetch('/api/user/usage', { 
         headers,
-        cache: 'no-store' // Ensure fresh data on every fetch
+        cache: 'no-store', // Ensure fresh data on every fetch
+        next: { revalidate: 0 } // Force fresh data in Next.js
       })
       const data = await response.json()
-      console.log('[AUTH] Usage status fetched:', data) // Debug log
+      console.log('[AUTH] Usage status fetched:', {
+        isPro: data.isPro,
+        remaining: data.remaining,
+        usedToday: data.usedToday,
+        limit: data.limit,
+        userId: data.userId,
+        isGuest: data.isGuest
+      })
       setUsageStatus(data)
     } catch (err) {
       console.error('Error fetching usage status:', err)

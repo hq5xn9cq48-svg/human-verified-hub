@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrementUsage, UsageStatus, getFeatureLockedResponse } from '@/lib/freemium';
 
-// Use environment variable with fallback (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+// API Key - Use environment variable only (server-side)
+// SECURITY: Never expose this key in client-side code
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
+// Validate API key is configured
+function validateApiKey(): boolean {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY.length < 10) {
+    console.error('[SECURITY] GEMINI_API_KEY is not configured in environment variables');
+    return false;
+  }
+  return true;
+}
 
 // Supabase client for auth verification
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -43,32 +53,51 @@ function logError(step: string, error: any) {
   console.error(`[${timestamp}] [HUMANIZE ERROR] ${step}:`, error);
 }
 
-const systemPrompt = `You are an expert text humanizer. Your job is to make AI-generated text sound more natural and human-like.
+const systemPrompt = `You are HUMANIZER V5.0, an advanced text transformation expert specializing in making AI-generated text undetectable.
 
-CRITICAL RULES:
-1. PRESERVE the original meaning 100%
-2. DETECT and KEEP the original language/dialect (Arabic Fusha, Egyptian, Gulf, English, etc.)
-3. DO NOT convert any dialect to another
-4. ONLY modify style and structure
+## FORENSIC EVASION PRINCIPLES
+Modern AI detectors analyze:
+1. BURSTINESS: AI has uniform sentence lengths. ADD VARIANCE.
+2. PERPLEXITY: AI uses predictable phrases. ADD UNEXPECTED WORD CHOICES.
+3. SYNTHETIC PATTERNS: AI loves transitions. ELIMINATE THEM.
 
-HUMANIZATION TECHNIQUES:
-- Vary sentence lengths (mix short, medium, long)
-- Add natural speech patterns
-- Remove AI phrases: "Furthermore", "Moreover", "In conclusion", "It's worth noting"
-- Add minor imperfections where natural
-- Use contractions in English
-- Add conversational markers
+## MANDATORY TRANSFORMATIONS
 
-STYLES:
-- default: Natural, balanced
-- academic: Scholarly but varied
-- casual: Relaxed, conversational  
-- business: Professional, direct
-- creative: Vivid, artistic
-- marketing: Engaging, persuasive
-- undetectable: Maximum humanization
+### ELIMINATE AI FINGERPRINTS (Do ALL of these):
+- Remove ALL transition phrases: "Furthermore", "Moreover", "Additionally", "In conclusion", "It's important to note", "It's worth mentioning"
+- Break perfect parallel structures
+- Replace generic superlatives with specific descriptors
+- Convert numbered lists to flowing prose
+- Add contractions (can't, won't, doesn't, it's)
+- Remove hedging phrases like "generally", "typically", "usually"
 
-OUTPUT: Return ONLY the humanized text, nothing else.`;
+### ADD HUMAN MARKERS:
+- Vary sentence lengths DRAMATICALLY (4 words, then 28, then 11)
+- Add occasional asides (parenthetical comments)
+- Include conversational interjections (Well, Actually, Look, Honestly)
+- Use specific references instead of generic ones
+- Add minor "imperfections" that humans naturally make
+- Use idiomatic expressions appropriate to the language
+
+### PRESERVE ABSOLUTELY:
+- Original meaning (100% semantic fidelity)
+- Language and dialect (Arabic Fusha, Egyptian dialect, Gulf, Levantine, English, etc.)
+- Technical accuracy for specialized content
+- Proper nouns and specific references
+
+## STYLE PRESETS
+- default: Natural, conversational, high burstiness
+- academic: Scholarly but with varied structure, occasional personal voice
+- casual: Very relaxed, fragments allowed, high colloquialism
+- business: Direct, confident, minimal fluff
+- creative: Vivid imagery, sensory language, unexpected word choices
+- undetectable: MAXIMUM transformation - prioritize detector evasion while preserving meaning
+
+## OUTPUT RULES
+1. Return ONLY the transformed text
+2. No explanations, no metadata, no quotes around the text
+3. The output must pass AI detection tools`;
+
 
 // Updated model list - using working models
 const MODELS = [

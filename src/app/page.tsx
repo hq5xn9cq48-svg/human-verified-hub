@@ -560,36 +560,36 @@ export default function HomePage() {
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
-      {/* Usage Status Banner - Clean production design */}
-      <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-black/80 backdrop-blur-md border-b border-purple-500/20">
-        <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            {usageStatus?.isPro ? (
-              <>
-                <Crown className="w-3 h-3 text-yellow-400" />
-                <span className="text-yellow-400 text-xs font-medium">
-                  {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
-                </span>
-              </>
-            ) : (
-              <>
-                <Shield className="w-3 h-3 text-purple-400" />
-                <span className="text-gray-300 text-xs font-medium">
-                  {language === 'ar' 
-                    ? 'الخطة المجانية: تحليل النص فقط (2/يوم)' 
-                    : 'Free Plan: Text Analysis Only (2/day)'}
-                </span>
-              </>
-            )}
+      {/* Usage Status Banner - Only shown to LOGGED IN users */}
+      {user && (
+        <div className="fixed top-16 left-0 right-0 z-40 h-10 bg-black/80 backdrop-blur-md border-b border-purple-500/20">
+          <div className="h-full max-w-5xl mx-auto px-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              {usageStatus?.isPro ? (
+                <>
+                  <Crown className="w-3 h-3 text-yellow-400" />
+                  <span className="text-yellow-400 text-xs font-medium">
+                    {language === 'ar' ? 'Pro - تحليلات غير محدودة' : 'Pro - Unlimited Analyses'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Shield className="w-3 h-3 text-purple-400" />
+                  <span className="text-gray-300 text-xs font-medium">
+                    {language === 'ar' 
+                      ? 'الخطة المجانية: تحليل النص فقط (2/يوم)' 
+                      : 'Free Plan: Text Analysis Only (2/day)'}
+                  </span>
+                </>
+              )}
+            </div>
+            <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
           </div>
-          <UsageCounter variant="compact" showUpgrade={!usageStatus?.isPro} />
         </div>
-      </div>
+      )}
 
-
-
-      {/* Main content with top padding for fixed navbar + thin banner */}
-      <main className="max-w-5xl mx-auto px-4 py-8 pt-28">
+      {/* Main content with top padding for fixed navbar (+ thin banner if logged in) */}
+      <main className={`max-w-5xl mx-auto px-4 py-8 ${user ? 'pt-28' : 'pt-20'}`}>
         
         {/* HERO SECTION for non-logged in users */}
         {!user && !authLoading && (

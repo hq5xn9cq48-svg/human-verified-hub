@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_Arabic } from 'next/font/google'
 import './globals.css'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { LemonSqueezyProvider } from '@/components/payments/LemonSqueezyProvider'
 import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -124,7 +125,9 @@ export default function RootLayout({
       <body className={`${inter.variable} ${notoArabic.variable} font-sans antialiased min-h-screen bg-dark-950 w-full overflow-x-hidden`}>
         <LanguageProvider>
           <AuthProvider>
-            {children}
+            <LemonSqueezyProvider>
+              {children}
+            </LemonSqueezyProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLemonSqueezy } from '@/components/payments/LemonSqueezyProvider'
 import { Crown, X, Zap, Infinity, Check, Sparkles, Shield, Clock, FileText, Image as ImageIcon, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -25,8 +26,21 @@ const SAVINGS_PERCENT = Math.round((1 - (PRICE_YEARLY / (PRICE_MONTHLY * 12))) *
 
 export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
   const { language } = useLanguage()
-  const { user, usageStatus } = useAuth()
+  const { user, usageStatus, refreshUsageStatus } = useAuth()
+  const { openCheckout, isReady } = useLemonSqueezy()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
 
   const features = [
     {
@@ -63,17 +77,33 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
 
   const handleUpgrade = () => {
     const baseUrl = billingCycle === 'yearly' ? CHECKOUT_URL_YEARLY : CHECKOUT_URL_MONTHLY
-    let url = baseUrl
     
-    if (user) {
-      const params = new URLSearchParams()
-      if (user.email) params.append('checkout[email]', user.email)
-      params.append('checkout[custom][user_id]', user.id)
-      url = `${baseUrl}?${params.toString()}`
+    // Use LemonSqueezy Overlay if ready
+    if (isReady) {
+      openCheckout(baseUrl, {
+        email: user?.email || undefined,
+        userId: user?.id,
+        onSuccess: () => {
+          // Refresh usage status to update Pro status
+          refreshUsageStatus()
+          onClose()
+        },
+        onClose: () => {
+          // User closed checkout without completing
+        }
+      })
+    } else {
+      // Fallback: open in new tab
+      let url = baseUrl
+      if (user) {
+        const params = new URLSearchParams()
+        if (user.email) params.append('checkout[email]', user.email)
+        params.append('checkout[custom][user_id]', user.id)
+        url = `${baseUrl}?${params.toString()}`
+      }
+      window.open(url, '_blank')
+      onClose()
     }
-    
-    window.open(url, '_blank')
-    onClose()
   }
 
   return (
@@ -83,7 +113,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md"
           onClick={onClose}
         >
           <motion.div
@@ -91,7 +121,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md sm:max-w-lg rounded-2xl overflow-hidden my-4"
+            className="relative w-full max-w-md sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Glassmorphism container */}
@@ -111,7 +141,7 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
               </button>
 
               {/* Content */}
-              <div className="relative p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
+              <div className="relative p-4 sm:p-6 md:p-8">
                 {/* Header */}
                 <div className="text-center mb-4 sm:mb-6">
                   <div className="relative inline-flex mb-3 sm:mb-4">

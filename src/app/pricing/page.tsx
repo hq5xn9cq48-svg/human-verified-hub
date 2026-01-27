@@ -5,7 +5,9 @@ import { motion } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLemonSqueezy } from '@/components/payments/LemonSqueezyProvider'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { 
   Crown, Check, X, Zap, Shield, Clock, FileText, 
   Image, Wand2, History, Download, ArrowRight, Sparkles,
@@ -90,7 +92,9 @@ const features: PlanFeature[] = [
 export default function PricingPage() {
   const { language, isRTL, isLoaded } = useLanguage()
   const { user, usageStatus } = useAuth()
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const { openCheckout, isReady } = useLemonSqueezy()
+  const router = useRouter()
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
 
   // Prevent hydration mismatch
   if (!isLoaded) {
@@ -105,11 +109,11 @@ export default function PricingPage() {
 
   const isPro = usageStatus?.isPro ?? false
 
-  // Handle checkout - uses the selected billing cycle
+  // Handle checkout - uses the selected billing cycle with OVERLAY/POPUP
   const handleUpgrade = () => {
     if (!user) {
       // Redirect to auth first
-      window.location.href = '/auth?redirect=/pricing'
+      router.push('/auth?redirect=/pricing')
       return
     }
     
@@ -118,15 +122,18 @@ export default function PricingPage() {
       ? LEMONSQUEEZY_CHECKOUT_URL_YEARLY 
       : LEMONSQUEEZY_CHECKOUT_URL_MONTHLY
     
-    // Redirect to Lemon Squeezy checkout
-    // Add user email as prefill parameter
-    const checkoutUrl = new URL(baseUrl)
-    if (user.email) {
-      checkoutUrl.searchParams.set('checkout[email]', user.email)
-    }
-    checkoutUrl.searchParams.set('checkout[custom][user_id]', user.id)
-    
-    window.location.href = checkoutUrl.toString()
+    // Open LemonSqueezy overlay/popup instead of redirecting
+    openCheckout(baseUrl, {
+      email: user.email || undefined,
+      userId: user.id,
+      onSuccess: () => {
+        // Refresh page to update Pro status after successful payment
+        window.location.reload()
+      },
+      onClose: () => {
+        console.log('[Checkout] User closed the checkout overlay')
+      }
+    })
   }
 
   return (

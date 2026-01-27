@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
-import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
+import { checkAndIncrementUsage, checkGuestUsage, extractClientIP, UsageStatus } from '@/lib/freemium';
 
 // API Key - Use environment variable only (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+// SECURITY: Never expose this key in client-side code
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
+// Validate API key is configured
+function validateApiKey(): boolean {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY.length < 10) {
+    console.error('[SECURITY] GEMINI_API_KEY is not configured in environment variables');
+    return false;
+  }
+  return true;
+}
 
 // Turnstile secret key for bot protection
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || '';
@@ -20,53 +30,77 @@ function logError(step: string, error: any) {
   console.error(`[${timestamp}] [ERROR] ${step}:`, error);
 }
 
-const systemPrompt = `You are SENTINEL-AI V5.0, an expert forensic linguistic analyzer.
+const systemPrompt = `You are SENTINEL-AI V6.0, an expert forensic linguistic analyzer with PhD-level expertise in computational linguistics, stylometry, and AI detection.
 
-TASK: Analyze text to determine if it was written by a human or AI.
+## MISSION CRITICAL
+Analyze text with FORENSIC SENSITIVITY to determine if it was written by a human or AI. You must be EXTREMELY STRICT and evidence-based. Do NOT hallucinate - only report patterns you actually detect.
 
-SCORING (0-100 scale):
-- 0-30: AI Generated (robotic, perfect structure, AI patterns)
-- 31-60: Uncertain/Hybrid (mixed signals)
-- 61-100: Human Written (natural, imperfect, personal)
+## FORENSIC ANALYSIS FRAMEWORK
 
-ANALYZE FOR:
-1. AI Indicators (reduce score):
-   - Perfect structure and grammar
-   - Transitional phrases: "Furthermore", "Moreover", "In conclusion"
-   - Generic language without personality
-   - Uniform paragraph/sentence lengths
-   - No personal experiences or emotions
+### BURSTINESS ANALYSIS (Human signature)
+- Humans write with HIGH burstiness: sentence lengths vary dramatically (5 words, then 25, then 12)
+- AI writes with LOW burstiness: sentences cluster around similar lengths (15-20 words consistently)
+- Calculate variance in sentence lengths - high variance = more human
 
-2. Human Indicators (increase score):
-   - Varied sentence lengths
-   - Personal anecdotes and opinions
-   - Minor imperfections
-   - Colloquial language
-   - Emotional expressions
+### PERPLEXITY ANALYSIS (Predictability)
+- AI text has LOW perplexity: predictable word choices, common collocations
+- Human text has HIGH perplexity: unexpected word combinations, creative choices
+- Look for: unique metaphors, unusual adjectives, non-standard phrasing
 
-OUTPUT FORMAT (JSON):
+### SYNTHETIC ARTIFACTS (AI fingerprints)
+- Repetitive sentence starters ("This", "The", "It")
+- Perfect parallel structure across paragraphs
+- Transitional phrase overuse: "Furthermore", "Moreover", "Additionally", "In conclusion"
+- Hedging language: "It's important to note", "It's worth mentioning"
+- Generic superlatives: "very important", "extremely crucial"
+- Numbered lists with perfect formatting
+- Lack of contractions (cannot vs can't)
+
+### HUMAN AUTHENTICITY MARKERS
+- Personal pronouns with context (I remember, we decided)
+- Specific details (dates, names, places)
+- Emotional language with genuine context
+- Conversational asides and parentheticals
+- Minor grammatical imperfections
+- Idiosyncratic word choices
+- Run-on thoughts and tangents
+- Cultural references and humor
+
+## SCORING (0-100 scale) - BE STRICT
+- 0-20: DEFINITELY AI (multiple clear AI patterns, synthetic feel)
+- 21-40: LIKELY AI (significant AI indicators, low burstiness)
+- 41-60: UNCERTAIN (mixed signals, needs more context)
+- 61-80: LIKELY HUMAN (natural flow, some human markers)
+- 81-100: DEFINITELY HUMAN (strong authenticity, high burstiness)
+
+## OUTPUT FORMAT (JSON ONLY)
 {
   "humanScore": number (0-100),
   "verdict": "AI Generated" | "Likely AI" | "Uncertain" | "Likely Human" | "Human Written",
   "confidence": "high" | "medium" | "low",
-  "summary": "Brief explanation of the verdict",
+  "summary": "2-3 sentence forensic summary with specific evidence",
   "analysisMetadata": {
     "wordCount": number,
     "sentenceCount": number,
     "perplexityLevel": "low" | "medium" | "high",
     "burstinessScore": "low" | "medium" | "high"
   },
-  "aiIndicators": [{"pattern": "name", "description": "evidence", "penalty": number}],
-  "humanIndicators": [{"pattern": "name", "description": "evidence", "bonus": number}],
+  "aiIndicators": [{"pattern": "name", "description": "specific evidence from text", "penalty": 1-15}],
+  "humanIndicators": [{"pattern": "name", "description": "specific evidence from text", "bonus": 1-15}],
   "forensicDetails": {
-    "syntaxAnalysis": "brief",
-    "lexicalRichness": "brief", 
-    "predictability": "brief"
+    "syntaxAnalysis": "Sentence structure variance analysis",
+    "lexicalRichness": "Vocabulary diversity and uniqueness",
+    "predictability": "Word choice predictability assessment"
   },
-  "smartBreakdown": ["Specific reason 1 why score was given", "Specific reason 2", "Specific reason 3"]
+  "smartBreakdown": ["Specific finding 1 with quoted evidence", "Finding 2", "Finding 3", "Finding 4"]
 }
 
-IMPORTANT: Include 3-5 specific bullet points in smartBreakdown explaining exactly WHY you gave this score. Be specific about patterns you detected.
+## CRITICAL RULES
+1. NEVER hallucinate - only cite patterns you actually detect in the text
+2. Include 4-5 specific findings in smartBreakdown with quoted evidence where possible
+3. Be STRICT - modern AI is sophisticated, don't be fooled by surface-level human imitation
+4. Calculate actual burstiness by measuring sentence length variance
+5. Return ONLY valid JSON, no markdown, no explanations outside JSON
 
 Return ONLY valid JSON, no markdown, no code blocks, no additional text.`;
 
@@ -625,7 +659,34 @@ export async function POST(req: Request) {
         isPro: usageStatus.isPro 
       });
     } else {
-      logStep('Guest user - allowing access without tracking');
+      // Guest user - enforce rate limiting by IP + fingerprint
+      const clientIp = extractClientIP(req.headers);
+      const fingerprint = req.headers.get('x-fingerprint') || undefined;
+      
+      logStep('Guest user detected', { clientIp: clientIp.substring(0, 10) + '...', hasFingerprint: !!fingerprint });
+      
+      // Check and increment guest usage
+      usageStatus = await checkGuestUsage(clientIp, fingerprint, 'text-analysis');
+      
+      if (!usageStatus.canUse) {
+        logStep('Guest usage limit reached', { clientIp: clientIp.substring(0, 10) + '...', usageStatus });
+        return NextResponse.json({
+          error: usageStatus.message,
+          errorCode: 'USAGE_LIMIT_REACHED',
+          usageStatus: {
+            remaining: usageStatus.remaining,
+            limit: usageStatus.limit,
+            isPro: false,
+            message: usageStatus.message,
+            resetTime: usageStatus.resetTime
+          }
+        }, { status: 429 });
+      }
+      
+      logStep('Guest usage check passed', { 
+        remaining: usageStatus.remaining, 
+        limit: usageStatus.limit 
+      });
     }
 
     const body = await req.json();

@@ -47,6 +47,7 @@ const PRO_ONLY_FEATURES: FeatureType[] = ['image-analysis', 'humanizer', 'image-
 
 const FREE_DAILY_LIMIT = 2
 const RESET_WINDOW_HOURS = 24
+const GUEST_DAILY_LIMIT = 1 // Guests get 1 free analysis per 24h
 
 /**
  * Check if a feature is allowed for the user based on their Pro status
@@ -471,4 +472,155 @@ export async function downgradeUserFromPro(
     console.error('[FREEMIUM] Exception downgrading user:', err)
     return false
   }
+}
+
+// ============================================================================
+// GUEST RATE LIMITING (IP + Fingerprint based)
+// ============================================================================
+
+// In-memory store for guest usage (for serverless, consider using Redis/Upstash)
+const guestUsageStore = new Map<string, { count: number; lastUse: number }>()
+
+/**
+ * Generate a unique identifier for guests based on IP and fingerprint
+ */
+export function generateGuestId(ip: string, fingerprint?: string): string {
+  const combined = `${ip}:${fingerprint || 'no-fp'}`
+  // Simple hash for privacy
+  let hash = 0
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
+  }
+  return `guest_${Math.abs(hash).toString(36)}`
+}
+
+/**
+ * Check and increment usage for guest (non-authenticated) users
+ * Uses IP + fingerprint to track usage
+ */
+export async function checkGuestUsage(
+  ip: string,
+  fingerprint?: string,
+  feature: FeatureType = 'text-analysis'
+): Promise<UsageStatus> {
+  // Guests can ONLY use text-analysis
+  if (feature !== 'text-analysis') {
+    return {
+      canUse: false,
+      isPro: false,
+      remaining: 0,
+      usedToday: 0,
+      limit: GUEST_DAILY_LIMIT,
+      message: 'Sign in to access this feature, or upgrade to Pro for full access.'
+    }
+  }
+
+  const guestId = generateGuestId(ip, fingerprint)
+  const now = Date.now()
+  const windowMs = RESET_WINDOW_HOURS * 60 * 60 * 1000
+
+  // Get existing usage from store
+  const existing = guestUsageStore.get(guestId)
+  
+  // Check if we should reset (24h window passed)
+  if (existing && (now - existing.lastUse) >= windowMs) {
+    guestUsageStore.delete(guestId)
+  }
+
+  const currentUsage = guestUsageStore.get(guestId)
+  const usedCount = currentUsage?.count ?? 0
+
+  // Check if limit reached
+  if (usedCount >= GUEST_DAILY_LIMIT) {
+    const resetTime = currentUsage ? new Date(currentUsage.lastUse + windowMs).toISOString() : undefined
+    console.log(`[FREEMIUM] Guest ${guestId} limit reached. Reset at: ${resetTime}`)
+    return {
+      canUse: false,
+      isPro: false,
+      remaining: 0,
+      usedToday: usedCount,
+      limit: GUEST_DAILY_LIMIT,
+      message: 'Sign in for 2 free analyses per day, or upgrade to Pro for unlimited access.',
+      resetTime
+    }
+  }
+
+  // Increment usage
+  const newCount = usedCount + 1
+  guestUsageStore.set(guestId, { count: newCount, lastUse: now })
+
+  console.log(`[FREEMIUM] Guest ${guestId} usage: ${newCount}/${GUEST_DAILY_LIMIT}`)
+
+  const remaining = GUEST_DAILY_LIMIT - newCount
+  return {
+    canUse: true,
+    isPro: false,
+    remaining,
+    usedToday: newCount,
+    limit: GUEST_DAILY_LIMIT,
+    message: remaining > 0 
+      ? `${remaining} guest analysis remaining. Sign in for more!`
+      : 'Sign in for 2 free analyses per day!'
+  }
+}
+
+/**
+ * Get guest usage status without incrementing
+ */
+export function getGuestUsageStatus(ip: string, fingerprint?: string): UsageStatus {
+  const guestId = generateGuestId(ip, fingerprint)
+  const now = Date.now()
+  const windowMs = RESET_WINDOW_HOURS * 60 * 60 * 1000
+
+  const existing = guestUsageStore.get(guestId)
+  
+  // Check if window passed
+  if (existing && (now - existing.lastUse) >= windowMs) {
+    guestUsageStore.delete(guestId)
+    return {
+      canUse: true,
+      isPro: false,
+      remaining: GUEST_DAILY_LIMIT,
+      usedToday: 0,
+      limit: GUEST_DAILY_LIMIT,
+      message: `${GUEST_DAILY_LIMIT} free guest analysis available`
+    }
+  }
+
+  const usedCount = existing?.count ?? 0
+  const remaining = Math.max(0, GUEST_DAILY_LIMIT - usedCount)
+
+  return {
+    canUse: remaining > 0,
+    isPro: false,
+    remaining,
+    usedToday: usedCount,
+    limit: GUEST_DAILY_LIMIT,
+    message: remaining > 0 
+      ? `${remaining} guest analysis remaining`
+      : 'Sign in for more free analyses'
+  }
+}
+
+/**
+ * Extract client IP from request headers
+ */
+export function extractClientIP(headers: Headers): string {
+  // Check various headers in order of preference
+  const xForwardedFor = headers.get('x-forwarded-for')
+  if (xForwardedFor) {
+    // Take the first IP (client IP) from comma-separated list
+    return xForwardedFor.split(',')[0].trim()
+  }
+  
+  const xRealIp = headers.get('x-real-ip')
+  if (xRealIp) return xRealIp
+  
+  const cfConnectingIp = headers.get('cf-connecting-ip')
+  if (cfConnectingIp) return cfConnectingIp
+  
+  // Fallback
+  return 'unknown'
 }

@@ -208,26 +208,54 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
     const newUsageCount = currentUsageCount + 1
     const now = new Date().toISOString()
 
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .upsert({
-        id: userId,
-        daily_usage_count: newUsageCount,
-        last_usage_timestamp: now,
-        updated_at: now
-      }, {
-        onConflict: 'id'
-      })
+    console.log(`[FREEMIUM] Attempting to update usage for user ${userId}: ${currentUsageCount} -> ${newUsageCount}`)
+
+    // Use update if profile exists, otherwise insert
+    let updateError = null
+    
+    if (profile) {
+      // Profile exists, use update
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          updated_at: now
+        })
+        .eq('id', userId)
+      updateError = error
+    } else {
+      // Profile doesn't exist, insert new record
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          is_pro: false,
+          updated_at: now,
+          created_at: now
+        })
+      updateError = error
+    }
 
     if (updateError) {
       console.error('[FREEMIUM] Error updating usage:', updateError)
-      // On update error, still allow the request but log it
+      // STRICT: On update error, DENY the request to ensure credits are properly tracked
+      return {
+        canUse: false,
+        isPro: false,
+        remaining: FREE_DAILY_LIMIT - currentUsageCount,
+        usedToday: currentUsageCount,
+        limit: FREE_DAILY_LIMIT,
+        message: 'Failed to update usage. Please try again.'
+      }
     }
 
     const remaining = FREE_DAILY_LIMIT - newUsageCount
     const resetTime = calculateResetTime(now)
 
-    console.log(`[FREEMIUM] Usage updated for user ${userId}: ${newUsageCount}/${FREE_DAILY_LIMIT}, remaining: ${remaining}`)
+    console.log(`[FREEMIUM] Usage updated successfully for user ${userId}: ${newUsageCount}/${FREE_DAILY_LIMIT}, remaining: ${remaining}`)
 
     return {
       canUse: true,
@@ -378,6 +406,8 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 
 /**
  * Update user to Pro status (called by webhook)
+ * IMPORTANT: This function is called when a user subscribes to Pro via Lemon Squeezy
+ * It finds the user by email in the user_profiles table and updates their status
  */
 export async function updateUserToPro(
   userId: string | null,
@@ -385,32 +415,119 @@ export async function updateUserToPro(
   subscriptionId: string,
   customerId: string
 ): Promise<boolean> {
+  console.log('[FREEMIUM] updateUserToPro called with:', { userId, email, subscriptionId, customerId })
+  
   if (!isServerSupabaseConfigured()) {
-    console.warn('[FREEMIUM] Cannot update Pro status - Supabase not configured')
+    console.error('[FREEMIUM] Cannot update Pro status - Supabase not configured')
     return false
   }
 
   const supabase = createServerClient()
   if (!supabase) {
+    console.error('[FREEMIUM] Cannot create Supabase client')
     return false
   }
 
   try {
-    // Try to find user by ID first, then by email
     let targetUserId = userId
 
+    // If no userId provided, find user by email in user_profiles table
     if (!targetUserId && email) {
-      const { data: authUser } = await supabase.auth.admin.listUsers()
-      const foundUser = authUser?.users?.find(u => u.email === email)
-      targetUserId = foundUser?.id ?? null
+      console.log('[FREEMIUM] Looking up user by email:', email)
+      
+      // First try to find in user_profiles by email
+      const { data: profileByEmail, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('id, email')
+        .eq('email', email.toLowerCase())
+        .single()
+      
+      if (profileByEmail && !profileError) {
+        targetUserId = profileByEmail.id
+        console.log('[FREEMIUM] Found user by email in profiles:', targetUserId)
+      } else {
+        console.log('[FREEMIUM] User not found in profiles by email, trying admin API')
+        
+        // Fallback: Try admin API to list users and find by email
+        try {
+          const { data: authData, error: authError } = await supabase.auth.admin.listUsers()
+          if (authError) {
+            console.error('[FREEMIUM] Admin listUsers failed:', authError)
+          } else if (authData?.users) {
+            const foundUser = authData.users.find(u => 
+              u.email?.toLowerCase() === email.toLowerCase()
+            )
+            if (foundUser) {
+              targetUserId = foundUser.id
+              console.log('[FREEMIUM] Found user via admin API:', targetUserId)
+            }
+          }
+        } catch (adminErr) {
+          console.error('[FREEMIUM] Admin API exception:', adminErr)
+        }
+      }
+    }
+
+    // If still no user found, create a placeholder entry with email
+    // The user's profile will be linked when they next log in
+    if (!targetUserId && email) {
+      console.log('[FREEMIUM] Creating pending Pro activation for email:', email)
+      
+      // Store in a separate table or use email as temporary key
+      const { error: pendingError } = await supabase
+        .from('pending_pro_activations')
+        .upsert({
+          email: email.toLowerCase(),
+          subscription_id: subscriptionId,
+          customer_id: customerId,
+          created_at: new Date().toISOString()
+        }, {
+          onConflict: 'email'
+        })
+      
+      if (pendingError) {
+        // Table might not exist, try direct update by email on user_profiles
+        console.log('[FREEMIUM] pending_pro_activations table may not exist, trying direct email update')
+        
+        const { error: directError, data: directData } = await supabase
+          .from('user_profiles')
+          .update({
+            is_pro: true,
+            subscription_id: subscriptionId,
+            customer_id: customerId,
+            subscription_status: 'active',
+            updated_at: new Date().toISOString()
+          })
+          .eq('email', email.toLowerCase())
+          .select()
+        
+        if (directError) {
+          console.error('[FREEMIUM] Direct email update failed:', directError)
+          return false
+        }
+        
+        if (directData && directData.length > 0) {
+          console.log('[FREEMIUM] Successfully updated user by email:', email)
+          return true
+        }
+        
+        console.error('[FREEMIUM] No user found with email:', email)
+        return false
+      }
+      
+      console.log('[FREEMIUM] Stored pending Pro activation for:', email)
+      return true
     }
 
     if (!targetUserId) {
-      console.error('[FREEMIUM] Cannot find user to update Pro status')
+      console.error('[FREEMIUM] Cannot find user to update Pro status - no userId or email match')
       return false
     }
 
-    const { error } = await supabase
+    // Update user profile to Pro
+    console.log('[FREEMIUM] Updating user to Pro:', targetUserId)
+    
+    const { error, data } = await supabase
       .from('user_profiles')
       .upsert({
         id: targetUserId,
@@ -422,13 +539,14 @@ export async function updateUserToPro(
       }, {
         onConflict: 'id'
       })
+      .select()
 
     if (error) {
       console.error('[FREEMIUM] Error updating Pro status:', error)
       return false
     }
 
-    console.log(`[FREEMIUM] User ${targetUserId} upgraded to Pro`)
+    console.log('[FREEMIUM] User upgraded to Pro successfully:', { targetUserId, data })
     return true
   } catch (err) {
     console.error('[FREEMIUM] Exception updating Pro status:', err)

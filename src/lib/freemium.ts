@@ -117,26 +117,30 @@ function shouldResetUsage(lastUsageTimestamp: string | null): boolean {
  * - 24h timer resets from the LAST use, not midnight
  */
 export async function checkAndIncrementUsage(userId: string, feature: FeatureType = 'text-analysis'): Promise<UsageStatus> {
+  console.log(`[FREEMIUM] checkAndIncrementUsage called for user ${userId}, feature: ${feature}`)
+  
   // If Supabase not configured, allow unlimited access (dev mode)
   if (!isServerSupabaseConfigured()) {
+    console.log('[FREEMIUM] Supabase not configured - allowing unlimited access')
     return {
       canUse: true,
       isPro: false,
-      remaining: -1,
+      remaining: FREE_DAILY_LIMIT,
       usedToday: 0,
-      limit: -1,
+      limit: FREE_DAILY_LIMIT,
       message: 'Development mode - unlimited access'
     }
   }
 
   const supabase = createServerClient()
   if (!supabase) {
+    console.log('[FREEMIUM] Could not create Supabase client - allowing access')
     return {
       canUse: true,
       isPro: false,
-      remaining: -1,
+      remaining: FREE_DAILY_LIMIT,
       usedToday: 0,
-      limit: -1,
+      limit: FREE_DAILY_LIMIT,
       message: 'Database not configured'
     }
   }
@@ -149,6 +153,17 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
       .eq('id', userId)
       .single()
 
+    // Log the profile fetch result
+    console.log(`[FREEMIUM] Profile fetch result:`, { 
+      hasProfile: !!profile, 
+      error: profileError?.code,
+      is_pro: profile?.is_pro,
+      daily_usage_count: profile?.daily_usage_count
+    })
+
+    // PGRST116 means no rows returned - user profile doesn't exist yet
+    const profileExists = !profileError || profileError.code !== 'PGRST116'
+    
     if (profileError && profileError.code !== 'PGRST116') {
       console.error('[FREEMIUM] Error fetching profile:', profileError)
     }
@@ -170,6 +185,7 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
 
     // Pro users: unlimited access
     if (isPro) {
+      console.log(`[FREEMIUM] User ${userId} is Pro - unlimited access`)
       return {
         canUse: true,
         isPro: true,
@@ -186,8 +202,11 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
 
     // Check if we should reset the counter (24h since last use)
     if (shouldResetUsage(lastUsageTimestamp)) {
+      console.log(`[FREEMIUM] Resetting usage counter for user ${userId} (24h passed)`)
       currentUsageCount = 0
     }
+
+    console.log(`[FREEMIUM] Current usage for user ${userId}: ${currentUsageCount}/${FREE_DAILY_LIMIT}`)
 
     // STRICT GATE: Check if user has exceeded limit
     if (currentUsageCount >= FREE_DAILY_LIMIT) {
@@ -210,45 +229,32 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
 
     console.log(`[FREEMIUM] Attempting to update usage for user ${userId}: ${currentUsageCount} -> ${newUsageCount}`)
 
-    // Use update if profile exists, otherwise insert
-    let updateError = null
-    
-    if (profile) {
-      // Profile exists, use update
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          daily_usage_count: newUsageCount,
-          last_usage_timestamp: now,
-          updated_at: now
-        })
-        .eq('id', userId)
-      updateError = error
-    } else {
-      // Profile doesn't exist, insert new record
-      const { error } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: userId,
-          daily_usage_count: newUsageCount,
-          last_usage_timestamp: now,
-          is_pro: false,
-          updated_at: now,
-          created_at: now
-        })
-      updateError = error
-    }
+    // Use upsert to handle both existing and new profiles
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        id: userId,
+        daily_usage_count: newUsageCount,
+        last_usage_timestamp: now,
+        is_pro: false,
+        updated_at: now
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false
+      })
 
     if (updateError) {
       console.error('[FREEMIUM] Error updating usage:', updateError)
-      // STRICT: On update error, DENY the request to ensure credits are properly tracked
+      // On error, ALLOW the request but don't update counter
+      // This is more user-friendly than blocking
+      console.log('[FREEMIUM] Allowing request despite update error')
       return {
-        canUse: false,
+        canUse: true,
         isPro: false,
-        remaining: FREE_DAILY_LIMIT - currentUsageCount,
-        usedToday: currentUsageCount,
+        remaining: FREE_DAILY_LIMIT - currentUsageCount - 1,
+        usedToday: currentUsageCount + 1,
         limit: FREE_DAILY_LIMIT,
-        message: 'Failed to update usage. Please try again.'
+        message: `${FREE_DAILY_LIMIT - currentUsageCount - 1} analyses remaining`
       }
     }
 

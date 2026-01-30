@@ -28,7 +28,7 @@ import {
 
 export default function Navbar() {
   const { language, setLanguage, t, availableLanguages, isLoaded } = useLanguage()
-  const { user, signOut } = useAuth()
+  const { user, signOut, usageStatus } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [langMenuOpen, setLangMenuOpen] = useState(false)
@@ -169,30 +169,51 @@ export default function Navbar() {
             {/* User Profile Section - Desktop (Compact & Modern) */}
             <div className="hidden md:flex items-center">
               {user ? (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
+                  {/* Pro Badge or Upgrade Button */}
+                  {usageStatus?.isPro ? (
+                    /* Pro User Badge - Beautiful & Prominent */
+                    <div className="relative group">
+                      <div className="px-3 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-orange-500/30 text-yellow-300 border border-yellow-500/50 flex items-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:shadow-[0_0_20px_rgba(251,191,36,0.5)] transition-all">
+                        <Crown className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+                        <span>Pro</span>
+                        <Sparkles className="w-3 h-3 text-amber-300" />
+                      </div>
+                      {/* Glow effect on hover */}
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 to-amber-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
+                    </div>
+                  ) : (
+                    /* Upgrade Button for Free Users */
+                    <Link
+                      href="/pricing"
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600/40 to-fuchsia-600/40 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 hover:border-purple-400/50 hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all group"
+                    >
+                      <Crown className="w-3 h-3 text-fuchsia-400 group-hover:animate-bounce" />
+                      <span className="hidden lg:inline">{language === 'ar' ? 'ترقية للبرو' : 'Upgrade'}</span>
+                      <span className="lg:hidden">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
+                    </Link>
+                  )}
                   {/* User Avatar */}
                   <Link href="/account" className="relative group">
                     {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
                       <img 
                         src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
                         alt="Profile" 
-                        className="w-8 h-8 rounded-full object-cover border border-purple-500/30 group-hover:border-purple-400/60 transition-all"
+                        className="w-8 h-8 rounded-full object-cover border-2 border-purple-500/30 group-hover:border-purple-400/60 transition-all"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center group-hover:from-purple-400 group-hover:to-purple-600 transition-all">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center group-hover:from-purple-400 group-hover:to-purple-600 transition-all border-2 border-purple-400/30">
                         <span className="text-white text-xs font-bold">
                           {user.email?.charAt(0).toUpperCase() || 'U'}
                         </span>
                       </div>
                     )}
-                  </Link>
-                  {/* Upgrade Button */}
-                  <Link
-                    href="/pricing"
-                    className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600/40 to-fuchsia-600/40 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 hover:border-purple-400/50 hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all"
-                  >
-                    <Crown className="w-3 h-3 text-fuchsia-400" />
-                    <span className="hidden lg:inline">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
+                    {/* Pro indicator on avatar */}
+                    {usageStatus?.isPro && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center border border-black">
+                        <Crown className="w-2 h-2 text-black" />
+                      </div>
+                    )}
                   </Link>
                   {/* Sign Out */}
                   <button
@@ -261,26 +282,53 @@ export default function Navbar() {
                     <div className="p-3 rounded-xl bg-white/[0.03]">
                       {/* User Info Row */}
                       <div className="flex items-center gap-3 mb-3">
-                        {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
-                          <img 
-                            src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
-                            alt="Profile" 
-                            className="w-10 h-10 rounded-full object-cover border border-purple-500/30"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
-                            <span className="text-white text-sm font-bold">
-                              {user.email?.charAt(0).toUpperCase() || 'U'}
-                            </span>
-                          </div>
-                        )}
+                        <div className="relative">
+                          {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
+                            <img 
+                              src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
+                              alt="Profile" 
+                              className="w-10 h-10 rounded-full object-cover border-2 border-purple-500/30"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center border-2 border-purple-400/30">
+                              <span className="text-white text-sm font-bold">
+                                {user.email?.charAt(0).toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                          )}
+                          {/* Pro indicator on avatar */}
+                          {usageStatus?.isPro && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center border border-black">
+                              <Crown className="w-2.5 h-2.5 text-black" />
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">
-                            {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white text-sm font-medium truncate">
+                              {user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0]}
+                            </p>
+                            {/* Pro Badge inline */}
+                            {usageStatus?.isPro && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-gradient-to-r from-amber-500/30 to-yellow-400/30 text-yellow-400 border border-yellow-500/40">
+                                PRO
+                              </span>
+                            )}
+                          </div>
                           <p className="text-gray-500 text-xs truncate">{user.email}</p>
                         </div>
                       </div>
+                      
+                      {/* Pro Status Banner for Pro Users */}
+                      {usageStatus?.isPro && (
+                        <div className="mb-3 p-2 rounded-lg bg-gradient-to-r from-amber-500/10 via-yellow-400/10 to-orange-500/10 border border-yellow-500/30 flex items-center justify-center gap-2">
+                          <Crown className="w-4 h-4 text-yellow-400" />
+                          <span className="text-yellow-300 text-xs font-semibold">
+                            {language === 'ar' ? 'تحليلات غير محدودة' : 'Unlimited Analyses'}
+                          </span>
+                          <Sparkles className="w-3 h-3 text-amber-300" />
+                        </div>
+                      )}
                       
                       {/* Quick Actions */}
                       <div className="flex gap-2">
@@ -292,14 +340,16 @@ export default function Navbar() {
                           <User className="w-3.5 h-3.5" />
                           {language === 'ar' ? 'حسابي' : 'Account'}
                         </Link>
-                        <Link
-                          href="/pricing"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-200 border border-purple-500/30 flex items-center justify-center gap-1.5"
-                        >
-                          <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
-                          {language === 'ar' ? 'ترقية' : 'Upgrade'}
-                        </Link>
+                        {!usageStatus?.isPro && (
+                          <Link
+                            href="/pricing"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex-1 px-3 py-2 rounded-lg text-sm font-medium bg-gradient-to-r from-purple-600/30 to-fuchsia-600/30 text-purple-200 border border-purple-500/30 flex items-center justify-center gap-1.5"
+                          >
+                            <Crown className="w-3.5 h-3.5 text-fuchsia-400" />
+                            {language === 'ar' ? 'ترقية للبرو' : 'Upgrade'}
+                          </Link>
+                        )}
                         <button
                           onClick={() => {
                             signOut()

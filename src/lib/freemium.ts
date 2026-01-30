@@ -57,12 +57,11 @@ function getResetTime(lastUsageTimestamp: string | null): string | undefined {
 }
 
 /**
- * Check if user can perform an analysis and increment usage if allowed
- * This is the main function called by API routes before processing
- * 
- * STRICT ENFORCEMENT: Uses 24-hour rolling window from last use
+ * Check if user can perform an analysis (WITHOUT incrementing)
+ * This checks if the user has remaining uses or is Pro
+ * Call incrementUsageAfterSuccess() AFTER successful analysis
  */
-export async function checkAndIncrementUsage(userId: string): Promise<UsageStatus> {
+export async function checkUsageBeforeAction(userId: string): Promise<UsageStatus> {
   // If Supabase not configured, DENY access in production mode
   if (!isServerSupabaseConfigured()) {
     console.warn('[FREEMIUM] Supabase not configured - DENYING access in strict mode')
@@ -97,30 +96,27 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
       .eq('id', userId)
       .single()
 
-    // If user has no profile yet, create one and allow first use
+    // If user has no profile yet, create one (but don't count yet)
     if (profileError && profileError.code === 'PGRST116') {
-      const now = new Date().toISOString()
       await supabase.from('user_profiles').insert({
         id: userId,
         is_pro: false,
-        daily_usage_count: 1,
-        last_usage_timestamp: now
+        daily_usage_count: 0,
+        last_usage_timestamp: null
       })
       
       return {
         canUse: true,
         isPro: false,
-        remaining: FREE_DAILY_LIMIT - 1,
-        usedToday: 1,
+        remaining: FREE_DAILY_LIMIT,
+        usedToday: 0,
         limit: FREE_DAILY_LIMIT,
-        message: `${FREE_DAILY_LIMIT - 1} use remaining`,
-        resetTime: getResetTime(now)
+        message: `${FREE_DAILY_LIMIT} uses available`
       }
     }
 
     if (profileError) {
       console.error('[FREEMIUM] Error fetching profile:', profileError)
-      // STRICT MODE: On error, DENY access to prevent abuse
       return {
         canUse: false,
         isPro: false,
@@ -131,8 +127,9 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
       }
     }
 
-    // Pro users bypass all limits
+    // Pro users bypass all limits - UNLIMITED ACCESS
     if (profile?.is_pro) {
+      console.log(`[FREEMIUM] ✅ Pro user ${userId} - UNLIMITED ACCESS`)
       return {
         canUse: true,
         isPro: true,
@@ -150,6 +147,11 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
     // Reset count if 24 hours have passed since last use
     if (has24HoursPassed(lastUsageTimestamp)) {
       currentCount = 0
+      // Reset in database
+      await supabase
+        .from('user_profiles')
+        .update({ daily_usage_count: 0 })
+        .eq('id', userId)
     }
 
     // STRICT ENFORCEMENT: Block if limit reached
@@ -165,38 +167,20 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
       }
     }
 
-    // Increment usage count and update timestamp
-    const now = new Date().toISOString()
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        daily_usage_count: currentCount + 1,
-        last_usage_timestamp: now
-      })
-      .eq('id', userId)
-
-    if (updateError) {
-      console.error('[FREEMIUM] Error updating usage:', updateError)
-      // Still allow this request but log the error
-    }
-
-    const newRemaining = FREE_DAILY_LIMIT - (currentCount + 1)
-    
+    // User can proceed
+    const remaining = FREE_DAILY_LIMIT - currentCount
     return {
       canUse: true,
       isPro: false,
-      remaining: newRemaining,
-      usedToday: currentCount + 1,
+      remaining,
+      usedToday: currentCount,
       limit: FREE_DAILY_LIMIT,
-      message: newRemaining > 0 
-        ? `${newRemaining} ${newRemaining === 1 ? 'use' : 'uses'} remaining`
-        : "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access.",
-      resetTime: getResetTime(now)
+      message: `${remaining} ${remaining === 1 ? 'use' : 'uses'} remaining`,
+      resetTime: getResetTime(lastUsageTimestamp)
     }
 
   } catch (err) {
     console.error('[FREEMIUM] Exception checking usage:', err)
-    // STRICT MODE: On exception, DENY access
     return {
       canUse: false,
       isPro: false,
@@ -206,6 +190,100 @@ export async function checkAndIncrementUsage(userId: string): Promise<UsageStatu
       message: 'Unable to verify usage. Please try again.'
     }
   }
+}
+
+/**
+ * Increment usage AFTER successful analysis
+ * Only call this when the analysis has completed successfully
+ * Pro users are NOT affected (no increment)
+ */
+export async function incrementUsageAfterSuccess(userId: string): Promise<UsageStatus | null> {
+  if (!isServerSupabaseConfigured()) {
+    return null
+  }
+
+  const supabase = createServerClient()
+  if (!supabase) {
+    return null
+  }
+
+  try {
+    // Get current profile
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('is_pro, daily_usage_count, last_usage_timestamp')
+      .eq('id', userId)
+      .single()
+
+    if (profileError || !profile) {
+      console.error('[FREEMIUM] Error getting profile for increment:', profileError)
+      return null
+    }
+
+    // Pro users - don't increment anything
+    if (profile.is_pro) {
+      console.log(`[FREEMIUM] Pro user ${userId} - no usage increment needed`)
+      return {
+        canUse: true,
+        isPro: true,
+        remaining: -1,
+        usedToday: 0,
+        limit: -1,
+        message: 'Unlimited Pro access'
+      }
+    }
+
+    // Calculate current count (with 24h reset check)
+    let currentCount = profile.daily_usage_count ?? 0
+    if (has24HoursPassed(profile.last_usage_timestamp)) {
+      currentCount = 0
+    }
+
+    // Increment usage count
+    const now = new Date().toISOString()
+    const newCount = currentCount + 1
+    
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        daily_usage_count: newCount,
+        last_usage_timestamp: now
+      })
+      .eq('id', userId)
+
+    if (updateError) {
+      console.error('[FREEMIUM] Error updating usage after success:', updateError)
+      return null
+    }
+
+    const newRemaining = Math.max(0, FREE_DAILY_LIMIT - newCount)
+    
+    console.log(`[FREEMIUM] ✅ User ${userId} usage incremented: ${currentCount} -> ${newCount} (${newRemaining} remaining)`)
+    
+    return {
+      canUse: newRemaining > 0,
+      isPro: false,
+      remaining: newRemaining,
+      usedToday: newCount,
+      limit: FREE_DAILY_LIMIT,
+      message: newRemaining > 0 
+        ? `${newRemaining} ${newRemaining === 1 ? 'use' : 'uses'} remaining`
+        : "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access.",
+      resetTime: getResetTime(now)
+    }
+
+  } catch (err) {
+    console.error('[FREEMIUM] Exception incrementing usage:', err)
+    return null
+  }
+}
+
+/**
+ * Legacy function - maintained for backward compatibility
+ * Now just calls checkUsageBeforeAction (no auto-increment)
+ */
+export async function checkAndIncrementUsage(userId: string): Promise<UsageStatus> {
+  return checkUsageBeforeAction(userId)
 }
 
 /**

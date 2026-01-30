@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
-import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
+import { checkUsageBeforeAction, incrementUsageAfterSuccess, UsageStatus } from '@/lib/freemium';
 
 // API Key - Use environment variable only (server-side)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
@@ -639,23 +639,28 @@ export async function POST(req: Request) {
       }, { status: 401 });
     }
     
-    // Check freemium limits for authenticated users
-    const usageStatus = await checkAndIncrementUsage(userId);
+    // Check freemium limits BEFORE processing (no increment yet)
+    const usageStatus = await checkUsageBeforeAction(userId);
     
-    // STRICT ENFORCEMENT: Block if limit reached (return 403 Forbidden)
-    if (!usageStatus.canUse) {
-      logStep('Usage limit reached - BLOCKING REQUEST', { userId, usageStatus });
-      return NextResponse.json({
-        error: "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access.",
-        errorCode: 'USAGE_LIMIT_REACHED',
-        usageStatus: {
-          remaining: usageStatus.remaining,
-          limit: usageStatus.limit,
-          isPro: usageStatus.isPro,
-          message: usageStatus.message
-        },
-        upgradeUrl: '/pricing'
-      }, { status: 403 });
+    // Pro users have UNLIMITED access - skip all limit checks
+    if (usageStatus.isPro) {
+      logStep('Pro user - UNLIMITED ACCESS', { userId });
+    } else {
+      // STRICT ENFORCEMENT: Block free users if limit reached (return 403 Forbidden)
+      if (!usageStatus.canUse) {
+        logStep('Usage limit reached - BLOCKING REQUEST', { userId, usageStatus });
+        return NextResponse.json({
+          error: "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access.",
+          errorCode: 'USAGE_LIMIT_REACHED',
+          usageStatus: {
+            remaining: usageStatus.remaining,
+            limit: usageStatus.limit,
+            isPro: usageStatus.isPro,
+            message: usageStatus.message
+          },
+          upgradeUrl: '/pricing'
+        }, { status: 403 });
+      }
     }
     
     logStep('Usage check passed', { 
@@ -663,6 +668,10 @@ export async function POST(req: Request) {
       remaining: usageStatus.remaining, 
       isPro: usageStatus.isPro 
     });
+    
+    // Store userId for later use in incrementing after success
+    const currentUserId = userId;
+    const isProUser = usageStatus.isPro;
 
     const body = await req.json();
     let { text, url, language = 'en', turnstileToken } = body;
@@ -759,6 +768,33 @@ export async function POST(req: Request) {
     // Step 6: Normalize and validate the result
     logStep('Step 6: Normalizing final result');
     result = normalizeResult(result, analysisText);
+
+    // Step 7: INCREMENT USAGE AFTER SUCCESSFUL ANALYSIS (only for free users)
+    if (!isProUser) {
+      const updatedUsage = await incrementUsageAfterSuccess(currentUserId);
+      if (updatedUsage) {
+        logStep('Usage incremented after success', {
+          userId: currentUserId,
+          usedToday: updatedUsage.usedToday,
+          remaining: updatedUsage.remaining
+        });
+        // Include updated usage in response for UI update
+        result.usageStatus = {
+          remaining: updatedUsage.remaining,
+          usedToday: updatedUsage.usedToday,
+          limit: updatedUsage.limit,
+          isPro: updatedUsage.isPro
+        };
+      }
+    } else {
+      // Pro user - include unlimited status
+      result.usageStatus = {
+        remaining: -1,
+        usedToday: 0,
+        limit: -1,
+        isPro: true
+      };
+    }
 
     logStep('=== ANALYSIS COMPLETE ===', { humanScore: result.humanScore, verdict: result.verdict });
     return NextResponse.json(result);

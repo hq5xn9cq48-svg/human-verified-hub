@@ -49,12 +49,19 @@ async function ensureUserProfile(userId: string, email: string | undefined, full
           .eq('id', userId)
       }
       
-      // Check for pending Pro activation
-      const { data: pendingPro } = await adminClient
-        .from('pending_pro_activations')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .single()
+      // Check for pending Pro activation (table may not exist)
+      let pendingPro = null
+      try {
+        const { data } = await adminClient
+          .from('pending_pro_activations')
+          .select('*')
+          .eq('email', email.toLowerCase())
+          .single()
+        pendingPro = data
+      } catch (err) {
+        // Table may not exist, ignore error
+        console.log('[AUTH CALLBACK] Could not check pending activations:', err)
+      }
       
       if (pendingPro) {
         console.log('[AUTH CALLBACK] Found pending Pro activation for:', email)
@@ -82,12 +89,19 @@ async function ensureUserProfile(userId: string, email: string | undefined, full
       // Create new profile with email
       console.log('[AUTH CALLBACK] Creating new profile for user:', userId, email)
       
-      // Check for pending Pro activation first
-      const { data: pendingPro } = await adminClient
-        .from('pending_pro_activations')
-        .select('*')
-        .eq('email', email.toLowerCase())
-        .single()
+      // Check for pending Pro activation first (table may not exist)
+      let pendingPro = null
+      try {
+        const { data } = await adminClient
+          .from('pending_pro_activations')
+          .select('*')
+          .eq('email', email.toLowerCase())
+          .single()
+        pendingPro = data
+      } catch (err) {
+        // Table may not exist, ignore error
+        console.log('[AUTH CALLBACK] Could not check pending activations for new user')
+      }
       
       const profileData: Record<string, unknown> = {
         id: userId,

@@ -172,20 +172,62 @@ export async function POST(request: NextRequest) {
         break
       }
 
-      case 'subscription_payment_failed': {
-        logWebhook('Payment failed', { 
-          subscriptionId: data?.id 
+      // Note: subscription_payment_success is handled above in combined block
+
+      case 'order_created': {
+        // Handle one-time purchases (if any) - also upgrade to Pro
+        const orderId = data?.id?.toString()
+        const orderEmail = data?.attributes?.user_email
+        const orderStatus = data?.attributes?.status
+        const orderCustomerId = data?.attributes?.customer_id?.toString()
+        
+        logWebhook('Order created', {
+          orderId,
+          total: data?.attributes?.total,
+          email: orderEmail,
+          status: orderStatus,
+          customerId: orderCustomerId
         })
-        // Optional: Send notification email
+        
+        // If order is paid, upgrade user to Pro (for one-time purchases)
+        if (orderStatus === 'paid' && orderEmail) {
+          const success = await updateUserToPro(
+            null,
+            orderEmail,
+            `order_${orderId}`, // Use order ID as subscription ID
+            orderCustomerId || `customer_${orderId}`
+          )
+          
+          if (success) {
+            logWebhook('User upgraded to Pro via order', { orderEmail, orderId })
+          } else {
+            logError('Failed to upgrade user via order', { orderEmail, orderId })
+          }
+        }
         break
       }
 
-      case 'order_created': {
-        logWebhook('Order created', {
-          orderId: data?.id,
-          total: data?.attributes?.total,
-          email: data?.attributes?.user_email
+      // Handle subscription payment renewal - reactivate Pro if needed
+      case 'subscription_payment_success': {
+        const subId = data?.attributes?.subscription_id?.toString() || data?.id?.toString()
+        const paymentEmail = data?.attributes?.user_email
+        const paymentCustomerId = data?.attributes?.customer_id?.toString()
+        
+        logWebhook('Payment successful', { 
+          subscriptionId: subId,
+          amount: data?.attributes?.total,
+          email: paymentEmail
         })
+        
+        // Ensure Pro status is active after successful payment
+        if (paymentEmail && subId) {
+          await updateUserToPro(
+            null,
+            paymentEmail,
+            subId,
+            paymentCustomerId || ''
+          )
+        }
         break
       }
 

@@ -229,25 +229,56 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
 
     console.log(`[FREEMIUM] Attempting to update usage for user ${userId}: ${currentUsageCount} -> ${newUsageCount}`)
 
-    // Use upsert to handle both existing and new profiles
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .upsert({
-        id: userId,
-        daily_usage_count: newUsageCount,
-        last_usage_timestamp: now,
-        is_pro: false,
-        updated_at: now
-      }, {
-        onConflict: 'id',
-        ignoreDuplicates: false
-      })
+    // Decide between update and insert based on profile existence
+    let updateError = null
+
+    if (profileExists && profile) {
+      // UPDATE existing profile - more reliable than upsert
+      console.log(`[FREEMIUM] Profile exists, using UPDATE`)
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          updated_at: now
+        })
+        .eq('id', userId)
+      updateError = error
+    } else {
+      // INSERT new profile
+      console.log(`[FREEMIUM] Profile does not exist, using INSERT`)
+      const { error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          daily_usage_count: newUsageCount,
+          last_usage_timestamp: now,
+          is_pro: false,
+          created_at: now,
+          updated_at: now
+        })
+      
+      // If insert fails (maybe race condition), try update
+      if (error) {
+        console.log(`[FREEMIUM] Insert failed, trying update as fallback`)
+        const { error: fallbackError } = await supabase
+          .from('user_profiles')
+          .update({
+            daily_usage_count: newUsageCount,
+            last_usage_timestamp: now,
+            updated_at: now
+          })
+          .eq('id', userId)
+        updateError = fallbackError
+      } else {
+        updateError = error
+      }
+    }
 
     if (updateError) {
       console.error('[FREEMIUM] Error updating usage:', updateError)
-      // On error, ALLOW the request but don't update counter
-      // This is more user-friendly than blocking
-      console.log('[FREEMIUM] Allowing request despite update error')
+      // On error, still return proper count but warn
+      console.log('[FREEMIUM] WARNING: Usage tracking may be inaccurate')
       return {
         canUse: true,
         isPro: false,
@@ -257,6 +288,8 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
         message: `${FREE_DAILY_LIMIT - currentUsageCount - 1} analyses remaining`
       }
     }
+    
+    console.log(`[FREEMIUM] Usage update SUCCESS for user ${userId}`)
 
     const remaining = FREE_DAILY_LIMIT - newUsageCount
     const resetTime = calculateResetTime(now)
@@ -450,7 +483,10 @@ export async function updateUserToPro(
       console.log('[FREEMIUM] Step 2: Looking up user by email via Admin API:', normalizedEmail)
       
       try {
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers()
+        // Use getUserByEmail which is more efficient than listUsers
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+          perPage: 1000 // Increase limit to find the user
+        })
         
         if (authError) {
           console.error('[FREEMIUM] Admin API error:', authError)
@@ -496,26 +532,88 @@ export async function updateUserToPro(
     if (targetUserId) {
       console.log('[FREEMIUM] Step 4: Updating user to Pro:', targetUserId)
       
-      const { error: updateError } = await supabase
+      // First, try to check if profile exists
+      const { data: existingProfile } = await supabase
         .from('user_profiles')
-        .upsert({
-          id: targetUserId,
-          email: normalizedEmail,
-          is_pro: true,
-          subscription_id: subscriptionId,
-          customer_id: customerId,
-          subscription_status: 'active',
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        })
+        .select('id')
+        .eq('id', targetUserId)
+        .single()
+      
+      if (existingProfile) {
+        // UPDATE existing profile
+        console.log('[FREEMIUM] Updating existing profile')
+        const { error: updateError } = await supabase
+          .from('user_profiles')
+          .update({
+            is_pro: true,
+            subscription_id: subscriptionId,
+            customer_id: customerId,
+            subscription_status: 'active',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', targetUserId)
 
-      if (updateError) {
-        console.error('[FREEMIUM] Update error:', updateError)
-        return false
+        if (updateError) {
+          console.error('[FREEMIUM] Update error:', updateError)
+          return false
+        }
+      } else {
+        // INSERT new profile
+        console.log('[FREEMIUM] Creating new profile')
+        const { error: insertError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: targetUserId,
+            email: normalizedEmail,
+            is_pro: true,
+            subscription_id: subscriptionId,
+            customer_id: customerId,
+            subscription_status: 'active',
+            daily_usage_count: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (insertError) {
+          console.error('[FREEMIUM] Insert error:', insertError)
+          // Try upsert as fallback
+          const { error: upsertError } = await supabase
+            .from('user_profiles')
+            .upsert({
+              id: targetUserId,
+              email: normalizedEmail,
+              is_pro: true,
+              subscription_id: subscriptionId,
+              customer_id: customerId,
+              subscription_status: 'active',
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'id',
+              ignoreDuplicates: false
+            })
+          
+          if (upsertError) {
+            console.error('[FREEMIUM] Upsert fallback error:', upsertError)
+            return false
+          }
+        }
       }
 
       console.log('[FREEMIUM] ✅ SUCCESS: User upgraded to Pro:', targetUserId)
+      
+      // Clean up any pending activation for this email
+      if (normalizedEmail) {
+        try {
+          await supabase
+            .from('pending_pro_activations')
+            .delete()
+            .eq('email', normalizedEmail)
+          console.log('[FREEMIUM] Cleaned up pending activation record')
+        } catch (cleanupErr) {
+          // Ignore cleanup errors
+        }
+      }
+      
       return true
     }
 
@@ -525,19 +623,35 @@ export async function updateUserToPro(
       
       // Try to create pending activation record
       try {
-        await supabase
+        // First check if table exists by trying to select
+        const { error: checkError } = await supabase
           .from('pending_pro_activations')
-          .upsert({
-            email: normalizedEmail,
-            subscription_id: subscriptionId,
-            customer_id: customerId,
-            created_at: new Date().toISOString()
-          }, {
-            onConflict: 'email'
-          })
-        console.log('[FREEMIUM] Stored pending activation')
+          .select('email')
+          .limit(1)
+        
+        if (!checkError) {
+          // Table exists, upsert the record
+          const { error: upsertError } = await supabase
+            .from('pending_pro_activations')
+            .upsert({
+              email: normalizedEmail,
+              subscription_id: subscriptionId,
+              customer_id: customerId,
+              created_at: new Date().toISOString()
+            }, {
+              onConflict: 'email'
+            })
+          
+          if (upsertError) {
+            console.error('[FREEMIUM] Pending activation upsert error:', upsertError)
+          } else {
+            console.log('[FREEMIUM] Stored pending activation successfully')
+          }
+        } else {
+          console.log('[FREEMIUM] pending_pro_activations table does not exist')
+        }
       } catch (pendingErr) {
-        console.log('[FREEMIUM] Could not store pending activation (table may not exist)')
+        console.log('[FREEMIUM] Could not store pending activation:', pendingErr)
       }
       
       // Return true because the subscription is valid, user just needs to sign up

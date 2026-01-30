@@ -194,7 +194,7 @@ export default function AccountPage() {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('is_pro, subscription_id, subscription_status')
+        .select('is_pro, plan, subscription_id, subscription_status, subscription_ends_at')
         .eq('id', user.id)
         .single()
 
@@ -203,8 +203,24 @@ export default function AccountPage() {
           is_pro: data.is_pro || false,
           subscription_id: data.subscription_id,
           subscription_status: data.subscription_status,
-          subscription_ends_at: null // Will be fetched from LemonSqueezy if needed
+          subscription_ends_at: data.subscription_ends_at || null
         })
+        
+        // If is_pro is true but plan is not 'pro', try to fix it
+        if (data.is_pro && data.plan !== 'pro') {
+          console.log('[ACCOUNT] Detected inconsistent status, attempting fix...')
+          try {
+            await fetch('/api/subscription/fix-status', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id })
+            })
+            // Refresh usage status after fix
+            await refreshUsageStatus()
+          } catch (fixError) {
+            console.error('[ACCOUNT] Error fixing status:', fixError)
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching subscription info:', error)
@@ -371,6 +387,16 @@ export default function AccountPage() {
                           </span>
                         </div>
                         <div className="text-yellow-400/80 text-sm mt-1">{t.subscription.proPlanDesc}</div>
+                        
+                        {/* Subscription End Date */}
+                        {(subscriptionInfo?.subscription_ends_at || usageStatus?.subscriptionEndsAt) && (
+                          <div className="mt-3 flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-yellow-400/60" />
+                            <span className="text-yellow-400/60">
+                              {t.subscription.expiresOn}: {formatDate(subscriptionInfo?.subscription_ends_at || usageStatus?.subscriptionEndsAt || '')}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -28,9 +28,11 @@ export interface UserProfile {
   full_name: string | null
   avatar_url: string | null
   is_pro: boolean
+  plan: 'free' | 'pro' | 'lifetime'
   subscription_id: string | null
   customer_id: string | null
   subscription_status: string | null
+  subscription_ends_at: string | null // When the subscription expires
   daily_usage_count: number
   last_usage_date: string | null
   last_usage_timestamp: string | null // New: precise timestamp for 24h rolling reset
@@ -575,6 +577,11 @@ export async function updateUserToPro(
       
       console.log('[FREEMIUM] Existing profile check:', { existingProfile, error: checkError?.message })
       
+      // Calculate subscription end date (30 days from now for monthly, 365 for yearly)
+      const subscriptionEndsAt = new Date()
+      subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + 30) // Default 30 days
+      const subscriptionEndsAtISO = subscriptionEndsAt.toISOString()
+
       if (existingProfile) {
         // UPDATE existing profile
         console.log('[FREEMIUM] Profile exists, using UPDATE')
@@ -582,9 +589,12 @@ export async function updateUserToPro(
           .from('user_profiles')
           .update({
             is_pro: true,
+            plan: 'pro', // IMPORTANT: Also update plan to 'pro'
             subscription_id: subscriptionId,
             customer_id: customerId,
-            subscription_status: 'active'
+            subscription_status: 'active',
+            subscription_ends_at: subscriptionEndsAtISO,
+            updated_at: new Date().toISOString()
           })
           .eq('id', targetUserId)
           .select()
@@ -603,9 +613,12 @@ export async function updateUserToPro(
             id: targetUserId,
             email: normalizedEmail,
             is_pro: true,
+            plan: 'pro', // IMPORTANT: Set plan to 'pro'
             subscription_id: subscriptionId,
             customer_id: customerId,
-            subscription_status: 'active'
+            subscription_status: 'active',
+            subscription_ends_at: subscriptionEndsAtISO,
+            created_at: new Date().toISOString()
           })
           .select()
 
@@ -745,7 +758,9 @@ export async function downgradeUserFromPro(
       .from('user_profiles')
       .update({
         is_pro: false,
-        subscription_status: status
+        plan: 'free', // IMPORTANT: Also reset plan to 'free'
+        subscription_status: status,
+        updated_at: new Date().toISOString()
       })
       .eq('subscription_id', subscriptionId)
 

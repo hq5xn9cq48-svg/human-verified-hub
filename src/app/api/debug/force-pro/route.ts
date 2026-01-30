@@ -62,12 +62,19 @@ export async function POST(request: NextRequest) {
 
     console.log('[FORCE-PRO] Current profile:', currentProfile, 'Error:', profileError?.message)
 
+    // Calculate subscription end date (30 days from now)
+    const subscriptionEndsAt = new Date()
+    subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + 30)
+
     // Step 3: Update directly
     const updateData = {
       is_pro: true,
+      plan: 'pro', // IMPORTANT: Also set plan to 'pro'
       subscription_id: `manual_${Date.now()}`,
       customer_id: `manual_customer_${Date.now()}`,
-      subscription_status: 'active'
+      subscription_status: 'active',
+      subscription_ends_at: subscriptionEndsAt.toISOString(),
+      updated_at: new Date().toISOString()
     }
 
     console.log('[FORCE-PRO] Attempting update with:', updateData)

@@ -3,10 +3,79 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getUsageStatus } from '@/lib/freemium'
+import { createServerClient, isServerSupabaseConfigured } from '@/lib/supabase/server'
 
 // Create Supabase client for auth verification
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+
+/**
+ * Check and fix subscription status on each request
+ * This ensures expired subscriptions are downgraded and inconsistent states are fixed
+ */
+async function checkAndFixSubscription(userId: string): Promise<void> {
+  if (!isServerSupabaseConfigured()) return
+  
+  const supabase = createServerClient()
+  if (!supabase) return
+
+  try {
+    // Get user profile
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('id, is_pro, plan, subscription_status, subscription_ends_at')
+      .eq('id', userId)
+      .single()
+
+    if (error || !profile) return
+
+    const now = new Date()
+    let needsUpdate = false
+    const updates: Record<string, unknown> = { updated_at: now.toISOString() }
+
+    // Check 1: Fix inconsistent is_pro and plan
+    if (profile.is_pro && profile.plan !== 'pro') {
+      console.log(`[USAGE-FIX] Fixing inconsistent plan for user ${userId}: is_pro=true but plan=${profile.plan}`)
+      updates.plan = 'pro'
+      needsUpdate = true
+    }
+
+    // Check 2: Expire subscription if past end date
+    if (profile.is_pro && profile.subscription_ends_at) {
+      const endDate = new Date(profile.subscription_ends_at)
+      if (now > endDate) {
+        console.log(`[USAGE-FIX] Expiring subscription for user ${userId}: ended at ${profile.subscription_ends_at}`)
+        updates.is_pro = false
+        updates.plan = 'free'
+        updates.subscription_status = 'expired'
+        needsUpdate = true
+      }
+    }
+
+    // Check 3: If not Pro but plan is 'pro', fix it
+    if (!profile.is_pro && profile.plan === 'pro') {
+      console.log(`[USAGE-FIX] Fixing inconsistent plan for user ${userId}: is_pro=false but plan=pro`)
+      updates.plan = 'free'
+      needsUpdate = true
+    }
+
+    // Apply updates if needed
+    if (needsUpdate) {
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update(updates)
+        .eq('id', userId)
+
+      if (updateError) {
+        console.error(`[USAGE-FIX] Error updating user ${userId}:`, updateError.message)
+      } else {
+        console.log(`[USAGE-FIX] Successfully fixed user ${userId}`)
+      }
+    }
+  } catch (err) {
+    console.error('[USAGE-FIX] Exception:', err)
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,13 +120,34 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get usage status for authenticated user
+    // Check and fix subscription status on each request
+    await checkAndFixSubscription(user.id)
+
+    // Get usage status for authenticated user (will reflect any fixes made above)
     const status = await getUsageStatus(user.id)
+
+    // Also get subscription details for Pro users
+    let subscriptionEndsAt: string | null = null
+    if (status.isPro && isServerSupabaseConfigured()) {
+      const serverSupabase = createServerClient()
+      if (serverSupabase) {
+        const { data: profile } = await serverSupabase
+          .from('user_profiles')
+          .select('subscription_ends_at, plan')
+          .eq('id', user.id)
+          .single()
+        
+        if (profile) {
+          subscriptionEndsAt = profile.subscription_ends_at
+        }
+      }
+    }
 
     return NextResponse.json({
       ...status,
       isGuest: false,
-      userId: user.id
+      userId: user.id,
+      subscriptionEndsAt
     })
 
   } catch (err) {

@@ -355,12 +355,12 @@ async function callGeminiREST(text: string, apiKey: string, language: string = '
   const langInstruction = getLanguageInstruction(language, text);
   let lastError: string | null = null;
 
-  // Updated model list based on API availability testing
-  // gemini-flash-latest is confirmed working; others as fallbacks
+  // Updated model list - Using Gemini 1.5 Flash for high efficiency
+  // gemini-1.5-flash is the recommended model for best performance
   const models = [
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-latest',
     'gemini-flash-latest',
-    'gemini-2.5-flash',
-    'gemini-pro-latest',
     'gemini-2.0-flash-lite'
   ];
 
@@ -467,8 +467,8 @@ async function callGeminiSDK(text: string, apiKey: string, language: string = 'e
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Updated model list based on API availability
-    const models = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-pro-latest'];
+    // Updated model list - Using Gemini 1.5 Flash for high efficiency
+    const models = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-flash-latest'];
     
     for (const modelName of models) {
       try {
@@ -706,8 +706,19 @@ export async function POST(req: Request) {
       logStep('Turnstile verification passed');
     }
 
-    // Handle URL scraping
+    // Handle URL scraping - PRO ONLY FEATURE
     if (url && typeof url === 'string') {
+      // Check if user is Pro for URL analysis
+      if (!usageStatus?.isPro) {
+        return NextResponse.json({
+          error: language === 'ar' 
+            ? 'تحليل الروابط متاح فقط للمشتركين Pro. قم بالترقية للحصول على وصول كامل.'
+            : 'URL analysis is only available for Pro subscribers. Upgrade to get full access.',
+          errorCode: 'FEATURE_LOCKED',
+          requiresUpgrade: true
+        }, { status: 403 });
+      }
+      
       try {
         new URL(url);
         const scraped = await scrapeUrl(url);

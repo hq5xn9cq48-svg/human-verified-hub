@@ -178,7 +178,7 @@ function ResetPasswordContent() {
           <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
             <Image 
               src="/logo.png" 
-              alt="Human-Verified Hub Logo" 
+              alt="Human Verified Hub Logo" 
               width={48} 
               height={48} 
               className="w-12 h-12 object-contain"
@@ -186,7 +186,7 @@ function ResetPasswordContent() {
             />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gradient">Human-Verified Hub</h1>
+            <h1 className="text-2xl font-bold text-gradient">Human Verified Hub</h1>
             <p className="text-xs text-gray-400">AI Content Detection System</p>
           </div>
         </Link>

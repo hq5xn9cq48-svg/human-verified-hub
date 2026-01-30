@@ -638,6 +638,29 @@ export async function updateUserToPro(
         return false
       }
       
+      // IMPORTANT: Also update user metadata in Supabase Auth
+      // This ensures the Pro status is reflected in the user session immediately
+      try {
+        const { error: metadataError } = await supabase.auth.admin.updateUserById(targetUserId, {
+          user_metadata: {
+            is_pro: true,
+            plan: 'pro',
+            subscription_id: subscriptionId,
+            upgraded_at: new Date().toISOString()
+          }
+        })
+        
+        if (metadataError) {
+          console.error('[FREEMIUM] Failed to update user metadata:', metadataError.message)
+          // Don't fail the whole operation - DB update was successful
+        } else {
+          console.log('[FREEMIUM] ✅ User metadata updated successfully')
+        }
+      } catch (metaErr) {
+        console.error('[FREEMIUM] Exception updating metadata:', metaErr)
+        // Don't fail the whole operation
+      }
+      
       // Clean up any pending activation for this email
       if (normalizedEmail) {
         try {

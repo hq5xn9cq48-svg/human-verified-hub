@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           </Link>
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-purple-400" />
-            <span className="text-white font-semibold">Human-Verified Hub</span>
+            <span className="text-white font-semibold">Human Verified Hub</span>
           </div>
         </div>
       </header>
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-purple-400">1. Introduction</h2>
             <p className="text-gray-300 leading-relaxed">
-              Human-Verified Hub ("we," "our," or "us") operates the AI Text Detection & Plagiarism Checking service 
+              Human Verified Hub ("we," "our," or "us") operates the AI Text Detection & Plagiarism Checking service 
               at humanverified.systems. This Privacy Policy explains how we collect, use, disclose, and safeguard 
               your information when you use our service. We are committed to protecting your privacy and ensuring 
               transparency in our data practices.
@@ -187,7 +187,7 @@ export default function PrivacyPage() {
               For questions about this Privacy Policy, data requests, or privacy concerns:
             </p>
             <div className="p-4 bg-black/50 border border-purple-900/30 rounded-xl">
-              <p className="text-white font-semibold">Human-Verified Hub - Privacy Team</p>
+              <p className="text-white font-semibold">Human Verified Hub - Privacy Team</p>
               <p className="text-gray-400">Email: <a href="mailto:contact@humanverified.systems" className="text-purple-400 hover:underline">contact@humanverified.systems</a></p>
               <p className="text-gray-400">Website: <a href="https://humanverified.systems" className="text-purple-400 hover:underline">humanverified.systems</a></p>
               <p className="text-gray-500 text-sm mt-2">We aim to respond to all privacy inquiries within 48 hours.</p>
@@ -199,7 +199,7 @@ export default function PrivacyPage() {
       {/* Footer */}
       <footer className="border-t border-purple-900/30 mt-16">
         <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-          <p className="text-gray-500 text-sm">© 2026 Human-Verified Hub. All rights reserved.</p>
+          <p className="text-gray-500 text-sm">© 2026 Human Verified Hub. All rights reserved.</p>
         </div>
       </footer>
     </div>

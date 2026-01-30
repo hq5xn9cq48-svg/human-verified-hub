@@ -42,31 +42,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null)
 
-  // Fetch usage status from API
+  // Fetch usage status from API - ALWAYS reads from database (user_profiles table)
   const fetchUsageStatus = useCallback(async (session: Session | null) => {
     try {
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+        'Pragma': 'no-cache',
+        'X-Request-Time': Date.now().toString() // Prevent any caching
       }
       
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
 
-      // Add timestamp to prevent caching
-      const response = await fetch(`/api/user/usage?t=${Date.now()}`, { 
+      // Add timestamp to prevent caching - force fresh data from DB
+      const response = await fetch(`/api/user/usage?t=${Date.now()}&nocache=true`, { 
         headers,
-        cache: 'no-store'
+        cache: 'no-store',
+        next: { revalidate: 0 }
       })
       const data = await response.json()
       
-      // Log for debugging
-      console.log('[AuthContext] Usage status received:', { 
+      // Log for debugging - this reads DIRECTLY from user_profiles table
+      console.log('[AuthContext] Usage status received from DB:', { 
         isPro: data.isPro, 
         plan: data.plan,
-        userId: data.userId 
+        userId: data.userId,
+        remaining: data.remaining
       })
       
       setUsageStatus(data)

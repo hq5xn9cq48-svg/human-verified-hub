@@ -82,12 +82,12 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-purple-900/30 bg-black/90 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
-          {/* Logo - Clean transparent logo, properly sized and centered */}
+          {/* Logo - Using favicon.png for proper sizing */}
           <Link href="/" className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
             <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center overflow-hidden transition-transform group-hover:scale-105">
               <Image 
-                src="/logo.png" 
-                alt="Human-Verified Hub Logo" 
+                src="/favicon.png" 
+                alt="Human Verified Hub Logo" 
                 width={48} 
                 height={48} 
                 className="w-full h-full object-contain"
@@ -95,7 +95,7 @@ export default function Navbar() {
               />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-base sm:text-lg font-bold text-gradient leading-tight">Human-Verified Hub</h1>
+              <h1 className="text-base sm:text-lg font-bold text-gradient leading-tight">Human Verified Hub</h1>
               <p className="text-[9px] sm:text-[10px] text-gray-500 leading-tight">{t.header.subtitle}</p>
             </div>
           </Link>
@@ -181,14 +181,16 @@ export default function Navbar() {
                         {language === 'ar' ? 'حسابي' : 'My Account'}
                       </span>
                       {usageStatus?.isPro && (
-                        <span className="relative inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md overflow-hidden group">
-                          {/* Background gradient */}
-                          <span className="absolute inset-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 opacity-90"></span>
+                        <span className="relative inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg overflow-hidden group shadow-lg shadow-amber-500/30">
+                          {/* Background gradient with animation */}
+                          <span className="absolute inset-0 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-pulse"></span>
+                          {/* Border glow */}
+                          <span className="absolute inset-0 rounded-lg border border-amber-300/50"></span>
                           {/* Shimmer effect */}
-                          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+                          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
                           {/* Content */}
-                          <Crown className="relative w-3 h-3 text-amber-900 drop-shadow-sm" />
-                          <span className="relative text-amber-900 font-extrabold">PRO</span>
+                          <Crown className="relative w-3.5 h-3.5 text-amber-800 drop-shadow-sm" />
+                          <span className="relative text-amber-800 font-black">PRO</span>
                         </span>
                       )}
                     </div>

@@ -72,14 +72,14 @@ export default function DashboardClient({ user }: DashboardClientProps) {
               <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-lg group-hover:bg-purple-600/40 transition-all" />
               <Image 
                 src="/logo.png" 
-                alt="Human-Verified Hub Logo" 
+                alt="Human Verified Hub Logo" 
                 width={40} 
                 height={40} 
                 className="relative z-10 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_16px_rgba(168,85,247,0.9)] transition-all"
               />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-gradient">Human-Verified Hub</h1>
+              <h1 className="text-lg font-bold text-gradient">Human Verified Hub</h1>
               <p className="text-xs text-gray-400">AI Content Detection</p>
             </div>
           </Link>
@@ -206,7 +206,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
       {/* Footer */}
       <footer className="relative z-10 border-t border-purple-900/30 mt-12">
         <div className="max-w-5xl mx-auto px-4 py-5 text-center">
-          <p className="text-gray-500 text-xs">© 2024 Human-Verified Hub. All rights reserved.</p>
+          <p className="text-gray-500 text-xs">© 2024 Human Verified Hub. All rights reserved.</p>
         </div>
       </footer>
     </div>

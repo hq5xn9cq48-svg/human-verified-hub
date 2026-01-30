@@ -503,7 +503,7 @@ export default function ImageToPromptPage() {
       <footer className="border-t border-purple-900/30 mt-16">
         <div className="max-w-5xl mx-auto px-4 py-6 text-center">
           <p className="text-gray-500 text-xs">
-            {language === 'ar' ? '© 2026 Human-Verified Hub. جميع الحقوق محفوظة.' : '© 2026 Human-Verified Hub. All rights reserved.'}
+            {language === 'ar' ? '© 2026 Human Verified Hub. جميع الحقوق محفوظة.' : '© 2026 Human Verified Hub. All rights reserved.'}
           </p>
         </div>
       </footer>

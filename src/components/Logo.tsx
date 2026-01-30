@@ -28,7 +28,7 @@ export default function Logo({ size = 'md' }: LogoProps) {
       <div className={`${sizeClasses[size].container} relative rounded-full bg-black border border-gray-800 flex items-center justify-center overflow-hidden`}>
         <Image 
           src={LOGO_URL}
-          alt="Human-Verified Hub Logo" 
+          alt="Human Verified Hub Logo" 
           width={sizeClasses[size].img} 
           height={sizeClasses[size].img} 
           className="object-contain"
@@ -37,7 +37,7 @@ export default function Logo({ size = 'md' }: LogoProps) {
       </div>
       <div>
         <h1 className={`font-bold ${textSizes[size]} text-gradient`}>
-          Human-Verified Hub
+          Human Verified Hub
         </h1>
         {size !== 'sm' && (
           <p className="text-[10px] text-gray-500 tracking-wider uppercase">

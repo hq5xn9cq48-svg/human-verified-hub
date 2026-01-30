@@ -22,10 +22,10 @@ export default function AboutPage() {
   const content = {
     en: {
       title: 'About',
-      titleHighlight: 'Human-Verified Hub',
+      titleHighlight: 'Human Verified Hub',
       subtitle: 'Empowering authenticity in the age of AI',
       missionTitle: 'Our Mission',
-      missionText: 'Human-Verified Hub is dedicated to promoting transparency and authenticity in digital content. As AI-generated content becomes increasingly sophisticated, we provide the tools needed to distinguish between human and AI-created text and images.',
+      missionText: 'Human Verified Hub is dedicated to promoting transparency and authenticity in digital content. As AI-generated content becomes increasingly sophisticated, we provide the tools needed to distinguish between human and AI-created text and images.',
       visionTitle: 'Our Vision',
       visionText: 'We envision a world where content authenticity is verifiable, trust in digital communication is maintained, and creators are empowered to prove the originality of their work.',
       valuesTitle: 'Our Values',
@@ -35,7 +35,7 @@ export default function AboutPage() {
         { icon: Users, title: 'Accessibility', desc: 'Free tools for everyone to verify content authenticity.' },
         { icon: Sparkles, title: 'Innovation', desc: 'Staying ahead with cutting-edge AI detection technology.' },
       ],
-      useCasesTitle: 'Who Uses Human-Verified Hub?',
+      useCasesTitle: 'Who Uses Human Verified Hub?',
       useCases: [
         { icon: Award, title: 'Academic Institutions', desc: 'Universities and schools verify academic integrity.' },
         { icon: Globe, title: 'Publishers & Media', desc: 'News organizations ensure content authenticity.' },
@@ -49,10 +49,10 @@ export default function AboutPage() {
     },
     ar: {
       title: 'عن',
-      titleHighlight: 'Human-Verified Hub',
+      titleHighlight: 'Human Verified Hub',
       subtitle: 'تمكين الأصالة في عصر الذكاء الاصطناعي',
       missionTitle: 'مهمتنا',
-      missionText: 'Human-Verified Hub مكرس لتعزيز الشفافية والأصالة في المحتوى الرقمي. مع تزايد تطور المحتوى المولد بالذكاء الاصطناعي، نوفر الأدوات اللازمة للتمييز بين النصوص والصور البشرية والمولدة آلياً.',
+      missionText: 'Human Verified Hub مكرس لتعزيز الشفافية والأصالة في المحتوى الرقمي. مع تزايد تطور المحتوى المولد بالذكاء الاصطناعي، نوفر الأدوات اللازمة للتمييز بين النصوص والصور البشرية والمولدة آلياً.',
       visionTitle: 'رؤيتنا',
       visionText: 'نتصور عالماً تكون فيه أصالة المحتوى قابلة للتحقق، والثقة في التواصل الرقمي محفوظة، والمبدعون قادرون على إثبات أصالة أعمالهم.',
       valuesTitle: 'قيمنا',
@@ -62,7 +62,7 @@ export default function AboutPage() {
         { icon: Users, title: 'الوصولية', desc: 'أدوات مجانية للجميع للتحقق من أصالة المحتوى.' },
         { icon: Sparkles, title: 'الابتكار', desc: 'البقاء في المقدمة مع أحدث تقنيات كشف الذكاء الاصطناعي.' },
       ],
-      useCasesTitle: 'من يستخدم Human-Verified Hub؟',
+      useCasesTitle: 'من يستخدم Human Verified Hub؟',
       useCases: [
         { icon: Award, title: 'المؤسسات الأكاديمية', desc: 'الجامعات والمدارس تتحقق من النزاهة الأكاديمية.' },
         { icon: Globe, title: 'الناشرون والإعلام', desc: 'المؤسسات الإخبارية تضمن أصالة المحتوى.' },
@@ -209,7 +209,7 @@ export default function AboutPage() {
       {/* Footer */}
       <footer className="border-t border-purple-900/30">
         <div className="max-w-5xl mx-auto px-4 py-6 text-center">
-          <p className="text-gray-500 text-xs">© 2026 Human-Verified Hub. All rights reserved.</p>
+          <p className="text-gray-500 text-xs">© 2026 Human Verified Hub. All rights reserved.</p>
         </div>
       </footer>
     </div>

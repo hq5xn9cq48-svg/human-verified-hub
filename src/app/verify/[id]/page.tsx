@@ -78,14 +78,14 @@ export default function VerifyPage() {
               <div className="absolute inset-0 bg-purple-600/20 rounded-full blur-lg group-hover:bg-purple-600/40 transition-all" />
               <Image 
                 src="/logo.png" 
-                alt="Human-Verified Hub Logo" 
+                alt="Human Verified Hub Logo" 
                 width={48} 
                 height={48} 
                 className="relative z-10 drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] group-hover:drop-shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all"
               />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gradient">Human-Verified Hub</h1>
+              <h1 className="text-xl font-bold text-gradient">Human Verified Hub</h1>
               <p className="text-xs text-gray-400">Certificate Verification</p>
             </div>
           </Link>
@@ -179,7 +179,7 @@ export default function VerifyPage() {
         <div className="text-center mt-6">
           <Link href="/" className="inline-flex items-center gap-1 text-gray-400 hover:text-purple-400 text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            Back to Human-Verified Hub
+            Back to Human Verified Hub
           </Link>
         </div>
       </motion.div>

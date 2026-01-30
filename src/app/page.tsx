@@ -79,7 +79,9 @@ export default function HomePage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
-  const [inputMode, setInputMode] = useState<'text' | 'url'>('text')
+  const [inputMode, setInputMode] = useState<'text' | 'url' | 'file'>('text')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
   const [result, setResult] = useState<AnalysisResult | null>(null)
@@ -92,6 +94,84 @@ export default function HomePage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const turnstileRef = useRef<HTMLDivElement>(null)
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Check file type
+      const allowedExtensions = ['.pdf', '.docx', '.doc', '.txt']
+      const fileName = file.name.toLowerCase()
+      const isValid = allowedExtensions.some(ext => fileName.endsWith(ext))
+      
+      if (!isValid) {
+        setError(language === 'ar' 
+          ? 'نوع الملف غير مدعوم. يرجى رفع ملف PDF أو Word أو نص عادي.'
+          : 'Unsupported file type. Please upload a PDF, Word, or plain text file.')
+        return
+      }
+      
+      // Check file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError(language === 'ar' ? 'الملف كبير جداً (الحد الأقصى 10 ميجابايت)' : 'File too large (max 10MB)')
+        return
+      }
+      
+      setSelectedFile(file)
+      setError(null)
+    }
+  }
+
+  // Handle file upload and analysis
+  const handleFileAnalysis = async () => {
+    if (!selectedFile) return
+    
+    setLoading(true)
+    setError(null)
+    setResult(null)
+
+    try {
+      // Get access token
+      let accessToken: string | null = null
+      if (user && isSupabaseConfigured()) {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        accessToken = session?.access_token || null
+      }
+
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      formData.append('language', language)
+
+      const headers: HeadersInit = {}
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
+      const response = await fetch('/api/analyze-file', {
+        method: 'POST',
+        headers,
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || data.error) {
+        if (data.errorCode === 'FEATURE_LOCKED' || data.errorCode === 'AUTH_REQUIRED') {
+          setShowUpgradeModal(true)
+        }
+        throw new Error(data.error || 'Analysis failed')
+      }
+
+      refreshUsageStatus()
+      setResult(data)
+
+    } catch (err: any) {
+      setError(err.message || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (loading) {
@@ -342,7 +422,7 @@ export default function HomePage() {
       pdf.setTextColor(148, 163, 184)
       pdf.setFontSize(11)
       pdf.setFont('helvetica', 'normal')
-      pdf.text('Human-Verified Hub | Forensic Linguistic Analysis', width / 2, 60, { align: 'center' })
+      pdf.text('Human Verified Hub | Forensic Linguistic Analysis', width / 2, 60, { align: 'center' })
       
       // === MAIN BADGE/SEAL SECTION ===
       // Large verification badge background
@@ -450,7 +530,7 @@ export default function HomePage() {
       
       pdf.setTextColor(148, 163, 184)
       pdf.setFontSize(10)
-      pdf.text('Human-Verified Hub | AI Identity Detection', 105, 45, { align: 'center' })
+      pdf.text('Human Verified Hub | AI Identity Detection', 105, 45, { align: 'center' })
       
       // Score section
       const scoreColor = result.humanScore >= 61 ? [34, 197, 94] : result.humanScore >= 31 ? [234, 179, 8] : [239, 68, 68]
@@ -491,7 +571,7 @@ export default function HomePage() {
       pdf.setTextColor(100, 100, 100)
       pdf.setFontSize(8)
       pdf.text(`Generated: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' })
-      pdf.text('Human-Verified Hub - humanverified.ai', 105, 285, { align: 'center' })
+      pdf.text('Human Verified Hub - humanverified.ai', 105, 285, { align: 'center' })
       
       pdf.save(`Analysis-Report-${Date.now()}.pdf`)
       
@@ -537,9 +617,11 @@ export default function HomePage() {
   const resetAnalysis = () => {
     setText('')
     setUrl('')
+    setSelectedFile(null)
     setResult(null)
     setError(null)
     setVerificationId(null)
+    setInputMode('text')
   }
 
   // Show loading only while language context is loading
@@ -838,8 +920,14 @@ export default function HomePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInputMode('url')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  onClick={() => {
+                    if (!usageStatus?.isPro) {
+                      setShowUpgradeModal(true)
+                      return
+                    }
+                    setInputMode('url')
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 relative ${
                     inputMode === 'url' 
                       ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40' 
                       : 'text-gray-400 hover:text-white'
@@ -847,6 +935,30 @@ export default function HomePage() {
                 >
                   <LinkIcon className="w-4 h-4" />
                   {language === 'ar' ? 'رابط' : 'URL'}
+                  {!usageStatus?.isPro && (
+                    <span className="ml-1 text-[10px] text-yellow-400 font-bold">PRO</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!usageStatus?.isPro) {
+                      setShowUpgradeModal(true)
+                      return
+                    }
+                    setInputMode('file')
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 relative ${
+                    inputMode === 'file' 
+                      ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Upload className="w-4 h-4" />
+                  {language === 'ar' ? 'ملف' : 'File'}
+                  {!usageStatus?.isPro && (
+                    <span className="ml-1 text-[10px] text-yellow-400 font-bold">PRO</span>
+                  )}
                 </button>
               </div>
 
@@ -896,7 +1008,7 @@ export default function HomePage() {
                       <span className={text.length >= 20 ? 'text-green-400' : ''}>{text.length} {t.analyzer.characters}</span>
                     </div>
                   </motion.div>
-                ) : (
+                ) : inputMode === 'url' ? (
                   <motion.div
                     key="url"
                     initial={{ opacity: 0, x: 20 }}
@@ -916,6 +1028,57 @@ export default function HomePage() {
                         placeholder="https://example.com/article"
                         dir="ltr"
                       />
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="file"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      {language === 'ar' ? 'رفع ملف PDF أو Word' : 'Upload PDF or Word File'}
+                    </label>
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="relative p-8 border-2 border-dashed border-purple-500/30 rounded-xl bg-black/30 hover:bg-purple-900/10 hover:border-purple-500/50 cursor-pointer transition-all text-center"
+                    >
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.docx,.doc,.txt"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <Upload className="w-10 h-10 mx-auto mb-3 text-purple-400" />
+                      {selectedFile ? (
+                        <div>
+                          <p className="text-white font-medium">{selectedFile.name}</p>
+                          <p className="text-gray-400 text-sm mt-1">
+                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedFile(null)
+                            }}
+                            className="mt-2 text-xs text-red-400 hover:text-red-300"
+                          >
+                            {language === 'ar' ? 'إزالة الملف' : 'Remove file'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-gray-300">
+                            {language === 'ar' ? 'اضغط لاختيار ملف' : 'Click to select a file'}
+                          </p>
+                          <p className="text-gray-500 text-sm mt-1">
+                            {language === 'ar' ? 'PDF, Word, أو نص عادي (الحد 10MB)' : 'PDF, Word, or plain text (max 10MB)'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -949,46 +1112,95 @@ export default function HomePage() {
               )}
 
               {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading || (inputMode === 'text' ? text.length < 20 : !url.trim())}
-                className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-3"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {loadingMessage}
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-5 h-5" />
-                    {t.analyzer.analyzeButton}
-                  </>
-                )}
-              </button>
+              {inputMode === 'file' ? (
+                <button
+                  type="button"
+                  onClick={handleFileAnalysis}
+                  disabled={loading || !selectedFile}
+                  className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-3"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      {loadingMessage}
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-5 h-5" />
+                      {language === 'ar' ? 'تحليل الملف' : 'Analyze File'}
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || (inputMode === 'text' ? text.length < 20 : !url.trim())}
+                  className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-purple-500/25 transition-all flex items-center justify-center gap-3"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      {loadingMessage}
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-5 h-5" />
+                      {t.analyzer.analyzeButton}
+                    </>
+                  )}
+                </button>
+              )}
             </form>
           ) : (
-            /* Results Section */
+            /* Results Section - Professional Report Display */
             <div className="space-y-6">
-              {/* Score Header */}
-              <div className="text-center py-6 bg-black/30 rounded-2xl border border-purple-900/30">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 200 }}
-                  className={`text-6xl font-bold ${getScoreColor(result.humanScore)} flex items-center justify-center gap-3`}
-                >
-                  {getScoreIcon(result.humanScore)}
-                  {result.humanScore}%
-                </motion.div>
-                <div className={`text-xl font-semibold mt-2 ${getScoreColor(result.humanScore)}`}>
-                  {result.verdict}
-                </div>
-                {result.confidence && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    {language === 'ar' ? 'الثقة:' : 'Confidence:'} {result.confidence}
+              {/* Official Report Header */}
+              <div className="bg-gradient-to-br from-purple-900/30 via-black/50 to-purple-900/20 rounded-2xl border border-purple-500/30 overflow-hidden">
+                {/* Header Banner */}
+                <div className="bg-gradient-to-r from-purple-600/30 to-purple-800/30 px-6 py-3 border-b border-purple-500/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-purple-400" />
+                      <span className="text-sm font-medium text-purple-300">
+                        {language === 'ar' ? 'تقرير التحليل الجنائي' : 'Forensic Analysis Report'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      Human Verified Hub
+                    </span>
                   </div>
-                )}
+                </div>
+                
+                {/* Score Display */}
+                <div className="text-center py-8 px-6">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 200 }}
+                    className="relative inline-block"
+                  >
+                    {/* Score Circle */}
+                    <div className={`relative w-32 h-32 mx-auto rounded-full border-4 ${result.humanScore >= 61 ? 'border-green-500/50' : result.humanScore >= 31 ? 'border-yellow-500/50' : 'border-red-500/50'} flex items-center justify-center bg-black/50`}>
+                      <div className={`text-5xl font-bold ${getScoreColor(result.humanScore)}`}>
+                        {result.humanScore}%
+                      </div>
+                    </div>
+                    {/* Icon Badge */}
+                    <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full ${result.humanScore >= 61 ? 'bg-green-500/20 border-green-500/40' : result.humanScore >= 31 ? 'bg-yellow-500/20 border-yellow-500/40' : 'bg-red-500/20 border-red-500/40'} border`}>
+                      {getScoreIcon(result.humanScore)}
+                    </div>
+                  </motion.div>
+                  
+                  <div className={`text-xl font-bold mt-4 ${getScoreColor(result.humanScore)}`}>
+                    {result.verdict}
+                  </div>
+                  {result.confidence && (
+                    <div className="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-purple-900/30 border border-purple-500/20">
+                      <span className="text-xs text-gray-400">{language === 'ar' ? 'مستوى الثقة:' : 'Confidence Level:'}</span>
+                      <span className="text-xs font-medium text-purple-300 capitalize">{result.confidence}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Progress Bar */}
@@ -1260,7 +1472,7 @@ export default function HomePage() {
       <footer className="bg-black border-t border-purple-900/30 mt-16">
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-gray-500 text-sm">© 2026 Human-Verified Hub. All rights reserved.</p>
+            <p className="text-gray-500 text-sm">© 2026 Human Verified Hub. All rights reserved.</p>
             <div className="flex items-center flex-wrap justify-center gap-4 md:gap-6 text-sm">
               <a href="/about" className="text-gray-400 hover:text-purple-400 transition-colors">
                 {language === 'ar' ? 'من نحن' : 'About'}

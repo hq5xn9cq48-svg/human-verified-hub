@@ -40,6 +40,18 @@ const features: PlanFeature[] = [
     icon: <FileText className="w-4 h-4" />
   },
   {
+    name: { en: 'URL Analysis', ar: 'تحليل الروابط' },
+    free: false, // LOCKED for free users
+    pro: true,
+    icon: <Zap className="w-4 h-4" />
+  },
+  {
+    name: { en: 'PDF/Word File Upload', ar: 'رفع ملفات PDF/Word' },
+    free: false, // LOCKED for free users
+    pro: true,
+    icon: <Download className="w-4 h-4" />
+  },
+  {
     name: { en: 'AI Image Detection', ar: 'كشف الصور بالذكاء الاصطناعي' },
     free: false, // LOCKED for free users
     pro: true,

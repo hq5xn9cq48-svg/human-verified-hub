@@ -196,17 +196,9 @@ export default function AuthPage() {
       })
       
       if (error) {
-        // Handle specific error cases - only show "already exists" for actual duplicate errors
+        // Handle specific error cases
         const errorMsg = error.message.toLowerCase()
-        if (errorMsg.includes('already registered') || 
-            errorMsg.includes('user already registered') ||
-            (errorMsg.includes('already') && errorMsg.includes('exists')) ||
-            errorMsg.includes('duplicate') ||
-            errorMsg.includes('unique constraint')) {
-          setError(language === 'ar' 
-            ? 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.'
-            : 'This email is already registered. Please sign in instead.')
-        } else if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
+        if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
           setError(language === 'ar' 
             ? 'البريد الإلكتروني غير صالح.'
             : 'Invalid email address.')
@@ -214,21 +206,30 @@ export default function AuthPage() {
           setError(language === 'ar' 
             ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'
             : 'Password must be at least 6 characters.')
+        } else if (errorMsg.includes('already registered') || 
+            errorMsg.includes('user already registered') ||
+            (errorMsg.includes('already') && errorMsg.includes('exists')) ||
+            errorMsg.includes('duplicate') ||
+            errorMsg.includes('unique constraint')) {
+          setError(language === 'ar' 
+            ? 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.'
+            : 'This email is already registered. Please sign in instead.')
         } else {
           setError(error.message)
         }
       } else if (data?.user) {
-        // User created successfully - check if email confirmation is needed
-        // Note: identities.length === 0 can happen for various reasons, not just duplicate users
-        // So we only treat it as "user exists" if there's NO user object returned
-        if (data.user.identities && data.user.identities.length === 0 && data.user.email) {
-          // This specific case means the email is already registered but unconfirmed
-          // Or the user exists - show message to check email or login
-          setError(language === 'ar' 
-            ? 'هذا البريد مسجل مسبقاً. تحقق من بريدك للتأكيد أو سجل الدخول.'
-            : 'This email is already registered. Check your email to confirm or sign in.')
+        // User created successfully
+        // In Supabase, if identities is empty AND the user exists, it means the email is already registered
+        // But we should NOT show "account exists" error for new signups - that's confusing
+        // Instead, just proceed with email confirmation flow
+        if (data.user.identities && data.user.identities.length === 0) {
+          // This could mean:
+          // 1. Email already registered but unconfirmed - they need to check email
+          // 2. User signed up with OAuth before - they should use that method
+          // Show generic message to check email instead of "account exists" error
+          setAuthMode('email-confirm')
         } else {
-          // Success - user created, waiting for email confirmation
+          // Success - new user created, waiting for email confirmation
           setAuthMode('email-confirm')
         }
       } else {
@@ -260,7 +261,7 @@ export default function AuthPage() {
           <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
             <Image 
               src="/logo.png" 
-              alt="Human-Verified Hub Logo" 
+              alt="Human Verified Hub Logo" 
               width={48} 
               height={48} 
               className="w-12 h-12 object-contain"
@@ -268,7 +269,7 @@ export default function AuthPage() {
             />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gradient">Human-Verified Hub</h1>
+            <h1 className="text-2xl font-bold text-gradient">Human Verified Hub</h1>
             <p className="text-xs text-gray-400">AI Content Detection System</p>
           </div>
         </Link>

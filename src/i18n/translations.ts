@@ -13,9 +13,9 @@ export const translations = {
     },
     // Header
     header: {
-      title: "Human-Verified",
+      title: "Human Verified",
       subtitle: "AI Identity Detection V5.0",
-      poweredBy: "Powered by Gemini 1.5 Pro",
+      poweredBy: "Powered by Gemini 1.5 Flash",
     },
     // Home/Analyzer Page
     analyzer: {
@@ -136,7 +136,7 @@ export const translations = {
     },
     // Footer
     footer: {
-      copyright: "© 2026 Human-Verified Hub. All rights reserved.",
+      copyright: "© 2026 Human Verified Hub. All rights reserved.",
       about: "About",
       methodology: "How It Works",
       contact: "Contact",
@@ -186,9 +186,9 @@ export const translations = {
     },
     // Header
     header: {
-      title: "Human-Verified",
+      title: "Human Verified",
       subtitle: "كشف هوية الذكاء الاصطناعي V5.0",
-      poweredBy: "مدعوم بـ Gemini 1.5 Pro",
+      poweredBy: "مدعوم بـ Gemini 1.5 Flash",
     },
     // Home/Analyzer Page
     analyzer: {
@@ -309,7 +309,7 @@ export const translations = {
     },
     // Footer
     footer: {
-      copyright: "© 2026 Human-Verified Hub. جميع الحقوق محفوظة.",
+      copyright: "© 2026 Human Verified Hub. جميع الحقوق محفوظة.",
       about: "من نحن",
       methodology: "كيف يعمل",
       contact: "اتصل بنا",
@@ -359,9 +359,9 @@ export const translations = {
     },
     // Header
     header: {
-      title: "Human-Verified",
+      title: "Human Verified",
       subtitle: "Detection d'Identite IA V5.0",
-      poweredBy: "Propulse par Gemini 1.5 Pro",
+      poweredBy: "Propulse par Gemini 1.5 Flash",
     },
     // Home/Analyzer Page
     analyzer: {
@@ -482,7 +482,7 @@ export const translations = {
     },
     // Footer
     footer: {
-      copyright: "© 2026 Human-Verified Hub. Tous droits reserves.",
+      copyright: "© 2026 Human Verified Hub. Tous droits reserves.",
       about: "A propos",
       methodology: "Comment ca marche",
       contact: "Contact",
@@ -532,9 +532,9 @@ export const translations = {
     },
     // Header
     header: {
-      title: "Human-Verified",
+      title: "Human Verified",
       subtitle: "Deteccion de Identidad IA V5.0",
-      poweredBy: "Impulsado por Gemini 1.5 Pro",
+      poweredBy: "Impulsado por Gemini 1.5 Flash",
     },
     // Home/Analyzer Page
     analyzer: {
@@ -655,7 +655,7 @@ export const translations = {
     },
     // Footer
     footer: {
-      copyright: "© 2026 Human-Verified Hub. Todos los derechos reservados.",
+      copyright: "© 2026 Human Verified Hub. Todos los derechos reservados.",
       about: "Acerca de",
       methodology: "Como funciona",
       contact: "Contacto",

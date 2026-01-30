@@ -566,27 +566,19 @@ export async function updateUserToPro(
     if (targetUserId) {
       console.log('[FREEMIUM] Step 4: Updating user to Pro:', targetUserId)
       
-      // Use UPSERT to handle both existing and new profiles
-      const { error: upsertError, data: upsertData } = await supabase
+      // First check if profile exists
+      const { data: existingProfile, error: checkError } = await supabase
         .from('user_profiles')
-        .upsert({
-          id: targetUserId,
-          email: normalizedEmail,
-          is_pro: true,
-          subscription_id: subscriptionId,
-          customer_id: customerId,
-          subscription_status: 'active'
-        }, {
-          onConflict: 'id'
-        })
-        .select()
-
-      if (upsertError) {
-        console.error('[FREEMIUM] Upsert error:', upsertError.message, upsertError)
-        
-        // Try direct UPDATE as fallback
-        console.log('[FREEMIUM] Trying direct UPDATE as fallback...')
-        const { error: updateError } = await supabase
+        .select('id, is_pro')
+        .eq('id', targetUserId)
+        .single()
+      
+      console.log('[FREEMIUM] Existing profile check:', { existingProfile, error: checkError?.message })
+      
+      if (existingProfile) {
+        // UPDATE existing profile
+        console.log('[FREEMIUM] Profile exists, using UPDATE')
+        const { error: updateError, data: updateData } = await supabase
           .from('user_profiles')
           .update({
             is_pro: true,
@@ -595,26 +587,50 @@ export async function updateUserToPro(
             subscription_status: 'active'
           })
           .eq('id', targetUserId)
+          .select()
 
         if (updateError) {
-          console.error('[FREEMIUM] Update fallback error:', updateError.message)
+          console.error('[FREEMIUM] UPDATE error:', updateError.message, updateError)
           return false
         }
-        console.log('[FREEMIUM] UPDATE fallback succeeded')
+        console.log('[FREEMIUM] UPDATE succeeded:', updateData)
       } else {
-        console.log('[FREEMIUM] Upsert succeeded:', upsertData)
+        // INSERT new profile
+        console.log('[FREEMIUM] Profile does not exist, using INSERT')
+        const { error: insertError, data: insertData } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: targetUserId,
+            email: normalizedEmail,
+            is_pro: true,
+            subscription_id: subscriptionId,
+            customer_id: customerId,
+            subscription_status: 'active'
+          })
+          .select()
+
+        if (insertError) {
+          console.error('[FREEMIUM] INSERT error:', insertError.message, insertError)
+          return false
+        }
+        console.log('[FREEMIUM] INSERT succeeded:', insertData)
       }
 
       console.log('[FREEMIUM] ✅ SUCCESS: User upgraded to Pro:', targetUserId)
       
       // Verify the update
-      const { data: verifyProfile } = await supabase
+      const { data: verifyProfile, error: verifyError } = await supabase
         .from('user_profiles')
         .select('id, email, is_pro, subscription_status')
         .eq('id', targetUserId)
         .single()
       
-      console.log('[FREEMIUM] Verification:', verifyProfile)
+      console.log('[FREEMIUM] Verification:', { verifyProfile, error: verifyError?.message })
+      
+      if (!verifyProfile?.is_pro) {
+        console.error('[FREEMIUM] ❌ CRITICAL: Verification failed - is_pro is still false!')
+        return false
+      }
       
       // Clean up any pending activation for this email
       if (normalizedEmail) {

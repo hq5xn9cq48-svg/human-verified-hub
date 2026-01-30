@@ -65,17 +65,33 @@ async function ensureUserProfile(userId: string, email: string | undefined, full
       
       if (pendingPro) {
         console.log('[AUTH CALLBACK] Found pending Pro activation for:', email)
-        // Activate Pro status
+        // Activate Pro status in database
         await adminClient
           .from('user_profiles')
           .update({
             is_pro: true,
+            plan: 'pro',
             subscription_id: pendingPro.subscription_id,
             customer_id: pendingPro.customer_id,
             subscription_status: 'active',
             updated_at: new Date().toISOString()
           })
           .eq('id', userId)
+        
+        // Also update user metadata in Supabase Auth for immediate session reflection
+        try {
+          await adminClient.auth.admin.updateUserById(userId, {
+            user_metadata: {
+              is_pro: true,
+              plan: 'pro',
+              subscription_id: pendingPro.subscription_id,
+              activated_at: new Date().toISOString()
+            }
+          })
+          console.log('[AUTH CALLBACK] User metadata updated with Pro status')
+        } catch (metaErr) {
+          console.error('[AUTH CALLBACK] Error updating user metadata:', metaErr)
+        }
         
         // Remove pending activation
         await adminClient
@@ -108,6 +124,7 @@ async function ensureUserProfile(userId: string, email: string | undefined, full
         email: email.toLowerCase(),
         full_name: fullName || null,
         is_pro: !!pendingPro,
+        plan: pendingPro ? 'pro' : 'free',
         subscription_id: pendingPro?.subscription_id || null,
         customer_id: pendingPro?.customer_id || null,
         subscription_status: pendingPro ? 'active' : null,
@@ -120,8 +137,24 @@ async function ensureUserProfile(userId: string, email: string | undefined, full
         .from('user_profiles')
         .insert(profileData)
       
-      // Remove pending activation if used
+      // Handle pending activation for new user
       if (pendingPro) {
+        // Also update user metadata in Supabase Auth for immediate session reflection
+        try {
+          await adminClient.auth.admin.updateUserById(userId, {
+            user_metadata: {
+              is_pro: true,
+              plan: 'pro',
+              subscription_id: pendingPro.subscription_id,
+              activated_at: new Date().toISOString()
+            }
+          })
+          console.log('[AUTH CALLBACK] User metadata updated with Pro status for new user')
+        } catch (metaErr) {
+          console.error('[AUTH CALLBACK] Error updating user metadata:', metaErr)
+        }
+        
+        // Remove pending activation
         await adminClient
           .from('pending_pro_activations')
           .delete()

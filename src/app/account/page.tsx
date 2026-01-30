@@ -25,7 +25,8 @@ import {
   Sparkles,
   Star,
   Clock,
-  CreditCard
+  CreditCard,
+  RefreshCw
 } from 'lucide-react'
 
 interface ScanHistoryItem {
@@ -52,6 +53,8 @@ export default function AccountPage() {
   const [historyLoading, setHistoryLoading] = useState(true)
   const [stats, setStats] = useState({ totalScans: 0, humanScans: 0, aiScans: 0 })
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
+  const [refreshingPro, setRefreshingPro] = useState(false)
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null)
 
   const content = {
     en: {
@@ -203,6 +206,55 @@ export default function AccountPage() {
       })
     }
   }, [usageStatus])
+
+  // Manual Pro status refresh function
+  const handleRefreshProStatus = async () => {
+    setRefreshingPro(true)
+    setRefreshMessage(null)
+    
+    try {
+      // Call the API to force a fresh check from database
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        setRefreshMessage(language === 'ar' ? 'يرجى تسجيل الدخول مرة أخرى' : 'Please sign in again')
+        return
+      }
+      
+      // Force refresh from server
+      const response = await fetch(`/api/user/usage?force=true&t=${Date.now()}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        },
+        cache: 'no-store'
+      })
+      
+      const data = await response.json()
+      
+      if (data.isPro) {
+        setSubscriptionInfo({
+          is_pro: true,
+          subscription_id: null,
+          subscription_status: 'active',
+          subscription_ends_at: null
+        })
+        setRefreshMessage(language === 'ar' ? '✅ تم تفعيل حساب Pro بنجاح!' : '✅ Pro status activated successfully!')
+        // Also refresh the global auth context
+        await refreshUsageStatus()
+      } else {
+        setRefreshMessage(language === 'ar' 
+          ? 'لم يتم العثور على اشتراك Pro. إذا كنت قد دفعت، يرجى الانتظار بضع دقائق أو التواصل مع الدعم.'
+          : 'No Pro subscription found. If you just paid, please wait a few minutes or contact support.')
+      }
+    } catch (error) {
+      console.error('Error refreshing Pro status:', error)
+      setRefreshMessage(language === 'ar' ? 'حدث خطأ. حاول مرة أخرى.' : 'Error occurred. Please try again.')
+    } finally {
+      setRefreshingPro(false)
+    }
+  }
 
   const fetchHistory = async () => {
     if (!user) return
@@ -435,14 +487,37 @@ export default function AccountPage() {
                   )}
 
                   {/* Upgrade Button */}
-                  <a
-                    href="/pricing"
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/25"
-                  >
-                    <Zap className="w-5 h-5" />
-                    {t.subscription.upgradeButton}
-                    <ChevronRight className="w-4 h-4" />
-                  </a>
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href="/pricing"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/25"
+                    >
+                      <Zap className="w-5 h-5" />
+                      {t.subscription.upgradeButton}
+                      <ChevronRight className="w-4 h-4" />
+                    </a>
+                    
+                    {/* Refresh Pro Status Button - for users who paid but status not showing */}
+                    <button
+                      onClick={handleRefreshProStatus}
+                      disabled={refreshingPro}
+                      className="inline-flex items-center gap-2 px-4 py-3 border border-purple-500/30 text-purple-300 hover:bg-purple-900/20 rounded-xl transition-all text-sm"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${refreshingPro ? 'animate-spin' : ''}`} />
+                      {language === 'ar' ? 'تحديث حالة Pro' : 'Refresh Pro Status'}
+                    </button>
+                  </div>
+                  
+                  {/* Refresh Message */}
+                  {refreshMessage && (
+                    <div className={`mt-4 p-3 rounded-lg text-sm ${
+                      refreshMessage.includes('✅') || refreshMessage.includes('success')
+                        ? 'bg-green-900/20 border border-green-500/30 text-green-300'
+                        : 'bg-yellow-900/20 border border-yellow-500/30 text-yellow-300'
+                    }`}>
+                      {refreshMessage}
+                    </div>
+                  )}
                 </>
               )}
             </motion.div>

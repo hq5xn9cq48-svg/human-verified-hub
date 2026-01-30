@@ -196,22 +196,43 @@ export default function AuthPage() {
       })
       
       if (error) {
-        // Handle specific error cases
-        if (error.message.toLowerCase().includes('already registered') || 
-            error.message.toLowerCase().includes('already exists') ||
-            error.message.toLowerCase().includes('user already')) {
+        // Handle specific error cases - only show "already exists" for actual duplicate errors
+        const errorMsg = error.message.toLowerCase()
+        if (errorMsg.includes('already registered') || 
+            errorMsg.includes('user already registered') ||
+            (errorMsg.includes('already') && errorMsg.includes('exists')) ||
+            errorMsg.includes('duplicate') ||
+            errorMsg.includes('unique constraint')) {
           setError(language === 'ar' 
             ? 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.'
-            : 'User already exists. Please log in instead.')
+            : 'This email is already registered. Please sign in instead.')
+        } else if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
+          setError(language === 'ar' 
+            ? 'البريد الإلكتروني غير صالح.'
+            : 'Invalid email address.')
+        } else if (errorMsg.includes('password')) {
+          setError(language === 'ar' 
+            ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'
+            : 'Password must be at least 6 characters.')
         } else {
           setError(error.message)
         }
-      } else if (data?.user?.identities?.length === 0) {
-        // Supabase returns empty identities when user already exists
-        setError(language === 'ar' 
-          ? 'هذا البريد الإلكتروني مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.'
-          : 'User already exists. Please log in instead.')
+      } else if (data?.user) {
+        // User created successfully - check if email confirmation is needed
+        // Note: identities.length === 0 can happen for various reasons, not just duplicate users
+        // So we only treat it as "user exists" if there's NO user object returned
+        if (data.user.identities && data.user.identities.length === 0 && data.user.email) {
+          // This specific case means the email is already registered but unconfirmed
+          // Or the user exists - show message to check email or login
+          setError(language === 'ar' 
+            ? 'هذا البريد مسجل مسبقاً. تحقق من بريدك للتأكيد أو سجل الدخول.'
+            : 'This email is already registered. Check your email to confirm or sign in.')
+        } else {
+          // Success - user created, waiting for email confirmation
+          setAuthMode('email-confirm')
+        }
       } else {
+        // No user and no error - something unexpected, show confirmation anyway
         setAuthMode('email-confirm')
       }
     } catch (err: any) {

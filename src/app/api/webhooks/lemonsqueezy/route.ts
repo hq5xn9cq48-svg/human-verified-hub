@@ -6,7 +6,8 @@ import { updateUserToPro, downgradeUserFromPro } from '@/lib/freemium'
 // CONFIGURATION
 // ============================================================================
 
-const LEMONSQUEEZY_WEBHOOK_SECRET = process.env.LEMONSQUEEZY_WEBHOOK_SECRET || ''
+// IMPORTANT: Trim the secret to remove any whitespace
+const LEMONSQUEEZY_WEBHOOK_SECRET = (process.env.LEMONSQUEEZY_WEBHOOK_SECRET || '').trim()
 const LEMONSQUEEZY_STORE_ID = process.env.LEMONSQUEEZY_STORE_ID || ''
 
 // ============================================================================
@@ -25,27 +26,82 @@ function logError(event: string, error: unknown) {
 
 // ============================================================================
 // SECURITY: Verify webhook signature
+// LemonSqueezy uses HMAC-SHA256 with hex digest
 // ============================================================================
 
 function verifyWebhookSignature(payload: string, signature: string): boolean {
+  // Trim the signature to remove any whitespace
+  const cleanSignature = signature.trim()
+  
+  // Log for debugging (only first/last chars to protect secret)
+  logWebhook('Verifying signature', {
+    hasSecret: !!LEMONSQUEEZY_WEBHOOK_SECRET,
+    secretLength: LEMONSQUEEZY_WEBHOOK_SECRET.length,
+    secretFirst3: LEMONSQUEEZY_WEBHOOK_SECRET.substring(0, 3),
+    secretLast3: LEMONSQUEEZY_WEBHOOK_SECRET.substring(LEMONSQUEEZY_WEBHOOK_SECRET.length - 3),
+    signatureLength: cleanSignature.length,
+    payloadLength: payload.length
+  })
+
   if (!LEMONSQUEEZY_WEBHOOK_SECRET) {
-    logError('Signature verification', 'LEMONSQUEEZY_WEBHOOK_SECRET not configured - SKIPPING VERIFICATION')
-    // In development, you might want to skip verification
-    // For production, you should return false here
-    return true // WARNING: Change to false in production!
+    logError('Signature verification', 'LEMONSQUEEZY_WEBHOOK_SECRET not configured')
+    return false
+  }
+
+  if (!cleanSignature) {
+    logError('Signature verification', 'No signature provided in request')
+    return false
   }
 
   try {
+    // Create HMAC using the webhook secret
     const hmac = crypto.createHmac('sha256', LEMONSQUEEZY_WEBHOOK_SECRET)
     const digest = hmac.update(payload).digest('hex')
     
-    // Constant-time comparison to prevent timing attacks
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(digest)
-    )
+    logWebhook('Signature comparison', {
+      expectedLength: digest.length,
+      receivedLength: cleanSignature.length,
+      expectedFirst10: digest.substring(0, 10),
+      expectedLast10: digest.substring(digest.length - 10),
+      receivedFirst10: cleanSignature.substring(0, 10),
+      receivedLast10: cleanSignature.substring(cleanSignature.length - 10),
+      match: digest === cleanSignature
+    })
+
+    // Direct string comparison first (most common case)
+    if (digest === cleanSignature) {
+      logWebhook('✅ Signature matched (direct comparison)')
+      return true
+    }
+    
+    // Case-insensitive comparison (hex can be upper or lower case)
+    if (digest.toLowerCase() === cleanSignature.toLowerCase()) {
+      logWebhook('✅ Signature matched (case-insensitive)')
+      return true
+    }
+
+    // If lengths match, use timing-safe comparison
+    if (digest.length === cleanSignature.length) {
+      const digestBuffer = Buffer.from(digest, 'utf8')
+      const signatureBuffer = Buffer.from(cleanSignature, 'utf8')
+      
+      const isValid = crypto.timingSafeEqual(digestBuffer, signatureBuffer)
+      if (isValid) {
+        logWebhook('✅ Signature matched (timing-safe comparison)')
+        return true
+      }
+    }
+
+    // Signature mismatch - log details for debugging
+    logError('Signature mismatch', {
+      expected: digest,
+      received: cleanSignature,
+      payloadPreview: payload.substring(0, 200)
+    })
+    return false
+
   } catch (err) {
-    logError('Signature verification failed', err)
+    logError('Signature verification exception', err)
     return false
   }
 }
@@ -60,30 +116,50 @@ export async function POST(request: NextRequest) {
   // Log environment check
   logWebhook('Environment check', {
     hasWebhookSecret: !!LEMONSQUEEZY_WEBHOOK_SECRET,
+    webhookSecretLength: LEMONSQUEEZY_WEBHOOK_SECRET.length,
+    webhookSecretPreview: LEMONSQUEEZY_WEBHOOK_SECRET ? 
+      `${LEMONSQUEEZY_WEBHOOK_SECRET.substring(0, 4)}...${LEMONSQUEEZY_WEBHOOK_SECRET.substring(LEMONSQUEEZY_WEBHOOK_SECRET.length - 4)}` : 'EMPTY',
     hasStoreId: !!LEMONSQUEEZY_STORE_ID,
     hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
   })
 
   try {
     // Get raw body for signature verification
-    const rawBody = await request.text()
-    logWebhook('Raw body received', { length: rawBody.length })
+    // IMPORTANT: Use arrayBuffer() then convert to string to preserve exact bytes
+    const arrayBuffer = await request.arrayBuffer()
+    const rawBody = Buffer.from(arrayBuffer).toString('utf8')
     
-    // Get signature from headers
-    const signature = request.headers.get('x-signature') || 
-                      request.headers.get('X-Signature') || ''
+    logWebhook('Raw body received', { 
+      length: rawBody.length, 
+      preview: rawBody.substring(0, 150) + '...',
+      firstChar: rawBody.charCodeAt(0),
+      lastChar: rawBody.charCodeAt(rawBody.length - 1)
+    })
+    
+    // Get signature from headers - LemonSqueezy uses 'X-Signature'
+    const signatureHeader = request.headers.get('X-Signature') || 
+                            request.headers.get('x-signature') || ''
+    
+    logWebhook('Received headers', {
+      'X-Signature': signatureHeader ? signatureHeader.substring(0, 20) + '...' : 'null',
+      'content-type': request.headers.get('content-type'),
+      'x-event-name': request.headers.get('x-event-name')
+    })
 
     // Verify signature (SECURITY CRITICAL)
-    if (!verifyWebhookSignature(rawBody, signature)) {
-      logError('Invalid signature', { receivedSignature: signature.substring(0, 10) + '...' })
+    if (!verifyWebhookSignature(rawBody, signatureHeader)) {
+      logError('Invalid signature - REJECTING webhook', { 
+        signatureReceived: signatureHeader.substring(0, 20) + '...',
+        bodyLength: rawBody.length
+      })
       return NextResponse.json(
         { error: 'Invalid webhook signature' },
         { status: 401 }
       )
     }
-    logWebhook('Signature verified successfully')
+    
+    logWebhook('✅ Signature verified successfully - processing webhook')
 
     // Parse the payload
     const payload = JSON.parse(rawBody)
@@ -97,7 +173,7 @@ export async function POST(request: NextRequest) {
       hasAttributes: !!data?.attributes
     })
 
-    // Log full attributes for debugging
+    // Log important attributes for debugging
     if (data?.attributes) {
       logWebhook('Event attributes', {
         user_email: data.attributes.user_email,
@@ -105,7 +181,8 @@ export async function POST(request: NextRequest) {
         status: data.attributes.status,
         store_id: data.attributes.store_id,
         variant_id: data.attributes.variant_id,
-        product_id: data.attributes.product_id
+        product_id: data.attributes.product_id,
+        first_order_item: data.attributes.first_order_item
       })
     }
 
@@ -127,7 +204,7 @@ export async function POST(request: NextRequest) {
           status
         })
 
-        // Activate for active/trialing subscriptions, or payment success
+        // Activate for active/trialing subscriptions, or on payment success
         if (status === 'active' || status === 'trialing' || status === 'on_trial' || eventName === 'subscription_payment_success') {
           logWebhook('Calling updateUserToPro...', { userEmail })
           

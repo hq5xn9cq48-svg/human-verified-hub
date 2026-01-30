@@ -6,8 +6,11 @@ import { updateUserToPro, downgradeUserFromPro } from '@/lib/freemium'
 // CONFIGURATION
 // ============================================================================
 
-// IMPORTANT: Trim the secret to remove any whitespace
-const LEMONSQUEEZY_WEBHOOK_SECRET = (process.env.LEMONSQUEEZY_WEBHOOK_SECRET || '').trim()
+// IMPORTANT: Get secret fresh from env each time (for Vercel serverless)
+function getWebhookSecret(): string {
+  return (process.env.LEMONSQUEEZY_WEBHOOK_SECRET || '').trim()
+}
+
 const LEMONSQUEEZY_STORE_ID = process.env.LEMONSQUEEZY_STORE_ID || ''
 
 // ============================================================================
@@ -30,20 +33,24 @@ function logError(event: string, error: unknown) {
 // ============================================================================
 
 function verifyWebhookSignature(payload: string, signature: string): boolean {
+  const secret = getWebhookSecret()
+  
   // Trim the signature to remove any whitespace
   const cleanSignature = signature.trim()
   
   // Log for debugging (only first/last chars to protect secret)
   logWebhook('Verifying signature', {
-    hasSecret: !!LEMONSQUEEZY_WEBHOOK_SECRET,
-    secretLength: LEMONSQUEEZY_WEBHOOK_SECRET.length,
-    secretFirst3: LEMONSQUEEZY_WEBHOOK_SECRET.substring(0, 3),
-    secretLast3: LEMONSQUEEZY_WEBHOOK_SECRET.substring(LEMONSQUEEZY_WEBHOOK_SECRET.length - 3),
+    hasSecret: !!secret,
+    secretLength: secret.length,
+    secretFirst4: secret.substring(0, 4),
+    secretLast4: secret.substring(secret.length - 4),
     signatureLength: cleanSignature.length,
-    payloadLength: payload.length
+    payloadLength: payload.length,
+    payloadFirst50: payload.substring(0, 50),
+    payloadLast50: payload.substring(payload.length - 50)
   })
 
-  if (!LEMONSQUEEZY_WEBHOOK_SECRET) {
+  if (!secret) {
     logError('Signature verification', 'LEMONSQUEEZY_WEBHOOK_SECRET not configured')
     return false
   }
@@ -55,7 +62,7 @@ function verifyWebhookSignature(payload: string, signature: string): boolean {
 
   try {
     // Create HMAC using the webhook secret
-    const hmac = crypto.createHmac('sha256', LEMONSQUEEZY_WEBHOOK_SECRET)
+    const hmac = crypto.createHmac('sha256', secret)
     const digest = hmac.update(payload).digest('hex')
     
     logWebhook('Signature comparison', {
@@ -111,14 +118,16 @@ function verifyWebhookSignature(payload: string, signature: string): boolean {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
+  const secret = getWebhookSecret()
+  
   logWebhook('========== WEBHOOK RECEIVED ==========')
   
   // Log environment check
   logWebhook('Environment check', {
-    hasWebhookSecret: !!LEMONSQUEEZY_WEBHOOK_SECRET,
-    webhookSecretLength: LEMONSQUEEZY_WEBHOOK_SECRET.length,
-    webhookSecretPreview: LEMONSQUEEZY_WEBHOOK_SECRET ? 
-      `${LEMONSQUEEZY_WEBHOOK_SECRET.substring(0, 4)}...${LEMONSQUEEZY_WEBHOOK_SECRET.substring(LEMONSQUEEZY_WEBHOOK_SECRET.length - 4)}` : 'EMPTY',
+    hasWebhookSecret: !!secret,
+    webhookSecretLength: secret.length,
+    webhookSecretPreview: secret ? 
+      `${secret.substring(0, 4)}...${secret.substring(secret.length - 4)}` : 'EMPTY',
     hasStoreId: !!LEMONSQUEEZY_STORE_ID,
     hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -126,20 +135,29 @@ export async function POST(request: NextRequest) {
 
   try {
     // Get raw body for signature verification
-    // IMPORTANT: Use arrayBuffer() then convert to string to preserve exact bytes
-    const arrayBuffer = await request.arrayBuffer()
-    const rawBody = Buffer.from(arrayBuffer).toString('utf8')
+    // CRITICAL: Read as text directly to preserve exact formatting
+    const rawBody = await request.text()
     
     logWebhook('Raw body received', { 
       length: rawBody.length, 
       preview: rawBody.substring(0, 150) + '...',
       firstChar: rawBody.charCodeAt(0),
-      lastChar: rawBody.charCodeAt(rawBody.length - 1)
+      lastChar: rawBody.charCodeAt(rawBody.length - 1),
+      // Check for BOM or unusual characters
+      hasUnusualStart: rawBody.charCodeAt(0) !== 123 // 123 is '{'
     })
     
     // Get signature from headers - LemonSqueezy uses 'X-Signature'
     const signatureHeader = request.headers.get('X-Signature') || 
                             request.headers.get('x-signature') || ''
+    
+    // Log all headers for debugging
+    const allHeaders: Record<string, string> = {}
+    request.headers.forEach((value, key) => {
+      allHeaders[key] = key.toLowerCase().includes('signature') ? value.substring(0, 20) + '...' : value.substring(0, 50)
+    })
+    
+    logWebhook('All received headers', allHeaders)
     
     logWebhook('Received headers', {
       'X-Signature': signatureHeader ? signatureHeader.substring(0, 20) + '...' : 'null',

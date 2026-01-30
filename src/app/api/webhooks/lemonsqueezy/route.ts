@@ -248,15 +248,26 @@ export async function POST(request: NextRequest) {
 
       case 'subscription_cancelled':
       case 'subscription_expired':
-      case 'subscription_paused': {
+      case 'subscription_paused':
+      case 'subscription_payment_failed': {
         const subscriptionId = data?.id?.toString()
+        const status = data?.attributes?.status
+        const userEmail = data?.attributes?.user_email
 
-        logWebhook(`Processing ${eventName}`, { subscriptionId })
+        logWebhook(`Processing ${eventName}`, { subscriptionId, status, userEmail })
 
-        const success = await downgradeUserFromPro(subscriptionId || '')
+        // Map event to status
+        const statusMap: Record<string, string> = {
+          'subscription_cancelled': 'cancelled',
+          'subscription_expired': 'expired',
+          'subscription_paused': 'paused',
+          'subscription_payment_failed': 'payment_failed'
+        }
+
+        const success = await downgradeUserFromPro(subscriptionId || '', statusMap[eventName] || 'cancelled')
 
         if (success) {
-          logWebhook('✅ User downgraded from Pro', { subscriptionId })
+          logWebhook('✅ User downgraded from Pro', { subscriptionId, status: statusMap[eventName] })
         } else {
           logError('❌ Failed to downgrade user', { subscriptionId })
         }

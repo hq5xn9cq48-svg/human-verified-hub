@@ -24,7 +24,8 @@ import {
   Mail,
   BookOpen,
   Crown,
-  Zap
+  Zap,
+  Star
 } from 'lucide-react'
 
 export default function Navbar() {
@@ -151,25 +152,41 @@ export default function Navbar() {
                 <div className="relative" ref={accountMenuRef}>
                   <button
                     onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-purple-900/30 hover:border-purple-500/30 transition-all"
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border transition-all ${
+                      usageStatus?.isPro 
+                        ? 'border-yellow-500/40 hover:border-yellow-400/60' 
+                        : 'border-purple-900/30 hover:border-purple-500/30'
+                    }`}
                   >
                     {/* User Avatar */}
                     {user.user_metadata?.avatar_url || user.user_metadata?.picture ? (
                       <img 
                         src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
                         alt="Profile" 
-                        className="w-8 h-8 rounded-full object-cover border border-purple-500/30"
+                        className={`w-8 h-8 rounded-full object-cover border ${usageStatus?.isPro ? 'border-yellow-500/50' : 'border-purple-500/30'}`}
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        usageStatus?.isPro 
+                          ? 'bg-gradient-to-br from-yellow-500 to-amber-600' 
+                          : 'bg-gradient-to-br from-purple-500 to-purple-700'
+                      }`}>
                         <span className="text-white text-xs font-bold">
                           {user.email?.charAt(0).toUpperCase() || 'U'}
                         </span>
                       </div>
                     )}
-                    <span className="text-sm font-medium text-gray-300">
-                      {language === 'ar' ? 'حسابي' : 'My Account'}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-gray-300">
+                        {language === 'ar' ? 'حسابي' : 'My Account'}
+                      </span>
+                      {usageStatus?.isPro && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/40">
+                          <Star className="w-2.5 h-2.5 fill-yellow-400" />
+                          PRO
+                        </span>
+                      )}
+                    </div>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`} />
                   </button>
                   
@@ -296,24 +313,51 @@ export default function Navbar() {
                           <img 
                             src={user.user_metadata?.avatar_url || user.user_metadata?.picture} 
                             alt="Profile" 
-                            className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/30"
+                            className={`w-12 h-12 rounded-full object-cover border-2 ${usageStatus?.isPro ? 'border-yellow-500/50' : 'border-purple-500/30'}`}
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
+                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                            usageStatus?.isPro 
+                              ? 'bg-gradient-to-br from-yellow-500 to-amber-600' 
+                              : 'bg-gradient-to-br from-purple-500 to-purple-700'
+                          }`}>
                             <span className="text-white text-lg font-bold">
                               {user.email?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">
-                            {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-white text-sm font-medium truncate">
+                              {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
+                            </p>
+                            {usageStatus?.isPro && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/40">
+                                <Star className="w-2.5 h-2.5 fill-yellow-400" />
+                                PRO
+                              </span>
+                            )}
+                          </div>
                           <p className="text-gray-400 text-xs truncate">
                             {user.email}
                           </p>
                         </div>
                       </div>
+                      
+                      {/* Pro Status Badge - Mobile */}
+                      {usageStatus?.isPro && (
+                        <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30">
+                          <div className="flex items-center gap-2">
+                            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                            <span className="text-yellow-400 font-semibold">
+                              {language === 'ar' ? 'عضوية برو نشطة' : 'Pro Membership Active'}
+                            </span>
+                          </div>
+                          <p className="text-yellow-400/60 text-xs mt-1">
+                            {language === 'ar' ? 'استمتع بتحليلات غير محدودة!' : 'Enjoy unlimited analyses!'}
+                          </p>
+                        </div>
+                      )}
                       
                       {/* Free Uses Counter - Mobile */}
                       {usageStatus && !usageStatus.isPro && (

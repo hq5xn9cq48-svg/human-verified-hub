@@ -705,36 +705,71 @@ export async function updateUserToPro(
 }
 
 /**
- * Downgrade user from Pro (called by webhook on cancellation)
+ * Downgrade user from Pro (called by webhook on cancellation/expiry)
  */
 export async function downgradeUserFromPro(
-  subscriptionId: string
+  subscriptionId: string,
+  status: string = 'cancelled'
 ): Promise<boolean> {
+  console.log('[FREEMIUM] ========== DOWNGRADE USER FROM PRO ==========')
+  console.log('[FREEMIUM] Input:', { subscriptionId, status })
+
   if (!isServerSupabaseConfigured()) {
+    console.error('[FREEMIUM] Supabase not configured')
     return false
   }
 
   const supabase = createServerClient()
   if (!supabase) {
+    console.error('[FREEMIUM] Cannot create Supabase client')
     return false
   }
 
   try {
-    const { error } = await supabase
+    // First find the user with this subscription
+    const { data: profile, error: findError } = await supabase
       .from('user_profiles')
-      .update({
-        is_pro: false,
-        subscription_status: 'cancelled'
-      })
+      .select('id, email, is_pro')
       .eq('subscription_id', subscriptionId)
+      .single()
 
-    if (error) {
-      console.error('[FREEMIUM] Error downgrading user:', error)
+    if (findError || !profile) {
+      console.error('[FREEMIUM] Could not find user with subscription:', subscriptionId, findError?.message)
       return false
     }
 
-    console.log(`[FREEMIUM] Subscription ${subscriptionId} downgraded`)
-    return true
+    console.log('[FREEMIUM] Found user to downgrade:', { id: profile.id, email: profile.email, is_pro: profile.is_pro })
+
+    // Downgrade the user
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        is_pro: false,
+        subscription_status: status
+      })
+      .eq('subscription_id', subscriptionId)
+
+    if (updateError) {
+      console.error('[FREEMIUM] Error downgrading user:', updateError.message)
+      return false
+    }
+
+    // Verify the downgrade
+    const { data: verifyProfile } = await supabase
+      .from('user_profiles')
+      .select('id, is_pro, subscription_status')
+      .eq('id', profile.id)
+      .single()
+
+    console.log('[FREEMIUM] Verification after downgrade:', verifyProfile)
+
+    if (verifyProfile?.is_pro === false) {
+      console.log(`[FREEMIUM] ✅ User ${profile.email} successfully downgraded from Pro`)
+      return true
+    } else {
+      console.error('[FREEMIUM] ❌ Downgrade verification failed!')
+      return false
+    }
   } catch (err) {
     console.error('[FREEMIUM] Exception downgrading user:', err)
     return false

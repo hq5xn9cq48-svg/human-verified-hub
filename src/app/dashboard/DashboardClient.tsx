@@ -9,7 +9,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import VerificationForm from '@/components/VerificationForm'
 import VerificationHistory from '@/components/VerificationHistory'
-import { LogOut, FlaskConical, Lightbulb, FileText, BarChart3 } from 'lucide-react'
+import { LogOut, FlaskConical, Lightbulb, FileText, BarChart3, Star, Zap } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface DashboardClientProps {
   user: User
@@ -18,6 +19,7 @@ interface DashboardClientProps {
 export default function DashboardClient({ user }: DashboardClientProps) {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const router = useRouter()
+  const { usageStatus } = useAuth()
 
   const handleSignOut = async () => {
     if (isSupabaseConfigured()) {
@@ -83,6 +85,25 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           </Link>
           
           <div className="flex items-center gap-4">
+            {/* Pro Badge */}
+            {usageStatus?.isPro && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-sm font-bold rounded-full border border-yellow-500/40">
+                <Star className="w-4 h-4 fill-yellow-400" />
+                PRO
+              </span>
+            )}
+            
+            {/* Free user upgrade hint */}
+            {!usageStatus?.isPro && (
+              <Link
+                href="/pricing"
+                className="hidden sm:inline-flex items-center gap-1 px-3 py-1 bg-purple-600/20 text-purple-300 text-sm rounded-full border border-purple-500/30 hover:bg-purple-600/30 transition-all"
+              >
+                <Zap className="w-3 h-3" />
+                Upgrade
+              </Link>
+            )}
+            
             <span className="text-gray-400 text-sm hidden sm:block truncate max-w-[200px]">
               {user.email}
             </span>

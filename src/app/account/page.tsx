@@ -22,7 +22,10 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  Star,
+  Clock,
+  CreditCard
 } from 'lucide-react'
 
 interface ScanHistoryItem {
@@ -33,14 +36,22 @@ interface ScanHistoryItem {
   analysis?: string
 }
 
+interface SubscriptionInfo {
+  is_pro: boolean
+  subscription_id: string | null
+  subscription_status: string | null
+  subscription_ends_at: string | null
+}
+
 export default function AccountPage() {
   const { language, isRTL } = useLanguage()
-  const { user, signOut, loading: authLoading } = useAuth()
+  const { user, signOut, loading: authLoading, usageStatus, refreshUsageStatus } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'overview' | 'history' | 'settings'>('overview')
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(true)
   const [stats, setStats] = useState({ totalScans: 0, humanScans: 0, aiScans: 0 })
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
 
   const content = {
     en: {
@@ -56,9 +67,10 @@ export default function AccountPage() {
       subscription: {
         title: 'Subscription Status',
         currentPlan: 'Current Plan',
-        freePlan: 'Free (Beta)',
-        freePlanDesc: 'All premium features unlocked during beta',
+        freePlan: 'Free',
+        freePlanDesc: '2 free analyses per day',
         proPlan: 'Pro',
+        proPlanDesc: 'Unlimited analyses',
         features: [
           'Unlimited text analysis',
           'Unlimited image analysis',
@@ -66,7 +78,11 @@ export default function AccountPage() {
           'Scan history',
           'Priority support'
         ],
-        upgradeNote: 'Pro subscriptions coming soon!'
+        upgradeButton: 'Upgrade to Pro',
+        manageButton: 'Manage Subscription',
+        expiresOn: 'Renews on',
+        active: 'Active',
+        cancelled: 'Cancelled'
       },
       stats: {
         title: 'Your Statistics',
@@ -108,9 +124,10 @@ export default function AccountPage() {
       subscription: {
         title: 'حالة الاشتراك',
         currentPlan: 'الخطة الحالية',
-        freePlan: 'مجاني (بيتا)',
-        freePlanDesc: 'جميع الميزات المميزة مفتوحة خلال البيتا',
+        freePlan: 'مجاني',
+        freePlanDesc: '2 تحليلات مجانية يومياً',
         proPlan: 'برو',
+        proPlanDesc: 'تحليلات غير محدودة',
         features: [
           'تحليل نصوص غير محدود',
           'تحليل صور غير محدود',
@@ -118,7 +135,11 @@ export default function AccountPage() {
           'سجل الفحوصات',
           'دعم أولوية'
         ],
-        upgradeNote: 'اشتراكات Pro قادمة قريباً!'
+        upgradeButton: 'ترقية إلى برو',
+        manageButton: 'إدارة الاشتراك',
+        expiresOn: 'يتجدد في',
+        active: 'نشط',
+        cancelled: 'ملغي'
       },
       stats: {
         title: 'إحصائياتك',
@@ -159,10 +180,36 @@ export default function AccountPage() {
 
     if (user && isSupabaseConfigured()) {
       fetchHistory()
+      fetchSubscriptionInfo()
+      refreshUsageStatus()
     } else {
       setHistoryLoading(false)
     }
   }, [user, authLoading])
+
+  const fetchSubscriptionInfo = async () => {
+    if (!user) return
+    
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('is_pro, subscription_id, subscription_status')
+        .eq('id', user.id)
+        .single()
+
+      if (!error && data) {
+        setSubscriptionInfo({
+          is_pro: data.is_pro || false,
+          subscription_id: data.subscription_id,
+          subscription_status: data.subscription_status,
+          subscription_ends_at: null // Will be fetched from LemonSqueezy if needed
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching subscription info:', error)
+    }
+  }
 
   const fetchHistory = async () => {
     if (!user) return
@@ -263,7 +310,15 @@ export default function AccountPage() {
             {t.title}{' '}
             <span className="text-gradient neon-text-glow">{t.titleHighlight}</span>
           </motion.h1>
-          <p className="text-gray-400">{user.email}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-gray-400">{user.email}</p>
+            {(usageStatus?.isPro || subscriptionInfo?.is_pro) && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-xs font-bold rounded-full border border-yellow-500/40">
+                <Star className="w-3 h-3 fill-yellow-400" />
+                PRO
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -297,32 +352,95 @@ export default function AccountPage() {
                 {t.subscription.title}
               </h2>
               
-              <div className="flex items-center gap-4 mb-4">
-                <div className="p-4 bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-xl border border-purple-500/30">
-                  <div className="text-gray-400 text-sm mb-1">{t.subscription.currentPlan}</div>
-                  <div className="text-2xl font-bold text-white flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-yellow-400" />
-                    {t.subscription.freePlan}
+              {/* Pro User Badge */}
+              {(usageStatus?.isPro || subscriptionInfo?.is_pro) ? (
+                <>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="flex-1 p-4 bg-gradient-to-br from-yellow-900/30 to-amber-800/20 rounded-xl border border-yellow-500/50 relative overflow-hidden">
+                      {/* Animated glow effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-amber-500/20 to-yellow-500/10 animate-pulse" />
+                      <div className="relative z-10">
+                        <div className="text-gray-400 text-sm mb-1">{t.subscription.currentPlan}</div>
+                        <div className="text-2xl font-bold text-white flex items-center gap-2">
+                          <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
+                          <span className="bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-transparent">
+                            {t.subscription.proPlan}
+                          </span>
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
+                            {t.subscription.active}
+                          </span>
+                        </div>
+                        <div className="text-yellow-400/80 text-sm mt-1">{t.subscription.proPlanDesc}</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-purple-400 text-sm mt-1">{t.subscription.freePlanDesc}</div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                {t.subscription.features.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-2 text-gray-300 text-sm">
-                    <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    {feature}
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+                    {t.subscription.features.map((feature, i) => (
+                      <div key={i} className="flex items-center gap-2 text-gray-300 text-sm">
+                        <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        {feature}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              
-              <div className="mt-4 p-3 bg-purple-900/10 rounded-lg border border-purple-500/20">
-                <p className="text-purple-300 text-sm flex items-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  {t.subscription.upgradeNote}
-                </p>
-              </div>
+
+                  {/* Manage Subscription Button */}
+                  <a
+                    href="https://human-verified-hub.lemonsqueezy.com/billing"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 rounded-lg border border-purple-500/30 transition-all"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {t.subscription.manageButton}
+                    <ChevronRight className="w-4 h-4" />
+                  </a>
+                </>
+              ) : (
+                <>
+                  {/* Free User */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="p-4 bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-xl border border-purple-500/30">
+                      <div className="text-gray-400 text-sm mb-1">{t.subscription.currentPlan}</div>
+                      <div className="text-2xl font-bold text-white flex items-center gap-2">
+                        <User className="w-5 h-5 text-purple-400" />
+                        {t.subscription.freePlan}
+                      </div>
+                      <div className="text-purple-400 text-sm mt-1">{t.subscription.freePlanDesc}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Usage remaining */}
+                  {usageStatus && !usageStatus.isPro && (
+                    <div className="mb-4 p-3 bg-black/30 rounded-lg border border-purple-900/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-sm">
+                          {language === 'ar' ? 'التحليلات المتبقية اليوم' : 'Analyses remaining today'}
+                        </span>
+                        <span className="text-white font-bold">
+                          {usageStatus.remaining} / {usageStatus.limit}
+                        </span>
+                      </div>
+                      <div className="mt-2 h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-purple-500 to-purple-400 transition-all"
+                          style={{ width: `${(usageStatus.remaining / usageStatus.limit) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upgrade Button */}
+                  <a
+                    href="/pricing"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-medium rounded-xl transition-all shadow-lg shadow-purple-500/25"
+                  >
+                    <Zap className="w-5 h-5" />
+                    {t.subscription.upgradeButton}
+                    <ChevronRight className="w-4 h-4" />
+                  </a>
+                </>
+              )}
             </motion.div>
 
             {/* Stats */}

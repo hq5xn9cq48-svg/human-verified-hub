@@ -192,15 +192,14 @@ export default function AccountPage() {
     if (usageStatus) {
       console.log('[ACCOUNT] Updating from usageStatus:', {
         isPro: usageStatus.isPro,
-        plan: usageStatus.plan,
-        subscriptionEndsAt: usageStatus.subscriptionEndsAt
+        plan: usageStatus.plan
       })
       
       setSubscriptionInfo({
         is_pro: usageStatus.isPro || false,
         subscription_id: null, // Not needed for display
         subscription_status: usageStatus.isPro ? 'active' : null,
-        subscription_ends_at: usageStatus.subscriptionEndsAt || null
+        subscription_ends_at: null
       })
     }
   }, [usageStatus])
@@ -365,16 +364,6 @@ export default function AccountPage() {
                           </span>
                         </div>
                         <div className="text-yellow-400/80 text-sm mt-1">{t.subscription.proPlanDesc}</div>
-                        
-                        {/* Subscription End Date */}
-                        {(subscriptionInfo?.subscription_ends_at || usageStatus?.subscriptionEndsAt) && (
-                          <div className="mt-3 flex items-center gap-2 text-sm">
-                            <Clock className="w-4 h-4 text-yellow-400/60" />
-                            <span className="text-yellow-400/60">
-                              {t.subscription.expiresOn}: {formatDate(subscriptionInfo?.subscription_ends_at || usageStatus?.subscriptionEndsAt || '')}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>

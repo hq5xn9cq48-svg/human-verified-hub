@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (email || userId) {
       const query = supabase
         .from('user_profiles')
-        .select('id, email, is_pro, plan, subscription_status, subscription_ends_at')
+        .select('id, email, is_pro, plan, subscription_status')
       
       if (userId) {
         query.eq('id', userId)

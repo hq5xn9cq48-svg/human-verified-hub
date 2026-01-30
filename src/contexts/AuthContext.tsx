@@ -12,7 +12,6 @@ interface UsageStatus {
   limit: number
   isGuest?: boolean
   message?: string
-  subscriptionEndsAt?: string | null // ISO date when subscription expires
 }
 
 interface AuthContextType {

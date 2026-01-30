@@ -577,11 +577,6 @@ export async function updateUserToPro(
       
       console.log('[FREEMIUM] Existing profile check:', { existingProfile, error: checkError?.message })
       
-      // Calculate subscription end date (30 days from now for monthly, 365 for yearly)
-      const subscriptionEndsAt = new Date()
-      subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + 30) // Default 30 days
-      const subscriptionEndsAtISO = subscriptionEndsAt.toISOString()
-
       if (existingProfile) {
         // UPDATE existing profile
         console.log('[FREEMIUM] Profile exists, using UPDATE')
@@ -593,7 +588,6 @@ export async function updateUserToPro(
             subscription_id: subscriptionId,
             customer_id: customerId,
             subscription_status: 'active',
-            subscription_ends_at: subscriptionEndsAtISO,
             updated_at: new Date().toISOString()
           })
           .eq('id', targetUserId)
@@ -617,7 +611,6 @@ export async function updateUserToPro(
             subscription_id: subscriptionId,
             customer_id: customerId,
             subscription_status: 'active',
-            subscription_ends_at: subscriptionEndsAtISO,
             created_at: new Date().toISOString()
           })
           .select()

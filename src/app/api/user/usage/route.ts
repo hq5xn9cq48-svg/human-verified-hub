@@ -20,10 +20,10 @@ async function checkAndFixSubscription(userId: string): Promise<void> {
   if (!supabase) return
 
   try {
-    // Get user profile
+    // Get user profile - only select columns that exist
     const { data: profile, error } = await supabase
       .from('user_profiles')
-      .select('id, is_pro, plan, subscription_status, subscription_ends_at')
+      .select('id, is_pro, plan, subscription_status')
       .eq('id', userId)
       .single()
 
@@ -40,19 +40,7 @@ async function checkAndFixSubscription(userId: string): Promise<void> {
       needsUpdate = true
     }
 
-    // Check 2: Expire subscription if past end date
-    if (profile.is_pro && profile.subscription_ends_at) {
-      const endDate = new Date(profile.subscription_ends_at)
-      if (now > endDate) {
-        console.log(`[USAGE-FIX] Expiring subscription for user ${userId}: ended at ${profile.subscription_ends_at}`)
-        updates.is_pro = false
-        updates.plan = 'free'
-        updates.subscription_status = 'expired'
-        needsUpdate = true
-      }
-    }
-
-    // Check 3: If not Pro but plan is 'pro', fix it
+    // Check 2: If not Pro but plan is 'pro', fix it
     if (!profile.is_pro && profile.plan === 'pro') {
       console.log(`[USAGE-FIX] Fixing inconsistent plan for user ${userId}: is_pro=false but plan=pro`)
       updates.plan = 'free'
@@ -129,7 +117,6 @@ export async function GET(request: NextRequest) {
     console.log(`[USER-USAGE] User ${user.id} (${user.email}) - isPro: ${status.isPro}`)
 
     // Also get subscription details - ALWAYS fetch profile for accurate data
-    let subscriptionEndsAt: string | null = null
     let plan: string = 'free'
     let directIsPro = false
     
@@ -138,12 +125,11 @@ export async function GET(request: NextRequest) {
       if (serverSupabase) {
         const { data: profile, error: profileError } = await serverSupabase
           .from('user_profiles')
-          .select('is_pro, plan, subscription_ends_at, subscription_status')
+          .select('is_pro, plan, subscription_status')
           .eq('id', user.id)
           .single()
         
         if (profile && !profileError) {
-          subscriptionEndsAt = profile.subscription_ends_at
           plan = profile.plan || 'free'
           directIsPro = profile.is_pro || false
           
@@ -160,8 +146,7 @@ export async function GET(request: NextRequest) {
       isPro: finalIsPro, // Override with direct DB value
       plan,
       isGuest: false,
-      userId: user.id,
-      subscriptionEndsAt
+      userId: user.id
     })
 
   } catch (err) {

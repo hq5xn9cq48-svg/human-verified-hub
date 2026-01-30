@@ -4,8 +4,8 @@ import { NextResponse } from 'next/server'
 import { createServerClient, isServerSupabaseConfigured } from '@/lib/supabase/server'
 
 /**
- * API to check and expire subscriptions that have passed their end date
- * This should be called periodically (e.g., via cron job) or on user login
+ * API to check subscription status and fix inconsistencies
+ * Note: subscription_ends_at column may not exist in older DB schemas
  */
 export async function GET() {
   if (!isServerSupabaseConfigured()) {
@@ -18,57 +18,51 @@ export async function GET() {
   }
 
   try {
-    const now = new Date().toISOString()
-    
-    // Find all active Pro subscriptions that have expired
-    const { data: expiredProfiles, error: fetchError } = await supabase
+    // Check for inconsistent profiles (is_pro=true but plan='free')
+    const { data: inconsistentProfiles, error: fetchError } = await supabase
       .from('user_profiles')
-      .select('id, email, subscription_id, subscription_ends_at')
+      .select('id, email, is_pro, plan, subscription_status')
       .eq('is_pro', true)
-      .eq('subscription_status', 'active')
-      .lt('subscription_ends_at', now)
-      .not('subscription_ends_at', 'is', null)
+      .neq('plan', 'pro')
 
     if (fetchError) {
-      console.error('[CHECK-EXPIRY] Error fetching expired profiles:', fetchError)
-      return NextResponse.json({ error: 'Failed to fetch profiles' }, { status: 500 })
+      console.error('[CHECK-EXPIRY] Error fetching profiles:', fetchError)
+      return NextResponse.json({ error: 'Failed to fetch profiles', details: fetchError.message }, { status: 500 })
     }
 
-    if (!expiredProfiles || expiredProfiles.length === 0) {
+    if (!inconsistentProfiles || inconsistentProfiles.length === 0) {
       return NextResponse.json({ 
-        message: 'No expired subscriptions found',
+        message: 'No inconsistent subscriptions found',
         checked: true,
-        expiredCount: 0
+        inconsistentCount: 0
       })
     }
 
-    console.log(`[CHECK-EXPIRY] Found ${expiredProfiles.length} expired subscriptions`)
+    console.log(`[CHECK-EXPIRY] Found ${inconsistentProfiles.length} inconsistent profiles`)
 
-    // Downgrade all expired subscriptions
-    const expiredIds = expiredProfiles.map(p => p.id)
+    // Fix all inconsistent profiles
+    const idsToFix = inconsistentProfiles.map(p => p.id)
     
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
-        is_pro: false,
-        plan: 'free',
-        subscription_status: 'expired',
-        updated_at: now
+        plan: 'pro',
+        updated_at: new Date().toISOString()
       })
-      .in('id', expiredIds)
+      .in('id', idsToFix)
 
     if (updateError) {
-      console.error('[CHECK-EXPIRY] Error downgrading profiles:', updateError)
-      return NextResponse.json({ error: 'Failed to downgrade profiles' }, { status: 500 })
+      console.error('[CHECK-EXPIRY] Error fixing profiles:', updateError)
+      return NextResponse.json({ error: 'Failed to fix profiles', details: updateError.message }, { status: 500 })
     }
 
-    console.log(`[CHECK-EXPIRY] Successfully downgraded ${expiredIds.length} subscriptions`)
+    console.log(`[CHECK-EXPIRY] Successfully fixed ${idsToFix.length} profiles`)
 
     return NextResponse.json({
-      message: 'Expired subscriptions processed',
+      message: 'Inconsistent subscriptions fixed',
       checked: true,
-      expiredCount: expiredIds.length,
-      expiredEmails: expiredProfiles.map(p => p.email?.replace(/(.{2})(.*)(@.*)/, '$1***$3'))
+      fixedCount: idsToFix.length,
+      fixedEmails: inconsistentProfiles.map(p => p.email?.replace(/(.{2})(.*)(@.*)/, '$1***$3'))
     })
 
   } catch (err) {

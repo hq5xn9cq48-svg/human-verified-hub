@@ -239,8 +239,7 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
         .from('user_profiles')
         .update({
           daily_usage_count: newUsageCount,
-          last_usage_timestamp: now,
-          updated_at: now
+          last_usage_timestamp: now
         })
         .eq('id', userId)
         .select()
@@ -257,8 +256,7 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
           daily_usage_count: newUsageCount,
           last_usage_timestamp: now,
           is_pro: false,
-          created_at: now,
-          updated_at: now
+          created_at: now
         })
         .select()
       
@@ -271,8 +269,7 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
           .from('user_profiles')
           .update({
             daily_usage_count: newUsageCount,
-            last_usage_timestamp: now,
-            updated_at: now
+            last_usage_timestamp: now
           })
           .eq('id', userId)
           .select()
@@ -578,8 +575,7 @@ export async function updateUserToPro(
           is_pro: true,
           subscription_id: subscriptionId,
           customer_id: customerId,
-          subscription_status: 'active',
-          updated_at: new Date().toISOString()
+          subscription_status: 'active'
         }, {
           onConflict: 'id'
         })
@@ -596,8 +592,7 @@ export async function updateUserToPro(
             is_pro: true,
             subscription_id: subscriptionId,
             customer_id: customerId,
-            subscription_status: 'active',
-            updated_at: new Date().toISOString()
+            subscription_status: 'active'
           })
           .eq('id', targetUserId)
 
@@ -713,8 +708,7 @@ export async function downgradeUserFromPro(
       .from('user_profiles')
       .update({
         is_pro: false,
-        subscription_status: 'cancelled',
-        updated_at: new Date().toISOString()
+        subscription_status: 'cancelled'
       })
       .eq('subscription_id', subscriptionId)
 

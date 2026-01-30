@@ -234,8 +234,8 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
 
     if (profileExists && profile) {
       // UPDATE existing profile - more reliable than upsert
-      console.log(`[FREEMIUM] Profile exists, using UPDATE`)
-      const { error } = await supabase
+      console.log(`[FREEMIUM] Profile exists, using UPDATE for user ${userId}`)
+      const { error, data } = await supabase
         .from('user_profiles')
         .update({
           daily_usage_count: newUsageCount,
@@ -243,11 +243,14 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
           updated_at: now
         })
         .eq('id', userId)
+        .select()
+      
+      console.log(`[FREEMIUM] UPDATE result:`, { error: error?.message, data })
       updateError = error
     } else {
       // INSERT new profile
-      console.log(`[FREEMIUM] Profile does not exist, using INSERT`)
-      const { error } = await supabase
+      console.log(`[FREEMIUM] Profile does not exist, using INSERT for user ${userId}`)
+      const { error, data } = await supabase
         .from('user_profiles')
         .insert({
           id: userId,
@@ -257,11 +260,14 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
           created_at: now,
           updated_at: now
         })
+        .select()
       
-      // If insert fails (maybe race condition), try update
+      console.log(`[FREEMIUM] INSERT result:`, { error: error?.message, data })
+      
+      // If insert fails (maybe race condition or profile already exists), try update
       if (error) {
-        console.log(`[FREEMIUM] Insert failed, trying update as fallback`)
-        const { error: fallbackError } = await supabase
+        console.log(`[FREEMIUM] Insert failed (${error.code}), trying update as fallback`)
+        const { error: fallbackError, data: fallbackData } = await supabase
           .from('user_profiles')
           .update({
             daily_usage_count: newUsageCount,
@@ -269,6 +275,9 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
             updated_at: now
           })
           .eq('id', userId)
+          .select()
+        
+        console.log(`[FREEMIUM] Fallback UPDATE result:`, { error: fallbackError?.message, data: fallbackData })
         updateError = fallbackError
       } else {
         updateError = error

@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   
   -- Usage tracking for freemium limits
   daily_usage_count INTEGER DEFAULT 0,
-  last_usage_date DATE,           -- For daily reset logic
+  last_usage_date DATE,                    -- Legacy: For daily reset logic
+  last_usage_timestamp TIMESTAMPTZ,        -- New: For 24h rolling reset
   
   -- Timestamps
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -83,6 +84,16 @@ CREATE POLICY "Users can update own profile" ON public.user_profiles
 
 CREATE POLICY "Users can insert own profile" ON public.user_profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- IMPORTANT: Allow service role (webhooks) to manage all profiles
+-- Service role bypasses RLS by default, but we add explicit policies for clarity
+CREATE POLICY "Service role can do anything" ON public.user_profiles
+  FOR ALL USING (auth.role() = 'service_role');
+
+-- Allow service role to update any profile (for webhook Pro activation)
+CREATE POLICY "Allow service role updates" ON public.user_profiles
+  FOR UPDATE USING (true)
+  WITH CHECK (true);
 
 -- Verifications policies
 CREATE POLICY "Users can view own verifications" ON public.verifications

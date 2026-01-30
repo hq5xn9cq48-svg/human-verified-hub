@@ -306,9 +306,11 @@ export default function AccountPage() {
           <div className="flex items-center gap-3">
             <p className="text-gray-400">{user.email}</p>
             {(usageStatus?.isPro || subscriptionInfo?.is_pro) && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 text-yellow-400 text-xs font-bold rounded-full border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
-                <Star className="w-3.5 h-3.5 fill-yellow-400 drop-shadow-[0_0_3px_rgba(234,179,8,0.8)]" />
-                PRO
+              <span className="relative inline-flex items-center gap-1 px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg overflow-hidden shadow-lg shadow-amber-500/20">
+                <span className="absolute inset-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500"></span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-shimmer"></span>
+                <Crown className="relative w-3.5 h-3.5 text-amber-900" />
+                <span className="relative text-amber-900 font-extrabold">PRO</span>
               </span>
             )}
           </div>
@@ -349,21 +351,30 @@ export default function AccountPage() {
               {(usageStatus?.isPro || subscriptionInfo?.is_pro) ? (
                 <>
                   <div className="flex items-center gap-4 mb-4">
-                    <div className="flex-1 p-4 bg-gradient-to-br from-yellow-900/30 to-amber-800/20 rounded-xl border border-yellow-500/50 relative overflow-hidden">
-                      {/* Animated glow effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 via-amber-500/20 to-yellow-500/10 animate-pulse" />
-                      <div className="relative z-10">
-                        <div className="text-gray-400 text-sm mb-1">{t.subscription.currentPlan}</div>
-                        <div className="text-2xl font-bold text-white flex items-center gap-2">
-                          <Star className="w-6 h-6 text-yellow-400 fill-yellow-400" />
-                          <span className="bg-gradient-to-r from-yellow-400 to-amber-400 bg-clip-text text-transparent">
-                            {t.subscription.proPlan}
-                          </span>
-                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
-                            {t.subscription.active}
-                          </span>
+                    <div className="flex-1 p-5 bg-gradient-to-br from-amber-950/50 via-yellow-900/30 to-orange-950/50 rounded-2xl border border-amber-500/40 relative overflow-hidden">
+                      {/* Decorative corner accents */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-400/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-yellow-400/15 to-transparent rounded-full translate-y-1/2 -translate-x-1/2"></div>
+                      
+                      <div className="relative z-10 flex items-start gap-4">
+                        {/* Pro Icon */}
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-400 flex items-center justify-center shadow-lg shadow-amber-500/30 flex-shrink-0">
+                          <Crown className="w-7 h-7 text-amber-900" />
                         </div>
-                        <div className="text-yellow-400/80 text-sm mt-1">{t.subscription.proPlanDesc}</div>
+                        
+                        <div className="flex-1">
+                          <div className="text-amber-400/70 text-xs font-medium uppercase tracking-wider mb-1">{t.subscription.currentPlan}</div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="text-2xl font-bold bg-gradient-to-r from-amber-300 via-yellow-300 to-orange-300 bg-clip-text text-transparent">
+                              {t.subscription.proPlan}
+                            </span>
+                            <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full border border-emerald-500/40 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                              {t.subscription.active}
+                            </span>
+                          </div>
+                          <div className="text-amber-300/60 text-sm">{t.subscription.proPlanDesc}</div>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -181,9 +181,14 @@ export default function Navbar() {
                         {language === 'ar' ? 'حسابي' : 'My Account'}
                       </span>
                       {usageStatus?.isPro && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)] animate-pulse">
-                          <Star className="w-3 h-3 fill-yellow-400 drop-shadow-[0_0_3px_rgba(234,179,8,0.8)]" />
-                          PRO
+                        <span className="relative inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md overflow-hidden group">
+                          {/* Background gradient */}
+                          <span className="absolute inset-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 opacity-90"></span>
+                          {/* Shimmer effect */}
+                          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+                          {/* Content */}
+                          <Crown className="relative w-3 h-3 text-amber-900 drop-shadow-sm" />
+                          <span className="relative text-amber-900 font-extrabold">PRO</span>
                         </span>
                       )}
                     </div>
@@ -332,9 +337,10 @@ export default function Navbar() {
                               {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
                             </p>
                             {usageStatus?.isPro && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
-                                <Star className="w-3 h-3 fill-yellow-400 drop-shadow-[0_0_3px_rgba(234,179,8,0.8)]" />
-                                PRO
+                              <span className="relative inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md overflow-hidden">
+                                <span className="absolute inset-0 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 opacity-90"></span>
+                                <Crown className="relative w-3 h-3 text-amber-900" />
+                                <span className="relative text-amber-900 font-extrabold">PRO</span>
                               </span>
                             )}
                           </div>
@@ -346,16 +352,23 @@ export default function Navbar() {
                       
                       {/* Pro Status Badge - Mobile */}
                       {usageStatus?.isPro && (
-                        <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30">
-                          <div className="flex items-center gap-2">
-                            <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                            <span className="text-yellow-400 font-semibold">
-                              {language === 'ar' ? 'عضوية برو نشطة' : 'Pro Membership Active'}
-                            </span>
+                        <div className="mb-3 p-4 rounded-xl bg-gradient-to-br from-amber-500/20 via-yellow-500/15 to-orange-500/20 border border-amber-500/40 relative overflow-hidden">
+                          {/* Decorative elements */}
+                          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-yellow-400/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                          <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-amber-400/20 to-transparent rounded-full translate-y-1/2 -translate-x-1/2"></div>
+                          <div className="relative flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                              <Crown className="w-5 h-5 text-amber-900" />
+                            </div>
+                            <div>
+                              <span className="text-amber-300 font-bold text-sm">
+                                {language === 'ar' ? 'عضوية PRO نشطة' : 'PRO Membership'}
+                              </span>
+                              <p className="text-amber-400/70 text-xs">
+                                {language === 'ar' ? '✨ تحليلات غير محدودة' : '✨ Unlimited analyses'}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-yellow-400/60 text-xs mt-1">
-                            {language === 'ar' ? 'استمتع بتحليلات غير محدودة!' : 'Enjoy unlimited analyses!'}
-                          </p>
                         </div>
                       )}
                       

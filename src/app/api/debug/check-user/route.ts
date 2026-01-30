@@ -105,26 +105,32 @@ export async function GET(request: NextRequest) {
     // 2. Check user_profiles table
     console.log('[DEBUG] Checking user_profiles for:', normalizedEmail)
     
-    // First try by email
-    let { data: profiles, error: profileError } = await supabase
+    // Get auth user ID
+    const authId = results.authUserFound ? (results.authUserFound as { id: string }).id : null
+    
+    // Try by email
+    const { data: profilesByEmail, error: profileError } = await supabase
       .from('user_profiles')
       .select('*')
       .ilike('email', normalizedEmail)
     
-    // If not found by email, try by user ID from auth
-    if ((!profiles || profiles.length === 0) && results.authUserFound) {
-      const authId = (results.authUserFound as { id: string }).id
-      const { data: profileById, error: profileByIdError } = await supabase
+    // Try by ID
+    let profileById = null
+    if (authId) {
+      const { data: pById } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', authId)
         .single()
-      
-      if (!profileByIdError && profileById) {
-        profiles = [profileById]
-        console.log('[DEBUG] Found profile by auth ID:', authId)
-      }
+      profileById = pById
     }
+    
+    // Compare both
+    results.profileByEmail = profilesByEmail && profilesByEmail.length > 0 ? profilesByEmail[0] : null
+    results.profileById = profileById
+    
+    // Use profile by ID as the authoritative source
+    const profiles = profileById ? [profileById] : profilesByEmail
     
     if (profileError) {
       results.userProfiles = { error: profileError.message }

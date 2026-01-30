@@ -105,10 +105,26 @@ export async function GET(request: NextRequest) {
     // 2. Check user_profiles table
     console.log('[DEBUG] Checking user_profiles for:', normalizedEmail)
     
-    const { data: profiles, error: profileError } = await supabase
+    // First try by email
+    let { data: profiles, error: profileError } = await supabase
       .from('user_profiles')
-      .select('id, email, is_pro, subscription_id, subscription_status, created_at, updated_at')
+      .select('*')
       .ilike('email', normalizedEmail)
+    
+    // If not found by email, try by user ID from auth
+    if ((!profiles || profiles.length === 0) && results.authUserFound) {
+      const authId = (results.authUserFound as { id: string }).id
+      const { data: profileById, error: profileByIdError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', authId)
+        .single()
+      
+      if (!profileByIdError && profileById) {
+        profiles = [profileById]
+        console.log('[DEBUG] Found profile by auth ID:', authId)
+      }
+    }
     
     if (profileError) {
       results.userProfiles = { error: profileError.message }

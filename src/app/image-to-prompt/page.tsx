@@ -169,7 +169,11 @@ export default function ImageToPromptPage() {
   }
 
   return (
-    <AuthGuard featureName={language === 'ar' ? 'مولد الأوامر' : 'Image to Prompt'}>
+    <AuthGuard 
+      featureName="Image to Prompt" 
+      featureNameAr="مولد الأوامر"
+      requiresPro={true}
+    >
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 

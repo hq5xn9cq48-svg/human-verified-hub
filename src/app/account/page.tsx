@@ -306,8 +306,8 @@ export default function AccountPage() {
           <div className="flex items-center gap-3">
             <p className="text-gray-400">{user.email}</p>
             {(usageStatus?.isPro || subscriptionInfo?.is_pro) && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-xs font-bold rounded-full border border-yellow-500/40">
-                <Star className="w-3 h-3 fill-yellow-400" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 text-yellow-400 text-xs font-bold rounded-full border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                <Star className="w-3.5 h-3.5 fill-yellow-400 drop-shadow-[0_0_3px_rgba(234,179,8,0.8)]" />
                 PRO
               </span>
             )}

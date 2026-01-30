@@ -211,7 +211,11 @@ export default function ImageDetectorPage() {
   }
 
   return (
-    <AuthGuard featureName={language === 'ar' ? 'كاشف الصور' : 'the Image Detector'}>
+    <AuthGuard 
+      featureName="the Image Detector" 
+      featureNameAr="كاشف الصور"
+      requiresPro={true}
+    >
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 

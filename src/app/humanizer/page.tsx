@@ -167,7 +167,11 @@ export default function HumanizerPage() {
   const selectedIntent = intentOptions.find((o) => o.id === intent)
 
   return (
-    <AuthGuard featureName={language === 'ar' ? 'أداة التحويل البشري' : 'the Humanizer tool'}>
+    <AuthGuard 
+      featureName="the Humanizer tool" 
+      featureNameAr="أداة التحويل البشري"
+      requiresPro={true}
+    >
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 

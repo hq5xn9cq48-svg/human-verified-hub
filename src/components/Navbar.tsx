@@ -181,8 +181,8 @@ export default function Navbar() {
                         {language === 'ar' ? 'حسابي' : 'My Account'}
                       </span>
                       {usageStatus?.isPro && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/40">
-                          <Star className="w-2.5 h-2.5 fill-yellow-400" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)] animate-pulse">
+                          <Star className="w-3 h-3 fill-yellow-400 drop-shadow-[0_0_3px_rgba(234,179,8,0.8)]" />
                           PRO
                         </span>
                       )}
@@ -332,8 +332,8 @@ export default function Navbar() {
                               {user.user_metadata?.full_name || user.user_metadata?.name || user.email}
                             </p>
                             {usageStatus?.isPro && (
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/40">
-                                <Star className="w-2.5 h-2.5 fill-yellow-400" />
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 via-amber-500/15 to-orange-500/20 text-yellow-400 text-[10px] font-bold rounded-full border border-yellow-500/50 shadow-[0_0_10px_rgba(234,179,8,0.3)]">
+                                <Star className="w-3 h-3 fill-yellow-400 drop-shadow-[0_0_3px_rgba(234,179,8,0.8)]" />
                                 PRO
                               </span>
                             )}

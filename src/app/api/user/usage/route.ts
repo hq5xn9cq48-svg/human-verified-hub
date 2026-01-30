@@ -126,25 +126,39 @@ export async function GET(request: NextRequest) {
     // Get usage status for authenticated user (will reflect any fixes made above)
     const status = await getUsageStatus(user.id)
 
-    // Also get subscription details for Pro users
+    console.log(`[USER-USAGE] User ${user.id} (${user.email}) - isPro: ${status.isPro}`)
+
+    // Also get subscription details - ALWAYS fetch profile for accurate data
     let subscriptionEndsAt: string | null = null
-    if (status.isPro && isServerSupabaseConfigured()) {
+    let plan: string = 'free'
+    let directIsPro = false
+    
+    if (isServerSupabaseConfigured()) {
       const serverSupabase = createServerClient()
       if (serverSupabase) {
-        const { data: profile } = await serverSupabase
+        const { data: profile, error: profileError } = await serverSupabase
           .from('user_profiles')
-          .select('subscription_ends_at, plan')
+          .select('is_pro, plan, subscription_ends_at, subscription_status')
           .eq('id', user.id)
           .single()
         
-        if (profile) {
+        if (profile && !profileError) {
           subscriptionEndsAt = profile.subscription_ends_at
+          plan = profile.plan || 'free'
+          directIsPro = profile.is_pro || false
+          
+          console.log(`[USER-USAGE] Direct DB check - is_pro: ${directIsPro}, plan: ${plan}, status: ${profile.subscription_status}`)
         }
       }
     }
 
+    // Use direct DB value if there's a mismatch (more reliable)
+    const finalIsPro = directIsPro || status.isPro
+
     return NextResponse.json({
       ...status,
+      isPro: finalIsPro, // Override with direct DB value
+      plan,
       isGuest: false,
       userId: user.id,
       subscriptionEndsAt

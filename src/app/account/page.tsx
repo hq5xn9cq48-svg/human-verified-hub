@@ -180,52 +180,30 @@ export default function AccountPage() {
 
     if (user && isSupabaseConfigured()) {
       fetchHistory()
-      fetchSubscriptionInfo()
+      // Refresh usage status which now contains all Pro info from server
       refreshUsageStatus()
     } else {
       setHistoryLoading(false)
     }
   }, [user, authLoading])
 
-  const fetchSubscriptionInfo = async () => {
-    if (!user) return
-    
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('is_pro, plan, subscription_id, subscription_status, subscription_ends_at')
-        .eq('id', user.id)
-        .single()
-
-      if (!error && data) {
-        setSubscriptionInfo({
-          is_pro: data.is_pro || false,
-          subscription_id: data.subscription_id,
-          subscription_status: data.subscription_status,
-          subscription_ends_at: data.subscription_ends_at || null
-        })
-        
-        // If is_pro is true but plan is not 'pro', try to fix it
-        if (data.is_pro && data.plan !== 'pro') {
-          console.log('[ACCOUNT] Detected inconsistent status, attempting fix...')
-          try {
-            await fetch('/api/subscription/fix-status', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: user.id })
-            })
-            // Refresh usage status after fix
-            await refreshUsageStatus()
-          } catch (fixError) {
-            console.error('[ACCOUNT] Error fixing status:', fixError)
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching subscription info:', error)
+  // Update subscriptionInfo whenever usageStatus changes
+  useEffect(() => {
+    if (usageStatus) {
+      console.log('[ACCOUNT] Updating from usageStatus:', {
+        isPro: usageStatus.isPro,
+        plan: usageStatus.plan,
+        subscriptionEndsAt: usageStatus.subscriptionEndsAt
+      })
+      
+      setSubscriptionInfo({
+        is_pro: usageStatus.isPro || false,
+        subscription_id: null, // Not needed for display
+        subscription_status: usageStatus.isPro ? 'active' : null,
+        subscription_ends_at: usageStatus.subscriptionEndsAt || null
+      })
     }
-  }
+  }, [usageStatus])
 
   const fetchHistory = async () => {
     if (!user) return

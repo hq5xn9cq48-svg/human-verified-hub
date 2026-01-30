@@ -6,6 +6,7 @@ import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 
 interface UsageStatus {
   isPro: boolean
+  plan?: 'free' | 'pro' | 'lifetime'
   remaining: number
   usedToday: number
   limit: number
@@ -46,15 +47,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchUsageStatus = useCallback(async (session: Session | null) => {
     try {
       const headers: HeadersInit = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
       }
       
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
 
-      const response = await fetch('/api/user/usage', { headers })
+      // Add timestamp to prevent caching
+      const response = await fetch(`/api/user/usage?t=${Date.now()}`, { 
+        headers,
+        cache: 'no-store'
+      })
       const data = await response.json()
+      
+      // Log for debugging
+      console.log('[AuthContext] Usage status received:', { 
+        isPro: data.isPro, 
+        plan: data.plan,
+        userId: data.userId 
+      })
+      
       setUsageStatus(data)
     } catch (err) {
       console.error('Error fetching usage status:', err)

@@ -482,6 +482,8 @@ export async function updateUserToPro(
     let targetUserId = userId
     const normalizedEmail = email?.toLowerCase()?.trim()
 
+    console.log('[FREEMIUM] Normalized email:', normalizedEmail)
+
     // STEP 1: If userId provided, use it directly
     if (targetUserId) {
       console.log('[FREEMIUM] Step 1: Using provided userId:', targetUserId)
@@ -492,15 +494,21 @@ export async function updateUserToPro(
       console.log('[FREEMIUM] Step 2: Looking up user by email via Admin API:', normalizedEmail)
       
       try {
-        // Use getUserByEmail which is more efficient than listUsers
+        // Use listUsers to find the user by email
         const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
-          perPage: 1000 // Increase limit to find the user
+          perPage: 1000
         })
         
         if (authError) {
-          console.error('[FREEMIUM] Admin API error:', authError)
+          console.error('[FREEMIUM] Admin API error:', authError.message, authError)
         } else if (authData?.users) {
-          console.log('[FREEMIUM] Found', authData.users.length, 'users in auth')
+          console.log('[FREEMIUM] Found', authData.users.length, 'total users in auth')
+          
+          // Log first few emails for debugging (partial for privacy)
+          const emailSamples = authData.users.slice(0, 5).map(u => 
+            u.email ? `${u.email.substring(0, 3)}...@${u.email.split('@')[1]}` : 'no-email'
+          )
+          console.log('[FREEMIUM] Sample emails in system:', emailSamples)
           
           const foundUser = authData.users.find(u => 
             u.email?.toLowerCase()?.trim() === normalizedEmail
@@ -510,7 +518,15 @@ export async function updateUserToPro(
             targetUserId = foundUser.id
             console.log('[FREEMIUM] SUCCESS: Found user via Admin API:', targetUserId)
           } else {
-            console.log('[FREEMIUM] User not found in auth.users for email:', normalizedEmail)
+            console.log('[FREEMIUM] User NOT found in auth.users for email:', normalizedEmail)
+            
+            // Try partial match (in case of different case or spaces)
+            const partialMatch = authData.users.find(u => 
+              u.email?.toLowerCase()?.includes(normalizedEmail.split('@')[0])
+            )
+            if (partialMatch) {
+              console.log('[FREEMIUM] Found partial match:', partialMatch.email)
+            }
           }
         }
       } catch (adminErr) {
@@ -528,12 +544,24 @@ export async function updateUserToPro(
         .ilike('email', normalizedEmail)
       
       if (profileError) {
-        console.error('[FREEMIUM] Profile lookup error:', profileError)
+        console.error('[FREEMIUM] Profile lookup error:', profileError.message)
       } else if (profiles && profiles.length > 0) {
         targetUserId = profiles[0].id
         console.log('[FREEMIUM] SUCCESS: Found user in profiles:', targetUserId)
       } else {
         console.log('[FREEMIUM] No profile found for email:', normalizedEmail)
+        
+        // List all profiles for debugging
+        const { data: allProfiles } = await supabase
+          .from('user_profiles')
+          .select('id, email')
+          .limit(10)
+        
+        if (allProfiles && allProfiles.length > 0) {
+          console.log('[FREEMIUM] Sample profiles in DB:', allProfiles.map(p => 
+            p.email ? `${p.email.substring(0, 3)}...` : 'no-email'
+          ))
+        }
       }
     }
 
@@ -541,16 +569,27 @@ export async function updateUserToPro(
     if (targetUserId) {
       console.log('[FREEMIUM] Step 4: Updating user to Pro:', targetUserId)
       
-      // First, try to check if profile exists
-      const { data: existingProfile } = await supabase
+      // Use UPSERT to handle both existing and new profiles
+      const { error: upsertError, data: upsertData } = await supabase
         .from('user_profiles')
-        .select('id')
-        .eq('id', targetUserId)
-        .single()
-      
-      if (existingProfile) {
-        // UPDATE existing profile
-        console.log('[FREEMIUM] Updating existing profile')
+        .upsert({
+          id: targetUserId,
+          email: normalizedEmail,
+          is_pro: true,
+          subscription_id: subscriptionId,
+          customer_id: customerId,
+          subscription_status: 'active',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+        .select()
+
+      if (upsertError) {
+        console.error('[FREEMIUM] Upsert error:', upsertError.message, upsertError)
+        
+        // Try direct UPDATE as fallback
+        console.log('[FREEMIUM] Trying direct UPDATE as fallback...')
         const { error: updateError } = await supabase
           .from('user_profiles')
           .update({
@@ -563,52 +602,24 @@ export async function updateUserToPro(
           .eq('id', targetUserId)
 
         if (updateError) {
-          console.error('[FREEMIUM] Update error:', updateError)
+          console.error('[FREEMIUM] Update fallback error:', updateError.message)
           return false
         }
+        console.log('[FREEMIUM] UPDATE fallback succeeded')
       } else {
-        // INSERT new profile
-        console.log('[FREEMIUM] Creating new profile')
-        const { error: insertError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: targetUserId,
-            email: normalizedEmail,
-            is_pro: true,
-            subscription_id: subscriptionId,
-            customer_id: customerId,
-            subscription_status: 'active',
-            daily_usage_count: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-
-        if (insertError) {
-          console.error('[FREEMIUM] Insert error:', insertError)
-          // Try upsert as fallback
-          const { error: upsertError } = await supabase
-            .from('user_profiles')
-            .upsert({
-              id: targetUserId,
-              email: normalizedEmail,
-              is_pro: true,
-              subscription_id: subscriptionId,
-              customer_id: customerId,
-              subscription_status: 'active',
-              updated_at: new Date().toISOString()
-            }, {
-              onConflict: 'id',
-              ignoreDuplicates: false
-            })
-          
-          if (upsertError) {
-            console.error('[FREEMIUM] Upsert fallback error:', upsertError)
-            return false
-          }
-        }
+        console.log('[FREEMIUM] Upsert succeeded:', upsertData)
       }
 
       console.log('[FREEMIUM] ✅ SUCCESS: User upgraded to Pro:', targetUserId)
+      
+      // Verify the update
+      const { data: verifyProfile } = await supabase
+        .from('user_profiles')
+        .select('id, email, is_pro, subscription_status')
+        .eq('id', targetUserId)
+        .single()
+      
+      console.log('[FREEMIUM] Verification:', verifyProfile)
       
       // Clean up any pending activation for this email
       if (normalizedEmail) {
@@ -626,7 +637,7 @@ export async function updateUserToPro(
       return true
     }
 
-    // STEP 5: No user found - store for later activation
+    // STEP 5: No user found - store for later activation when they sign up
     if (normalizedEmail) {
       console.log('[FREEMIUM] Step 5: No user found, storing pending activation for:', normalizedEmail)
       
@@ -652,20 +663,25 @@ export async function updateUserToPro(
             })
           
           if (upsertError) {
-            console.error('[FREEMIUM] Pending activation upsert error:', upsertError)
+            console.error('[FREEMIUM] Pending activation upsert error:', upsertError.message)
           } else {
-            console.log('[FREEMIUM] Stored pending activation successfully')
+            console.log('[FREEMIUM] ✅ Stored pending activation successfully')
           }
         } else {
-          console.log('[FREEMIUM] pending_pro_activations table does not exist')
+          console.log('[FREEMIUM] pending_pro_activations table check error:', checkError.message)
+          
+          // Try to create the table
+          console.log('[FREEMIUM] Attempting to create pending_pro_activations table...')
         }
       } catch (pendingErr) {
         console.log('[FREEMIUM] Could not store pending activation:', pendingErr)
       }
       
-      // Return true because the subscription is valid, user just needs to sign up
-      console.log('[FREEMIUM] ⚠️ PENDING: Email not registered yet, will activate on signup')
-      return true
+      // IMPORTANT: Return FALSE here because the user was NOT found
+      // This makes the error visible in logs
+      console.error('[FREEMIUM] ❌ FAILED: User not found for email:', normalizedEmail)
+      console.error('[FREEMIUM] The user must sign up with this exact email to receive Pro status')
+      return false
     }
 
     console.error('[FREEMIUM] FAILED: No userId or email provided')

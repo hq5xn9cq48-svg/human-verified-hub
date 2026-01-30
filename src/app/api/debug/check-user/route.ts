@@ -4,22 +4,25 @@ import { createServerClient, isServerSupabaseConfigured } from '@/lib/supabase/s
 export const dynamic = 'force-dynamic'
 
 /**
- * DEBUG ENDPOINT - Check user profile status
+ * DEBUG ENDPOINT - Check if a user exists in the system
  * GET /api/debug/check-user?email=user@example.com
  * 
- * This endpoint helps debug Pro activation and usage tracking issues.
- * REMOVE IN PRODUCTION or add authentication!
+ * This helps diagnose why Pro activation might fail
  */
 export async function GET(request: NextRequest) {
   const email = request.nextUrl.searchParams.get('email')
-  const userId = request.nextUrl.searchParams.get('userId')
   
-  if (!email && !userId) {
-    return NextResponse.json({ error: 'Provide email or userId parameter' }, { status: 400 })
+  if (!email) {
+    return NextResponse.json({ 
+      error: 'Email parameter is required',
+      usage: '/api/debug/check-user?email=user@example.com'
+    }, { status: 400 })
   }
 
+  const normalizedEmail = email.toLowerCase().trim()
+
   // Check environment
-  const envCheck = {
+  const envStatus = {
     SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'MISSING',
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING',
     serviceKeyLength: process.env.SUPABASE_SERVICE_ROLE_KEY?.length || 0,
@@ -29,7 +32,7 @@ export async function GET(request: NextRequest) {
   if (!isServerSupabaseConfigured()) {
     return NextResponse.json({
       error: 'Supabase not configured',
-      envCheck
+      envStatus
     }, { status: 500 })
   }
 
@@ -37,61 +40,137 @@ export async function GET(request: NextRequest) {
   if (!supabase) {
     return NextResponse.json({
       error: 'Could not create Supabase client',
-      envCheck
+      envStatus
     }, { status: 500 })
   }
 
+  const results: Record<string, unknown> = {
+    searchEmail: normalizedEmail,
+    envStatus,
+    timestamp: new Date().toISOString()
+  }
+
   try {
-    // Find user in auth.users
-    let authUser = null
-    if (email) {
-      const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-      authUser = authData?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
-    }
-
-    // Find user profile
-    let query = supabase.from('user_profiles').select('*')
-    if (userId) {
-      query = query.eq('id', userId)
-    } else if (email) {
-      query = query.ilike('email', email)
-    }
+    // 1. Check auth.users via Admin API
+    console.log('[DEBUG] Checking auth.users for:', normalizedEmail)
     
-    const { data: profiles, error: profileError } = await query
+    try {
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+        perPage: 1000
+      })
+      
+      if (authError) {
+        results.authUsers = { error: authError.message }
+      } else if (authData?.users) {
+        results.totalAuthUsers = authData.users.length
+        
+        // Find exact match
+        const exactMatch = authData.users.find(u => 
+          u.email?.toLowerCase().trim() === normalizedEmail
+        )
+        
+        if (exactMatch) {
+          results.authUserFound = {
+            id: exactMatch.id,
+            email: exactMatch.email,
+            created_at: exactMatch.created_at,
+            email_confirmed_at: exactMatch.email_confirmed_at,
+            last_sign_in_at: exactMatch.last_sign_in_at
+          }
+        } else {
+          results.authUserFound = null
+          
+          // Look for similar emails
+          const similarUsers = authData.users
+            .filter(u => u.email?.toLowerCase().includes(normalizedEmail.split('@')[0]))
+            .map(u => ({
+              email: u.email,
+              id: u.id.substring(0, 8) + '...'
+            }))
+          
+          if (similarUsers.length > 0) {
+            results.similarAuthUsers = similarUsers
+          }
+        }
+        
+        // List all emails (masked for privacy)
+        results.allAuthEmails = authData.users.map(u => 
+          u.email ? `${u.email.substring(0, 3)}***@${u.email.split('@')[1]}` : 'no-email'
+        )
+      }
+    } catch (adminErr: any) {
+      results.authUsers = { error: adminErr.message, type: 'exception' }
+    }
 
-    // Check pending activations
-    let pendingActivation = null
-    if (email) {
-      try {
-        const { data } = await supabase
-          .from('pending_pro_activations')
-          .select('*')
-          .ilike('email', email)
-          .single()
-        pendingActivation = data
-      } catch {
-        // Table may not exist
+    // 2. Check user_profiles table
+    console.log('[DEBUG] Checking user_profiles for:', normalizedEmail)
+    
+    const { data: profiles, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('id, email, is_pro, subscription_id, subscription_status, created_at, updated_at')
+      .ilike('email', normalizedEmail)
+    
+    if (profileError) {
+      results.userProfiles = { error: profileError.message }
+    } else if (profiles && profiles.length > 0) {
+      results.userProfileFound = profiles[0]
+    } else {
+      results.userProfileFound = null
+      
+      // List all profile emails
+      const { data: allProfiles } = await supabase
+        .from('user_profiles')
+        .select('id, email, is_pro')
+        .limit(20)
+      
+      if (allProfiles) {
+        results.allProfileEmails = allProfiles.map(p => ({
+          email: p.email ? `${p.email.substring(0, 3)}***@${p.email.split('@')[1] || 'unknown'}` : 'no-email',
+          is_pro: p.is_pro,
+          id: p.id.substring(0, 8) + '...'
+        }))
       }
     }
 
-    return NextResponse.json({
-      envCheck,
-      searchedFor: { email, userId },
-      authUser: authUser ? {
-        id: authUser.id,
-        email: authUser.email,
-        created_at: authUser.created_at,
-        email_confirmed_at: authUser.email_confirmed_at
-      } : null,
-      profiles: profiles || [],
-      profileError: profileError?.message || null,
-      pendingActivation,
-      timestamp: new Date().toISOString()
-    })
+    // 3. Check pending_pro_activations
+    console.log('[DEBUG] Checking pending_pro_activations for:', normalizedEmail)
+    
+    try {
+      const { data: pending, error: pendingError } = await supabase
+        .from('pending_pro_activations')
+        .select('*')
+        .ilike('email', normalizedEmail)
+      
+      if (pendingError) {
+        results.pendingActivation = { error: pendingError.message }
+      } else {
+        results.pendingActivation = pending && pending.length > 0 ? pending[0] : null
+      }
+    } catch (pendingErr: any) {
+      results.pendingActivation = { error: pendingErr.message, note: 'Table may not exist' }
+    }
+
+    // Summary
+    results.summary = {
+      userExistsInAuth: !!results.authUserFound,
+      userHasProfile: !!results.userProfileFound,
+      hasPendingActivation: !!results.pendingActivation && !('error' in (results.pendingActivation as object)),
+      canActivatePro: !!results.authUserFound,
+      recommendation: !results.authUserFound 
+        ? 'User must sign up with this email first before Pro can be activated'
+        : results.userProfileFound 
+          ? 'User exists and has profile - can update to Pro directly'
+          : 'User exists in auth but no profile - will create profile on Pro activation'
+    }
+
+    return NextResponse.json(results)
+
   } catch (err: any) {
+    console.error('[DEBUG] Check user error:', err)
     return NextResponse.json({
       error: err.message,
-      envCheck
+      envStatus,
+      results
     }, { status: 500 })
   }
 }

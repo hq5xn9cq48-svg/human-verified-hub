@@ -117,9 +117,12 @@ function shouldResetUsage(lastUsageTimestamp: string | null): boolean {
  * - Pro users: unlimited access, always allowed
  * - Free users: exactly 2 uses per 24-hour rolling window
  * - 24h timer resets from the LAST use, not midnight
+ * 
+ * IMPORTANT: This function MUST increment usage for free users on success
  */
 export async function checkAndIncrementUsage(userId: string, feature: FeatureType = 'text-analysis'): Promise<UsageStatus> {
-  console.log(`[FREEMIUM] checkAndIncrementUsage called for user ${userId}, feature: ${feature}`)
+  console.log(`[FREEMIUM] ======== CHECK AND INCREMENT USAGE ========`)
+  console.log(`[FREEMIUM] User: ${userId}, Feature: ${feature}`)
   
   // If Supabase not configured, allow unlimited access (dev mode)
   if (!isServerSupabaseConfigured()) {
@@ -229,7 +232,9 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
     const newUsageCount = currentUsageCount + 1
     const now = new Date().toISOString()
 
-    console.log(`[FREEMIUM] Attempting to update usage for user ${userId}: ${currentUsageCount} -> ${newUsageCount}`)
+    console.log(`[FREEMIUM] *** INCREMENTING USAGE ***`)
+    console.log(`[FREEMIUM] User: ${userId}`)
+    console.log(`[FREEMIUM] Old count: ${currentUsageCount}, New count: ${newUsageCount}`)
 
     // Decide between update and insert based on profile existence
     let updateError = null
@@ -246,7 +251,23 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
         .eq('id', userId)
         .select()
       
-      console.log(`[FREEMIUM] UPDATE result:`, { error: error?.message, data })
+      console.log(`[FREEMIUM] UPDATE result:`, { error: error?.message, data, rowsUpdated: data?.length })
+      
+      // CRITICAL: Verify the update actually happened
+      if (data && data.length > 0) {
+        console.log(`[FREEMIUM] ✅ UPDATE VERIFIED: daily_usage_count now = ${data[0]?.daily_usage_count}`)
+      } else if (!error) {
+        console.log(`[FREEMIUM] ⚠️ UPDATE returned no data but no error - checking DB directly`)
+        // Double-check by reading the value back
+        const { data: checkData } = await supabase
+          .from('user_profiles')
+          .select('daily_usage_count, last_usage_timestamp')
+          .eq('id', userId)
+          .single()
+        if (checkData) {
+          console.log(`[FREEMIUM] DB verification: daily_usage_count = ${checkData.daily_usage_count}`)
+        }
+      }
       updateError = error
     } else {
       // INSERT new profile
@@ -297,7 +318,8 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
       }
     }
     
-    console.log(`[FREEMIUM] Usage update SUCCESS for user ${userId}`)
+    console.log(`[FREEMIUM] ✅ Usage update SUCCESS for user ${userId}`)
+    console.log(`[FREEMIUM] Final: ${newUsageCount}/${FREE_DAILY_LIMIT} used, ${FREE_DAILY_LIMIT - newUsageCount} remaining`)
 
     const remaining = FREE_DAILY_LIMIT - newUsageCount
     const resetTime = calculateResetTime(now)

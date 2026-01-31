@@ -66,11 +66,17 @@ async function checkAndFixSubscription(userId: string): Promise<void> {
 }
 
 export async function GET(request: NextRequest) {
+  const forceRefresh = request.nextUrl.searchParams.get('force') === 'true'
+  
+  console.log('[USER-USAGE] ======== USAGE REQUEST ========')
+  console.log('[USER-USAGE] Force refresh:', forceRefresh)
+  
   try {
     // Get auth token from header
     const authHeader = request.headers.get('authorization')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[USER-USAGE] No auth header - returning guest status')
       return NextResponse.json({
         isPro: false,
         remaining: 2,
@@ -108,45 +114,73 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    console.log(`[USER-USAGE] Authenticated user: ${user.id} (${user.email})`)
+    
     // Check and fix subscription status on each request
     await checkAndFixSubscription(user.id)
 
     // Get usage status for authenticated user (will reflect any fixes made above)
     const status = await getUsageStatus(user.id)
 
-    console.log(`[USER-USAGE] User ${user.id} (${user.email}) - isPro: ${status.isPro}`)
+    console.log(`[USER-USAGE] Initial status from getUsageStatus - isPro: ${status.isPro}`)
 
-    // Also get subscription details - ALWAYS fetch profile for accurate data
+    // ALWAYS fetch profile directly for most accurate Pro status
     let plan: string = 'free'
     let directIsPro = false
+    let subscriptionStatus: string | null = null
+    let usedToday = status.usedToday
+    let remaining = status.remaining
+    let dailyUsageCount = 0
     
     if (isServerSupabaseConfigured()) {
       const serverSupabase = createServerClient()
       if (serverSupabase) {
         const { data: profile, error: profileError } = await serverSupabase
           .from('user_profiles')
-          .select('is_pro, plan, subscription_status')
+          .select('is_pro, plan, subscription_status, daily_usage_count, last_usage_timestamp')
           .eq('id', user.id)
           .single()
         
         if (profile && !profileError) {
           plan = profile.plan || 'free'
           directIsPro = profile.is_pro || false
+          subscriptionStatus = profile.subscription_status
+          dailyUsageCount = profile.daily_usage_count || 0
           
-          console.log(`[USER-USAGE] Direct DB check - is_pro: ${directIsPro}, plan: ${plan}, status: ${profile.subscription_status}`)
+          // Use database values directly for usage
+          usedToday = dailyUsageCount
+          remaining = directIsPro ? -1 : Math.max(0, 2 - dailyUsageCount)
+          
+          console.log(`[USER-USAGE] Direct DB check:`)
+          console.log(`  - is_pro: ${directIsPro}`)
+          console.log(`  - plan: ${plan}`)
+          console.log(`  - subscription_status: ${subscriptionStatus}`)
+          console.log(`  - daily_usage_count: ${dailyUsageCount}`)
+        } else {
+          console.log(`[USER-USAGE] No profile found for user - will use defaults`)
         }
       }
     }
 
-    // Use direct DB value if there's a mismatch (more reliable)
-    const finalIsPro = directIsPro || status.isPro
+    // Use direct DB value (most reliable)
+    const finalIsPro = directIsPro
+
+    console.log(`[USER-USAGE] Final response:`)
+    console.log(`  - isPro: ${finalIsPro}`)
+    console.log(`  - plan: ${plan}`)
+    console.log(`  - usedToday: ${usedToday}`)
+    console.log(`  - remaining: ${remaining}`)
 
     return NextResponse.json({
       ...status,
-      isPro: finalIsPro, // Override with direct DB value
+      isPro: finalIsPro,
       plan,
+      usedToday: usedToday,
+      remaining: finalIsPro ? -1 : remaining,
+      limit: finalIsPro ? -1 : 2,
       isGuest: false,
-      userId: user.id
+      userId: user.id,
+      subscriptionStatus
     })
 
   } catch (err) {

@@ -222,31 +222,65 @@ export default function AccountPage() {
         return
       }
       
-      // Force refresh from server
-      const response = await fetch(`/api/user/usage?force=true&t=${Date.now()}`, {
+      // Step 1: Call the dedicated refresh-pro endpoint to check/fix status
+      console.log('[ACCOUNT] Calling refresh-pro endpoint...')
+      const refreshResponse = await fetch('/api/user/refresh-pro', {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate'
         },
         cache: 'no-store'
       })
       
-      const data = await response.json()
+      const refreshData = await refreshResponse.json()
+      console.log('[ACCOUNT] Refresh-pro response:', refreshData)
       
-      if (data.isPro) {
+      if (refreshData.isPro || refreshData.activated) {
         setSubscriptionInfo({
           is_pro: true,
           subscription_id: null,
           subscription_status: 'active',
           subscription_ends_at: null
         })
-        setRefreshMessage(language === 'ar' ? '✅ تم تفعيل حساب Pro بنجاح!' : '✅ Pro status activated successfully!')
+        
+        if (refreshData.activated) {
+          setRefreshMessage(language === 'ar' 
+            ? '✅ تم تفعيل حساب Pro بنجاح! (من تفعيل معلق)' 
+            : '✅ Pro status activated successfully! (from pending activation)')
+        } else {
+          setRefreshMessage(language === 'ar' ? '✅ أنت مشترك Pro بالفعل!' : '✅ You are already a Pro subscriber!')
+        }
+        
         // Also refresh the global auth context
         await refreshUsageStatus()
       } else {
-        setRefreshMessage(language === 'ar' 
-          ? 'لم يتم العثور على اشتراك Pro. إذا كنت قد دفعت، يرجى الانتظار بضع دقائق أو التواصل مع الدعم.'
-          : 'No Pro subscription found. If you just paid, please wait a few minutes or contact support.')
+        // Step 2: Also try the usage endpoint as fallback
+        const response = await fetch(`/api/user/usage?force=true&t=${Date.now()}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Cache-Control': 'no-cache, no-store, must-revalidate'
+          },
+          cache: 'no-store'
+        })
+        
+        const data = await response.json()
+        
+        if (data.isPro) {
+          setSubscriptionInfo({
+            is_pro: true,
+            subscription_id: null,
+            subscription_status: 'active',
+            subscription_ends_at: null
+          })
+          setRefreshMessage(language === 'ar' ? '✅ تم تفعيل حساب Pro بنجاح!' : '✅ Pro status activated successfully!')
+          await refreshUsageStatus()
+        } else {
+          setRefreshMessage(language === 'ar' 
+            ? 'لم يتم العثور على اشتراك Pro. إذا كنت قد دفعت، يرجى الانتظار بضع دقائق أو التواصل مع الدعم.'
+            : 'No Pro subscription found. If you just paid, please wait a few minutes or contact support.')
+        }
       }
     } catch (error) {
       console.error('Error refreshing Pro status:', error)

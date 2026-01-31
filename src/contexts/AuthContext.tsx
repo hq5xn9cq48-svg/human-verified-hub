@@ -43,8 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [usageStatus, setUsageStatus] = useState<UsageStatus | null>(null)
 
   // Fetch usage status from API - ALWAYS reads from database (user_profiles table)
-  const fetchUsageStatus = useCallback(async (session: Session | null) => {
+  const fetchUsageStatus = useCallback(async (session: Session | null, forceRefresh: boolean = false) => {
     try {
+      console.log('[AuthContext] ======== FETCHING USAGE STATUS ========')
+      console.log('[AuthContext] Session exists:', !!session)
+      console.log('[AuthContext] Force refresh:', forceRefresh)
+      
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -56,8 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${session.access_token}`
       }
 
-      // Add timestamp to prevent caching - force fresh data from DB
-      const response = await fetch(`/api/user/usage?t=${Date.now()}&nocache=true`, { 
+      // Add timestamp and force param to prevent caching - force fresh data from DB
+      const url = `/api/user/usage?t=${Date.now()}&nocache=true${forceRefresh ? '&force=true' : ''}`
+      console.log('[AuthContext] Fetching from:', url)
+      
+      const response = await fetch(url, { 
         headers,
         cache: 'no-store',
         next: { revalidate: 0 }
@@ -69,25 +76,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isPro: data.isPro, 
         plan: data.plan,
         userId: data.userId,
-        remaining: data.remaining
+        remaining: data.remaining,
+        usedToday: data.usedToday,
+        subscriptionStatus: data.subscriptionStatus
       })
       
-      setUsageStatus(data)
+      // IMPORTANT: Make sure isPro is a boolean
+      const normalizedData = {
+        ...data,
+        isPro: data.isPro === true || data.isPro === 'true',
+        plan: data.plan || 'free'
+      }
+      
+      console.log('[AuthContext] Final normalized status:', {
+        isPro: normalizedData.isPro,
+        plan: normalizedData.plan
+      })
+      
+      setUsageStatus(normalizedData)
     } catch (err) {
-      console.error('Error fetching usage status:', err)
+      console.error('[AuthContext] Error fetching usage status:', err)
       setUsageStatus(defaultUsageStatus)
     }
   }, [])
 
   const refreshUsageStatus = useCallback(async () => {
+    console.log('[AuthContext] refreshUsageStatus called')
+    
     if (!isSupabaseConfigured()) {
+      console.log('[AuthContext] Supabase not configured, using defaults')
       setUsageStatus(defaultUsageStatus)
       return
     }
     
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
-    await fetchUsageStatus(session)
+    console.log('[AuthContext] Session for refresh:', !!session)
+    await fetchUsageStatus(session, true) // Force refresh
   }, [fetchUsageStatus])
 
   useEffect(() => {

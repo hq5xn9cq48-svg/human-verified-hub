@@ -635,11 +635,23 @@ export async function POST(req: Request) {
     
     let usageStatus: UsageStatus | null = null;
     if (userId) {
+      logStep('Checking usage for authenticated user', { userId });
+      
       // Text analysis is allowed for free users with limit
+      // CRITICAL: This function WILL increment usage count for free users
       usageStatus = await checkAndIncrementUsage(userId, 'text-analysis');
       
+      logStep('Usage check result', { 
+        userId, 
+        canUse: usageStatus.canUse,
+        isPro: usageStatus.isPro,
+        remaining: usageStatus.remaining,
+        usedToday: usageStatus.usedToday,
+        limit: usageStatus.limit
+      });
+      
       if (!usageStatus.canUse) {
-        logStep('Usage limit reached', { userId, usageStatus });
+        logStep('Usage limit reached - BLOCKING REQUEST', { userId, usageStatus });
         return NextResponse.json({
           error: 'Daily limit reached. Upgrade to Pro for unlimited analyses.',
           errorCode: 'USAGE_LIMIT_REACHED',
@@ -653,10 +665,12 @@ export async function POST(req: Request) {
         }, { status: 429 });
       }
       
-      logStep('Usage check passed', { 
+      // Log success with usage increment confirmation
+      logStep('Usage check PASSED - proceeding with analysis', { 
         userId, 
         remaining: usageStatus.remaining, 
-        isPro: usageStatus.isPro 
+        isPro: usageStatus.isPro,
+        usedToday: usageStatus.usedToday
       });
     } else {
       // Guest user - enforce rate limiting by IP + fingerprint

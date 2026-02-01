@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkUsageBeforeAction, incrementUsageAfterSuccess, UsageStatus } from '@/lib/freemium';
+import { checkUsageBeforeAction, incrementUsageAfterSuccess, isUserPro, UsageStatus } from '@/lib/freemium';
 
 // ============================================================================
 // CONFIGURATION - STABILITY FIRST
@@ -337,39 +337,23 @@ export async function POST(req: Request) {
       }, { status: 401 });
     }
     
-    // Check freemium limits BEFORE processing (no increment yet)
-    const usageStatus = await checkUsageBeforeAction(userId);
+    // Check if user is Pro (image analysis is a Pro-only feature)
+    const isPro = await isUserPro(userId);
     
-    // Pro users have UNLIMITED access - skip all limit checks
-    if (usageStatus.isPro) {
-      logStep('Pro user - UNLIMITED ACCESS', { userId });
-    } else {
-      // STRICT ENFORCEMENT: Block free users if limit reached (return 403 Forbidden)
-      if (!usageStatus.canUse) {
-        logStep('Usage limit reached - BLOCKING REQUEST', { userId, usageStatus });
-        return NextResponse.json({
-          error: "You've used your 2 free daily analyses. Upgrade to Pro for unlimited access.",
-          errorCode: 'USAGE_LIMIT_REACHED',
-          usageStatus: {
-            remaining: usageStatus.remaining,
-            limit: usageStatus.limit,
-            isPro: usageStatus.isPro,
-            message: usageStatus.message
-          },
-          upgradeUrl: '/pricing'
-        }, { status: 403 });
-      }
+    if (!isPro) {
+      logStep('Free user blocked - Pro feature', { userId });
+      return NextResponse.json({
+        error: 'AI image detection is a Pro feature. Upgrade to Pro for unlimited access.',
+        errorCode: 'PRO_REQUIRED',
+        upgradeUrl: '/pricing'
+      }, { status: 403 });
     }
     
-    logStep('Usage check passed', { 
-      userId, 
-      remaining: usageStatus.remaining, 
-      isPro: usageStatus.isPro 
-    });
+    logStep('Pro user authorized', { userId });
     
-    // Store for later use
+    // Store for later use (Pro users only reach here)
     const currentUserId = userId;
-    const isProUser = usageStatus.isPro;
+    const isProUser = true;
 
     const body = await req.json();
     const { image, language = 'en' } = body;

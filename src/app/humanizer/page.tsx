@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import UpgradeModal from '@/components/UpgradeModal'
+import ProFeatureGate from '@/components/ProFeatureGate'
 import { 
   Wand2, 
   Clipboard, 
@@ -56,10 +57,10 @@ const loadingMessagesAr = [
   "إنهاء التحسين..."
 ]
 
-export default function HumanizerPage() {
+function HumanizerContent() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus, usageStatus } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')
@@ -112,9 +113,19 @@ export default function HumanizerPage() {
     }, 1500)
 
     try {
+      // Get auth token for authenticated request
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/humanize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ text: inputText, intent, language }),
       })
 
@@ -444,5 +455,19 @@ export default function HumanizerPage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+// Wrap with Pro Feature Gate - Humanizer is Pro-only
+export default function HumanizerPage() {
+  return (
+    <ProFeatureGate 
+      featureName="AI Text Humanizer"
+      featureNameAr="مُحسِّن النصوص"
+      description="Transform AI text to sound natural and human-like"
+      descriptionAr="حوّل النصوص الآلية لتبدو طبيعية وبشرية"
+    >
+      <HumanizerContent />
+    </ProFeatureGate>
   )
 }

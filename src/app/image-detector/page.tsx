@@ -29,6 +29,7 @@ import {
   Zap
 } from 'lucide-react'
 import UpgradeModal from '@/components/UpgradeModal'
+import ProFeatureGate from '@/components/ProFeatureGate'
 
 interface AnalysisResult {
   aiProbability: number
@@ -55,10 +56,10 @@ interface AnalysisResult {
   modelUsed?: string
 }
 
-export default function ImageDetectorPage() {
+function ImageDetectorContent() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus, usageStatus } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')
@@ -122,9 +123,19 @@ export default function ImageDetectorPage() {
     }, 2000)
 
     try {
+      // Get auth token for authenticated request
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/image-analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ image, language }),
       })
 
@@ -602,5 +613,19 @@ export default function ImageDetectorPage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+// Wrap with Pro Feature Gate - Image Detection is Pro-only
+export default function ImageDetectorPage() {
+  return (
+    <ProFeatureGate 
+      featureName="AI Image Detection"
+      featureNameAr="كاشف صور الذكاء الاصطناعي"
+      description="Detect AI-generated images with forensic analysis"
+      descriptionAr="كشف الصور المُنشأة بالذكاء الاصطناعي مع تحليل جنائي"
+    >
+      <ImageDetectorContent />
+    </ProFeatureGate>
   )
 }

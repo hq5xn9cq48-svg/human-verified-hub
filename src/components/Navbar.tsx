@@ -23,7 +23,9 @@ import {
   Info,
   Mail,
   BookOpen,
-  Crown
+  Crown,
+  Zap,
+  AlertCircle
 } from 'lucide-react'
 
 export default function Navbar() {
@@ -170,7 +172,7 @@ export default function Navbar() {
             <div className="hidden md:flex items-center">
               {user ? (
                 <div className="flex items-center gap-2">
-                  {/* Pro Badge or Upgrade Button */}
+                  {/* Pro Badge or Usage Counter + Upgrade Button */}
                   {usageStatus?.isPro ? (
                     /* Pro User Badge - Beautiful & Prominent */
                     <div className="relative group">
@@ -183,15 +185,35 @@ export default function Navbar() {
                       <div className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 to-amber-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity -z-10" />
                     </div>
                   ) : (
-                    /* Upgrade Button for Free Users */
-                    <Link
-                      href="/pricing"
-                      className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600/40 to-fuchsia-600/40 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 hover:border-purple-400/50 hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all group"
-                    >
-                      <Crown className="w-3 h-3 text-fuchsia-400 group-hover:animate-bounce" />
-                      <span className="hidden lg:inline">{language === 'ar' ? 'ترقية للبرو' : 'Upgrade'}</span>
-                      <span className="lg:hidden">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
-                    </Link>
+                    /* Usage Counter + Upgrade Button for Free Users */
+                    <div className="flex items-center gap-2">
+                      {/* Usage Counter Badge */}
+                      {usageStatus && (
+                        <div className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                          usageStatus.remaining <= 0 
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/40'
+                            : usageStatus.remaining === 1
+                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40'
+                              : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                        }`}>
+                          {usageStatus.remaining <= 0 ? (
+                            <AlertCircle className="w-3 h-3" />
+                          ) : (
+                            <Zap className="w-3 h-3" />
+                          )}
+                          <span>{usageStatus.remaining}/{usageStatus.limit}</span>
+                        </div>
+                      )}
+                      {/* Upgrade Button */}
+                      <Link
+                        href="/pricing"
+                        className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-600/40 to-fuchsia-600/40 text-purple-200 border border-purple-500/30 flex items-center gap-1.5 hover:border-purple-400/50 hover:shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all group"
+                      >
+                        <Crown className="w-3 h-3 text-fuchsia-400 group-hover:animate-bounce" />
+                        <span className="hidden lg:inline">{language === 'ar' ? 'ترقية للبرو' : 'Upgrade'}</span>
+                        <span className="lg:hidden">{language === 'ar' ? 'ترقية' : 'Pro'}</span>
+                      </Link>
+                    </div>
                   )}
                   {/* User Avatar */}
                   <Link href="/account" className="relative group">
@@ -320,13 +342,40 @@ export default function Navbar() {
                       </div>
                       
                       {/* Pro Status Banner for Pro Users */}
-                      {usageStatus?.isPro && (
+                      {usageStatus?.isPro ? (
                         <div className="mb-3 p-2 rounded-lg bg-gradient-to-r from-amber-500/10 via-yellow-400/10 to-orange-500/10 border border-yellow-500/30 flex items-center justify-center gap-2">
                           <Crown className="w-4 h-4 text-yellow-400" />
                           <span className="text-yellow-300 text-xs font-semibold">
                             {language === 'ar' ? 'تحليلات غير محدودة' : 'Unlimited Analyses'}
                           </span>
                           <Sparkles className="w-3 h-3 text-amber-300" />
+                        </div>
+                      ) : usageStatus && (
+                        /* Usage Counter for Free Users in Mobile */
+                        <div className={`mb-3 p-2.5 rounded-lg flex items-center justify-between ${
+                          usageStatus.remaining <= 0 
+                            ? 'bg-red-500/10 border border-red-500/30'
+                            : usageStatus.remaining === 1
+                              ? 'bg-yellow-500/10 border border-yellow-500/30'
+                              : 'bg-purple-500/10 border border-purple-500/30'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            {usageStatus.remaining <= 0 ? (
+                              <AlertCircle className="w-4 h-4 text-red-400" />
+                            ) : (
+                              <Zap className={`w-4 h-4 ${usageStatus.remaining === 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
+                            )}
+                            <span className={`text-xs font-semibold ${
+                              usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining === 1 ? 'text-yellow-400' : 'text-purple-300'
+                            }`}>
+                              {language === 'ar' ? 'التحليلات المتبقية' : 'Analyses remaining'}
+                            </span>
+                          </div>
+                          <span className={`text-sm font-bold ${
+                            usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining === 1 ? 'text-yellow-400' : 'text-purple-300'
+                          }`}>
+                            {usageStatus.remaining}/{usageStatus.limit}
+                          </span>
                         </div>
                       )}
                       

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkAndIncrementUsage, UsageStatus } from '@/lib/freemium';
+import { checkUsageBeforeAction, incrementUsageAfterSuccess, isUserPro, UsageStatus } from '@/lib/freemium';
 
 // Use environment variable with fallback (server-side)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
@@ -151,35 +151,35 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Check user authentication and freemium limits
+    // STRICT GATING: Require authentication for humanizer (Pro feature)
     const { userId } = await getUserFromRequest(req);
     
-    let usageStatus: UsageStatus | null = null;
-    if (userId) {
-      usageStatus = await checkAndIncrementUsage(userId);
-      
-      if (!usageStatus.canUse) {
-        logStep('Usage limit reached', { userId, usageStatus });
-        return NextResponse.json({
-          error: 'Daily limit reached. Upgrade to Pro for unlimited analyses.',
-          errorCode: 'USAGE_LIMIT_REACHED',
-          usageStatus: {
-            remaining: usageStatus.remaining,
-            limit: usageStatus.limit,
-            isPro: usageStatus.isPro,
-            message: usageStatus.message
-          }
-        }, { status: 429 });
-      }
-      
-      logStep('Usage check passed', { 
-        userId, 
-        remaining: usageStatus.remaining, 
-        isPro: usageStatus.isPro 
-      });
-    } else {
-      logStep('Guest user - allowing access without tracking');
+    // Guest users must sign in
+    if (!userId) {
+      logStep('Guest user blocked - authentication required');
+      return NextResponse.json({
+        error: 'Please sign in to use the humanizer. Create a free account to get started.',
+        errorCode: 'AUTH_REQUIRED',
+        requireAuth: true
+      }, { status: 401 });
     }
+    
+    // Check if user is Pro (humanizer is a Pro-only feature)
+    const isPro = await isUserPro(userId);
+    
+    if (!isPro) {
+      logStep('Free user blocked - Pro feature', { userId });
+      return NextResponse.json({
+        error: 'Text humanizer is a Pro feature. Upgrade to Pro for unlimited access.',
+        errorCode: 'PRO_REQUIRED',
+        upgradeUrl: '/pricing'
+      }, { status: 403 });
+    }
+    
+    logStep('Pro user authorized', { userId });
+    
+    // Store for logging
+    const currentUserId = userId;
 
     const body = await req.json();
     const { text, intent = 'default', language = 'en' } = body;

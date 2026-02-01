@@ -11,14 +11,16 @@ export async function GET(request: NextRequest) {
     // Get auth token from header
     const authHeader = request.headers.get('authorization')
     
+    // SECURITY: Guest users see a prompt to sign in - NOT fake usage data
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({
         isPro: false,
-        remaining: 2,
+        remaining: 0, // Show 0 for guests - they must sign in
         usedToday: 0,
         limit: 2,
         isGuest: true,
-        message: 'Sign in to track usage'
+        canUse: false,
+        message: 'Sign in to get 2 free daily analyses'
       })
     }
 
@@ -28,9 +30,10 @@ export async function GET(request: NextRequest) {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       return NextResponse.json({
         isPro: false,
-        remaining: 2,
+        remaining: 0,
         usedToday: 0,
         limit: 2,
+        canUse: false,
         message: 'Database not configured'
       })
     }
@@ -41,17 +44,19 @@ export async function GET(request: NextRequest) {
     if (error || !user) {
       return NextResponse.json({
         isPro: false,
-        remaining: 2,
+        remaining: 0, // Invalid token = guest
         usedToday: 0,
         limit: 2,
         isGuest: true,
-        message: 'Sign in to track usage'
+        canUse: false,
+        message: 'Sign in to get 2 free daily analyses'
       })
     }
 
-    // Get usage status for authenticated user
+    // Get REAL usage status for authenticated user from database
     const status = await getUsageStatus(user.id)
 
+    // Return accurate usage data tied to user ID
     return NextResponse.json({
       ...status,
       isGuest: false,
@@ -62,12 +67,14 @@ export async function GET(request: NextRequest) {
     console.error('[USER-USAGE] Error:', err)
     return NextResponse.json({
       isPro: false,
-      remaining: 2,
+      remaining: 0,
       usedToday: 0,
       limit: 2,
+      canUse: false,
       message: 'Error fetching usage status'
     })
   }
 }
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'

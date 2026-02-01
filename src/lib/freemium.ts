@@ -60,6 +60,11 @@ function getResetTime(lastUsageTimestamp: string | null): string | undefined {
  * Check if user can perform an analysis (WITHOUT incrementing)
  * This checks if the user has remaining uses or is Pro
  * Call incrementUsageAfterSuccess() AFTER successful analysis
+ * 
+ * NOTE: This split check/increment pattern has a race condition where concurrent
+ * requests can both pass the check and increment, potentially exceeding the limit.
+ * Consider using the atomic check_and_increment_usage() database function instead
+ * for race-safe enforcement.
  */
 export async function checkUsageBeforeAction(userId: string): Promise<UsageStatus> {
   // If Supabase not configured, DENY access in production mode

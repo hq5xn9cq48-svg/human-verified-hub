@@ -6,6 +6,11 @@ import { checkUsageBeforeAction, incrementUsageAfterSuccess } from '@/lib/freemi
 // API Key - Use environment variable only (server-side)
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
+// Validate API key is configured
+if (!GEMINI_API_KEY) {
+  console.error('[ANALYZE API] CRITICAL: GEMINI_API_KEY not configured. Text analysis will fail.');
+}
+
 // Turnstile secret key for bot protection
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || '';
 

@@ -69,9 +69,6 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
     }
     
     const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
-    if (newWindow) {
-      newWindow.opener = null
-    }
     onClose()
   }
 

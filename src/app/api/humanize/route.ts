@@ -5,6 +5,11 @@ import { isUserPro } from '@/lib/freemium';
 // Use environment variable (server-side only). Must be configured.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
+// Validate API key is configured
+if (!GEMINI_API_KEY) {
+  console.error('[HUMANIZE API] CRITICAL: GEMINI_API_KEY not configured. Text humanization will fail.');
+}
+
 // Supabase client for auth verification
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';

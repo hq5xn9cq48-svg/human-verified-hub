@@ -59,8 +59,8 @@ const loadingMessagesAr = [
 
 function HumanizerContent() {
   const router = useRouter()
-  const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus, usageStatus } = useAuth()
+  const { t, language, isRTL } = useLanguage()
+  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')

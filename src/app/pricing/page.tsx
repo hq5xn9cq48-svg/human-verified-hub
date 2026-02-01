@@ -13,10 +13,9 @@ import {
 } from 'lucide-react'
 
 // Lemon Squeezy checkout URLs from environment variables
-const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || 
-  'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID'
-const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || 
-  'https://humanverified.lemonsqueezy.com/checkout/buy/VARIANT_ID_YEARLY'
+// No fallback - if not configured, the upgrade button will be disabled
+const LEMONSQUEEZY_CHECKOUT_URL_MONTHLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL || ''
+const LEMONSQUEEZY_CHECKOUT_URL_YEARLY = process.env.NEXT_PUBLIC_LEMONSQUEEZY_CHECKOUT_URL_YEARLY || ''
 
 interface PlanFeature {
   name: { en: string; ar: string }
@@ -112,6 +111,12 @@ export default function PricingPage() {
     const checkoutBaseUrl = billingCycle === 'yearly' 
       ? LEMONSQUEEZY_CHECKOUT_URL_YEARLY 
       : LEMONSQUEEZY_CHECKOUT_URL_MONTHLY
+    
+    // Check if checkout URL is configured
+    if (!checkoutBaseUrl) {
+      console.error('Checkout URL not configured')
+      return
+    }
     
     // Redirect to Lemon Squeezy checkout with user info
     const checkoutUrl = new URL(checkoutBaseUrl)
@@ -344,6 +349,10 @@ export default function PricingPage() {
                 <div className="py-3 px-6 bg-purple-600/20 text-purple-400 font-medium rounded-xl text-center border border-purple-500/30">
                   <Crown className="w-4 h-4 inline mr-2" />
                   {language === 'ar' ? 'أنت مشترك بالفعل' : 'You have Pro'}
+                </div>
+              ) : !LEMONSQUEEZY_CHECKOUT_URL_MONTHLY && !LEMONSQUEEZY_CHECKOUT_URL_YEARLY ? (
+                <div className="py-3 px-6 bg-red-600/20 text-red-400 font-medium rounded-xl text-center border border-red-500/30 text-sm">
+                  {language === 'ar' ? 'التسعير غير متاح حالياً' : 'Checkout not configured'}
                 </div>
               ) : (
                 <button

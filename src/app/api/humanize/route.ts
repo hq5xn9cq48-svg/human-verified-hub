@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkUsageBeforeAction, incrementUsageAfterSuccess, isUserPro, UsageStatus } from '@/lib/freemium';
+import { isUserPro } from '@/lib/freemium';
 
-// Use environment variable with fallback (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+// Use environment variable (server-side only). Must be configured.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+
+// Validate API key is configured
+if (!GEMINI_API_KEY) {
+  console.error('[HUMANIZE API] CRITICAL: GEMINI_API_KEY not configured. Text humanization will fail.');
+}
 
 // Supabase client for auth verification
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -177,9 +182,6 @@ export async function POST(req: Request) {
     }
     
     logStep('Pro user authorized', { userId });
-    
-    // Store for logging
-    const currentUserId = userId;
 
     const body = await req.json();
     const { text, intent = 'default', language = 'en' } = body;

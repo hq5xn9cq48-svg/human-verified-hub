@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { Crown, Lock, Sparkles, Infinity, Zap, ArrowRight } from 'lucide-react'
+import { Crown, Lock, Sparkles, Zap, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ReactNode } from 'react'

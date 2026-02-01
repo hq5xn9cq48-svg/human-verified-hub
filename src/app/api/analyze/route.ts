@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
 import * as cheerio from 'cheerio';
-import { checkUsageBeforeAction, incrementUsageAfterSuccess, UsageStatus } from '@/lib/freemium';
+import { checkUsageBeforeAction, incrementUsageAfterSuccess } from '@/lib/freemium';
 
 // API Key - Use environment variable only (server-side)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyDI9GA_o_xoWDgHeubAT5-DeiVWSxk9uu0";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 // Turnstile secret key for bot protection
 const TURNSTILE_SECRET = process.env.TURNSTILE_SECRET || '';

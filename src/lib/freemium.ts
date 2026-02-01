@@ -147,10 +147,10 @@ export async function checkUsageBeforeAction(userId: string): Promise<UsageStatu
     // Reset count if 24 hours have passed since last use
     if (has24HoursPassed(lastUsageTimestamp)) {
       currentCount = 0
-      // Reset in database
+      // Reset in database and clear timestamp since window has reset
       await supabase
         .from('user_profiles')
-        .update({ daily_usage_count: 0 })
+        .update({ daily_usage_count: 0, last_usage_timestamp: null })
         .eq('id', userId)
     }
 
@@ -347,7 +347,9 @@ export async function getUsageStatus(userId: string): Promise<UsageStatus> {
     const lastUsageTimestamp = profile.last_usage_timestamp
     let currentCount = profile.daily_usage_count ?? 0
 
-    if (has24HoursPassed(lastUsageTimestamp)) {
+    // If window has reset, don't return a resetTime (it's in the past)
+    const hasReset = has24HoursPassed(lastUsageTimestamp)
+    if (hasReset) {
       currentCount = 0
     }
 
@@ -362,7 +364,7 @@ export async function getUsageStatus(userId: string): Promise<UsageStatus> {
       message: remaining > 0 
         ? `${remaining} ${remaining === 1 ? 'use' : 'uses'} remaining`
         : "Daily limit reached. Upgrade to Pro.",
-      resetTime: getResetTime(lastUsageTimestamp)
+      resetTime: hasReset ? undefined : getResetTime(lastUsageTimestamp)
     }
   } catch (err) {
     console.error('[FREEMIUM] Exception getting status:', err)

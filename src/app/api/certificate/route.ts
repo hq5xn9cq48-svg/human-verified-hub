@@ -79,11 +79,11 @@ export async function POST(req: Request) {
     const { error: insertError } = await supabase
       .from('certificates')
       .insert({
-        id: certificateId,
+        certificate_id: certificateId,
         verification_id: verificationId,
         user_id: userId || null,
-        score: score,
-        content_preview: content?.substring(0, 200) || '',
+        human_score: score,
+        content_excerpt: content?.substring(0, 200) || '',
         issued_at: new Date().toISOString(),
       });
 
@@ -124,7 +124,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase
       .from('certificates')
       .select('*')
-      .eq('id', certificateId)
+      .eq('certificate_id', certificateId)
       .single();
 
     if (error || !data) {
@@ -137,10 +137,10 @@ export async function GET(req: Request) {
     return NextResponse.json({
       valid: true,
       certificate: {
-        id: data.id,
-        score: data.score,
+        id: data.certificate_id,
+        score: data.human_score,
         issuedAt: data.issued_at,
-        contentPreview: data.content_preview
+        contentPreview: data.content_excerpt
       }
     });
 

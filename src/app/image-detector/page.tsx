@@ -59,7 +59,7 @@ interface AnalysisResult {
 function ImageDetectorContent() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus, usageStatus } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [image, setImage] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('')

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
-import { checkUsageBeforeAction, incrementUsageAfterSuccess, isUserPro, UsageStatus } from '@/lib/freemium';
+import { incrementUsageAfterSuccess, isUserPro } from '@/lib/freemium';
 
 // ============================================================================
 // CONFIGURATION - STABILITY FIRST
@@ -352,8 +352,7 @@ export async function POST(req: Request) {
     logStep('Pro user authorized', { userId });
     
     // Store for later use (Pro users only reach here)
-    const currentUserId = userId;
-    const isProUser = true;
+    const isProUser = isPro;
 
     const body = await req.json();
     const { image, language = 'en' } = body;
@@ -491,10 +490,10 @@ export async function POST(req: Request) {
 
     // INCREMENT USAGE AFTER SUCCESSFUL ANALYSIS (only for free users)
     if (!isProUser) {
-      const updatedUsage = await incrementUsageAfterSuccess(currentUserId);
+      const updatedUsage = await incrementUsageAfterSuccess(userId);
       if (updatedUsage) {
         logStep('Usage incremented after success', {
-          userId: currentUserId,
+          userId: userId,
           usedToday: updatedUsage.usedToday,
           remaining: updatedUsage.remaining
         });

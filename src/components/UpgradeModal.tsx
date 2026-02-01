@@ -68,7 +68,10 @@ export default function UpgradeModal({ isOpen, onClose }: UpgradeModalProps) {
       url = `${CHECKOUT_URL}?${params.toString()}`
     }
     
-    window.open(url, '_blank')
+    const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
+    if (newWindow) {
+      newWindow.opener = null
+    }
     onClose()
   }
 

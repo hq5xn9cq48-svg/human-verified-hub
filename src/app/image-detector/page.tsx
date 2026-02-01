@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import ScoreGauge from '@/components/ScoreGauge'
 import AuthGuard from '@/components/AuthGuard'
+import ProFeatureGate from '@/components/ProFeatureGate'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -56,7 +57,7 @@ interface AnalysisResult {
   modelUsed?: string
 }
 
-export default function ImageDetectorPage() {
+function ImageDetectorContent() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
   const { user, loading: authLoading, refreshUsageStatus } = useAuth()
@@ -123,9 +124,19 @@ export default function ImageDetectorPage() {
     }, 2000)
 
     try {
+      // Get auth token for authenticated request
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/image-analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ image, language }),
       })
 
@@ -211,11 +222,6 @@ export default function ImageDetectorPage() {
   }
 
   return (
-    <AuthGuard 
-      featureName="the Image Detector" 
-      featureNameAr="كاشف الصور"
-      requiresPro={true}
-    >
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
@@ -613,6 +619,19 @@ export default function ImageDetectorPage() {
         </div>
       </footer>
     </div>
-    </AuthGuard>
+  )
+}
+
+// Wrap with Pro Feature Gate - Image Detection is Pro-only
+export default function ImageDetectorPage() {
+  return (
+    <ProFeatureGate 
+      featureName="AI Image Detection"
+      featureNameAr="كاشف صور الذكاء الاصطناعي"
+      description="Detect AI-generated images with forensic analysis"
+      descriptionAr="كشف الصور المُنشأة بالذكاء الاصطناعي مع تحليل جنائي"
+    >
+      <ImageDetectorContent />
+    </ProFeatureGate>
   )
 }

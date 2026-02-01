@@ -25,6 +25,7 @@ import {
   BookOpen,
   Crown,
   Zap,
+  AlertCircle,
   Star
 } from 'lucide-react'
 
@@ -126,8 +127,18 @@ export default function Navbar() {
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Free Uses Remaining Counter - Compact on mobile */}
             {user && usageStatus && !usageStatus.isPro && (
-              <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-purple-900/30 border border-purple-500/30">
-                <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
+              <div className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl ${
+                usageStatus.remaining <= 0 
+                  ? 'bg-red-900/30 border border-red-500/30'
+                  : usageStatus.remaining <= 1
+                    ? 'bg-yellow-900/30 border border-yellow-500/30'
+                    : 'bg-purple-900/30 border border-purple-500/30'
+              }`}>
+                {usageStatus.remaining <= 0 ? (
+                  <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
+                ) : (
+                  <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
+                )}
                 <span className={`text-xs sm:text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
                   {usageStatus.remaining}/{usageStatus.limit}
                 </span>
@@ -376,10 +387,20 @@ export default function Navbar() {
                       
                       {/* Free Uses Counter - Mobile */}
                       {usageStatus && !usageStatus.isPro && (
-                        <div className="mb-3 p-3 rounded-xl bg-purple-900/20 border border-purple-500/30">
+                        <div className={`mb-3 p-3 rounded-xl ${
+                          usageStatus.remaining <= 0
+                            ? 'bg-red-900/20 border border-red-500/30'
+                            : usageStatus.remaining <= 1
+                              ? 'bg-yellow-900/20 border border-yellow-500/30'
+                              : 'bg-purple-900/20 border border-purple-500/30'
+                        }`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Zap className="w-4 h-4 text-purple-400" />
+                              {usageStatus.remaining <= 0 ? (
+                                <AlertCircle className="w-4 h-4 text-red-400" />
+                              ) : (
+                                <Zap className={`w-4 h-4 ${usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
+                              )}
                               <span className="text-sm text-gray-300">
                                 {language === 'ar' ? 'الاستخدام المتبقي' : 'Free Uses'}
                               </span>

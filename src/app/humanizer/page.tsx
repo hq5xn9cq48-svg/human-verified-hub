@@ -7,7 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import UpgradeModal from '@/components/UpgradeModal'
-import AuthGuard from '@/components/AuthGuard'
+import ProFeatureGate from '@/components/ProFeatureGate'
 import { 
   Wand2, 
   Clipboard, 
@@ -57,7 +57,7 @@ const loadingMessagesAr = [
   "إنهاء التحسين..."
 ]
 
-export default function HumanizerPage() {
+function HumanizerContent() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
   const { user, loading: authLoading, refreshUsageStatus } = useAuth()
@@ -113,9 +113,19 @@ export default function HumanizerPage() {
     }, 1500)
 
     try {
+      // Get auth token for authenticated request
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/humanize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ text: inputText, intent, language }),
       })
 
@@ -167,11 +177,6 @@ export default function HumanizerPage() {
   const selectedIntent = intentOptions.find((o) => o.id === intent)
 
   return (
-    <AuthGuard 
-      featureName="the Humanizer tool" 
-      featureNameAr="أداة التحويل البشري"
-      requiresPro={true}
-    >
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
@@ -455,6 +460,19 @@ export default function HumanizerPage() {
         </div>
       </footer>
     </div>
-    </AuthGuard>
+  )
+}
+
+// Wrap with Pro Feature Gate - Humanizer is Pro-only
+export default function HumanizerPage() {
+  return (
+    <ProFeatureGate 
+      featureName="AI Text Humanizer"
+      featureNameAr="مُحسِّن النصوص"
+      description="Transform AI text to sound natural and human-like"
+      descriptionAr="حوّل النصوص الآلية لتبدو طبيعية وبشرية"
+    >
+      <HumanizerContent />
+    </ProFeatureGate>
   )
 }

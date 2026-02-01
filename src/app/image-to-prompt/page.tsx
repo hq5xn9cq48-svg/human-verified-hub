@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useAuth } from '@/contexts/AuthContext'
 import AuthGuard from '@/components/AuthGuard'
+import ProFeatureGate from '@/components/ProFeatureGate'
 import { 
   Image as ImageIcon, 
   Upload, 
@@ -32,7 +33,7 @@ interface PromptResult {
   negativePrompt: string
 }
 
-export default function ImageToPromptPage() {
+function ImageToPromptContent() {
   const router = useRouter()
   const { language, isRTL, isLoaded } = useLanguage()
   const { user, loading: authLoading, refreshUsageStatus } = useAuth()
@@ -95,9 +96,19 @@ export default function ImageToPromptPage() {
     setResult(null)
 
     try {
+      // Get auth token for authenticated request
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`
+      }
+      
       const response = await fetch('/api/image-to-prompt', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ image, language }),
       })
 
@@ -169,11 +180,6 @@ export default function ImageToPromptPage() {
   }
 
   return (
-    <AuthGuard 
-      featureName="Image to Prompt" 
-      featureNameAr="مولد الأوامر"
-      requiresPro={true}
-    >
     <div className="min-h-screen bg-black cyber-grid" dir={isRTL ? 'rtl' : 'ltr'}>
       <Navbar />
 
@@ -508,6 +514,19 @@ export default function ImageToPromptPage() {
         </div>
       </footer>
     </div>
-    </AuthGuard>
+  )
+}
+
+// Wrap with Pro Feature Gate - Image to Prompt is Pro-only
+export default function ImageToPromptPage() {
+  return (
+    <ProFeatureGate 
+      featureName="Image to Prompt"
+      featureNameAr="صورة إلى أمر نصي"
+      description="Generate AI prompts from any image"
+      descriptionAr="إنشاء أوامر نصية للذكاء الاصطناعي من أي صورة"
+    >
+      <ImageToPromptContent />
+    </ProFeatureGate>
   )
 }

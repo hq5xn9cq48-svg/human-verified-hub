@@ -306,15 +306,16 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
 
     if (updateError) {
       console.error('[FREEMIUM] Error updating usage:', updateError)
-      // On error, still return proper count but warn
-      console.log('[FREEMIUM] WARNING: Usage tracking may be inaccurate')
+      // STRICT MODE: On update error, DENY access to prevent unlimited free usage
+      // This is critical to prevent users from getting free unlimited analyses
+      console.error('[FREEMIUM] CRITICAL: Usage tracking failed - DENYING access to prevent abuse')
       return {
-        canUse: true,
+        canUse: false,
         isPro: false,
-        remaining: FREE_DAILY_LIMIT - currentUsageCount - 1,
-        usedToday: currentUsageCount + 1,
+        remaining: 0,
+        usedToday: currentUsageCount,
         limit: FREE_DAILY_LIMIT,
-        message: `${FREE_DAILY_LIMIT - currentUsageCount - 1} analyses remaining`
+        message: 'Unable to process request. Please try again.'
       }
     }
     
@@ -339,15 +340,15 @@ export async function checkAndIncrementUsage(userId: string, feature: FeatureTyp
     }
   } catch (err) {
     console.error('[FREEMIUM] Exception checking usage:', err)
-    // PERMISSIVE MODE: On error, ALLOW access to not block users
-    // Better UX - let users use the service even if tracking fails
+    // STRICT MODE: On error, DENY access to prevent abuse
+    // This prevents users from bypassing the freemium limit
     return {
-      canUse: true,
+      canUse: false,
       isPro: false,
-      remaining: FREE_DAILY_LIMIT,
+      remaining: 0,
       usedToday: 0,
       limit: FREE_DAILY_LIMIT,
-      message: 'Service available'
+      message: 'Unable to verify usage. Please try again.'
     }
   }
 }
@@ -699,21 +700,44 @@ export async function updateUserToPro(
       return true
     }
 
-    // STEP 5: No user found - store for later activation when they sign up
+    // STEP 5: No user found - CREATE a profile entry directly with email
+    // This allows the user to be identified when they sign up later
     if (normalizedEmail) {
-      console.log('[FREEMIUM] Step 5: No user found, storing pending activation for:', normalizedEmail)
+      console.log('[FREEMIUM] Step 5: No user found, creating profile entry for email:', normalizedEmail)
       
-      // Try to create pending activation record
+      // Generate a placeholder ID that starts with 'pending_'
+      // This will be replaced when the user actually signs up
+      const placeholderId = `pending_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+      
       try {
-        // First check if table exists by trying to select
-        const { error: checkError } = await supabase
-          .from('pending_pro_activations')
-          .select('email')
-          .limit(1)
+        // Insert a new profile with Pro status
+        const { error: insertError, data: insertData } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: placeholderId,
+            email: normalizedEmail,
+            is_pro: true,
+            plan: 'pro',
+            subscription_id: subscriptionId,
+            customer_id: customerId,
+            subscription_status: 'active',
+            created_at: new Date().toISOString()
+          })
+          .select()
         
-        if (!checkError) {
-          // Table exists, upsert the record
-          const { error: upsertError } = await supabase
+        if (insertError) {
+          console.error('[FREEMIUM] Failed to create pending profile:', insertError.message)
+          console.error('[FREEMIUM] ⚠️ MANUAL ACTION NEEDED: Grant Pro to email', normalizedEmail)
+          console.error('[FREEMIUM] Details: subscriptionId=', subscriptionId, 'customerId=', customerId)
+          return false
+        }
+        
+        console.log('[FREEMIUM] ✅ Created pending Pro profile:', insertData)
+        console.log('[FREEMIUM] User will be upgraded when they sign up with email:', normalizedEmail)
+        
+        // Also try to store in pending_pro_activations for redundancy (if table exists)
+        try {
+          await supabase
             .from('pending_pro_activations')
             .upsert({
               email: normalizedEmail,
@@ -723,27 +747,15 @@ export async function updateUserToPro(
             }, {
               onConflict: 'email'
             })
-          
-          if (upsertError) {
-            console.error('[FREEMIUM] Pending activation upsert error:', upsertError.message)
-          } else {
-            console.log('[FREEMIUM] ✅ Stored pending activation successfully')
-          }
-        } else {
-          console.log('[FREEMIUM] pending_pro_activations table check error:', checkError.message)
-          
-          // Try to create the table
-          console.log('[FREEMIUM] Attempting to create pending_pro_activations table...')
+        } catch {
+          // Ignore if table doesn't exist
         }
-      } catch (pendingErr) {
-        console.log('[FREEMIUM] Could not store pending activation:', pendingErr)
+        
+        return true
+      } catch (createErr) {
+        console.error('[FREEMIUM] Exception creating pending profile:', createErr)
+        return false
       }
-      
-      // IMPORTANT: Return FALSE here because the user was NOT found
-      // This makes the error visible in logs
-      console.error('[FREEMIUM] ❌ FAILED: User not found for email:', normalizedEmail)
-      console.error('[FREEMIUM] The user must sign up with this exact email to receive Pro status')
-      return false
     }
 
     console.error('[FREEMIUM] FAILED: No userId or email provided')
@@ -825,6 +837,142 @@ export async function downgradeUserFromPro(
     }
   } catch (err) {
     console.error('[FREEMIUM] Exception downgrading user:', err)
+    return false
+  }
+}
+
+/**
+ * Claim pending Pro status when a user signs up
+ * This should be called after user authentication to check if they have a pending Pro grant
+ * Looks for profiles with id starting with 'pending_' and matching email
+ */
+export async function claimPendingProStatus(userId: string, email: string): Promise<boolean> {
+  console.log('[FREEMIUM] ========== CLAIM PENDING PRO STATUS ==========')
+  console.log('[FREEMIUM] Input:', { userId, email })
+  
+  if (!isServerSupabaseConfigured()) {
+    console.log('[FREEMIUM] Supabase not configured')
+    return false
+  }
+
+  const supabase = createServerClient()
+  if (!supabase) {
+    console.log('[FREEMIUM] Cannot create Supabase client')
+    return false
+  }
+
+  const normalizedEmail = email?.toLowerCase()?.trim()
+  if (!normalizedEmail) {
+    console.log('[FREEMIUM] No email provided')
+    return false
+  }
+
+  try {
+    // Look for a pending profile with this email (profile with id starting with 'pending_')
+    const { data: pendingProfile, error: findError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .ilike('email', normalizedEmail)
+      .like('id', 'pending_%')
+      .maybeSingle()
+
+    if (findError) {
+      console.log('[FREEMIUM] Error looking for pending profile:', findError.message)
+      return false
+    }
+
+    if (!pendingProfile) {
+      console.log('[FREEMIUM] No pending Pro grant found for email:', normalizedEmail)
+      
+      // Also check pending_pro_activations table (if exists)
+      try {
+        const { data: pendingActivation } = await supabase
+          .from('pending_pro_activations')
+          .select('*')
+          .ilike('email', normalizedEmail)
+          .maybeSingle()
+        
+        if (pendingActivation) {
+          console.log('[FREEMIUM] Found pending activation in backup table:', pendingActivation)
+          
+          // Activate Pro for the user
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .upsert({
+              id: userId,
+              email: normalizedEmail,
+              is_pro: true,
+              plan: 'pro',
+              subscription_id: pendingActivation.subscription_id,
+              customer_id: pendingActivation.customer_id,
+              subscription_status: 'active',
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'id'
+            })
+          
+          if (!updateError) {
+            // Delete the pending activation
+            await supabase
+              .from('pending_pro_activations')
+              .delete()
+              .eq('email', normalizedEmail)
+            
+            console.log('[FREEMIUM] ✅ Pro status claimed from pending_pro_activations')
+            return true
+          }
+        }
+      } catch {
+        // Table might not exist, ignore
+      }
+      
+      return false
+    }
+
+    console.log('[FREEMIUM] Found pending Pro grant:', {
+      pendingId: pendingProfile.id,
+      email: pendingProfile.email,
+      subscription_id: pendingProfile.subscription_id
+    })
+
+    // Transfer the Pro status to the real user
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        id: userId,
+        email: normalizedEmail,
+        is_pro: true,
+        plan: 'pro',
+        subscription_id: pendingProfile.subscription_id,
+        customer_id: pendingProfile.customer_id,
+        subscription_status: 'active',
+        daily_usage_count: 0,
+        last_usage_timestamp: null,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id'
+      })
+
+    if (updateError) {
+      console.error('[FREEMIUM] Error claiming Pro status:', updateError.message)
+      return false
+    }
+
+    // Delete the pending profile
+    const { error: deleteError } = await supabase
+      .from('user_profiles')
+      .delete()
+      .eq('id', pendingProfile.id)
+
+    if (deleteError) {
+      console.log('[FREEMIUM] Warning: Could not delete pending profile:', deleteError.message)
+      // This is not critical, the user has Pro status now
+    }
+
+    console.log('[FREEMIUM] ✅ Pro status claimed successfully for user', userId)
+    return true
+  } catch (err) {
+    console.error('[FREEMIUM] Exception claiming Pro status:', err)
     return false
   }
 }

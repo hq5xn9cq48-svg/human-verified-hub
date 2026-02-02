@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { claimPendingProStatus } from '@/lib/freemium'
 
 // Create admin client for user_profiles operations
 function createAdminClient() {
@@ -211,6 +212,21 @@ export async function GET(request: Request) {
         user.email,
         user.user_metadata?.full_name || user.user_metadata?.name
       )
+      
+      // CRITICAL: Check for pending Pro status (profiles with id starting with 'pending_')
+      // This handles users who paid before signing up
+      if (user.email) {
+        console.log(`[AUTH CALLBACK] Checking for pending Pro grant for: ${user.email}`)
+        try {
+          const claimed = await claimPendingProStatus(user.id, user.email)
+          if (claimed) {
+            console.log(`[AUTH CALLBACK] ✅ Pro status claimed for: ${user.email}`)
+          }
+        } catch (claimErr) {
+          console.error('[AUTH CALLBACK] Error claiming pending Pro status:', claimErr)
+          // Don't block login on this error
+        }
+      }
       
       // Check if this is a recovery session
       if (user.aud === 'authenticated' && user.recovery_sent_at) {

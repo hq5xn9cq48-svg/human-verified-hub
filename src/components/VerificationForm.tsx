@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { analyzeText, type AnalysisResult } from '@/lib/gemini'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { Loader2, BarChart3, Check, X, AlertCircle, RefreshCw, FileSearch } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface VerificationFormProps {
   userId: string
@@ -16,6 +18,8 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { refreshUsageStatus } = useAuth()
+  const { language } = useLanguage()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,7 +33,7 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
     setResult(null)
 
     try {
-      const analysisResult = await analyzeText(text)
+      const analysisResult = await analyzeText(text, language)
       setResult(analysisResult)
 
       // Save to database if Supabase is configured
@@ -54,6 +58,9 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
       setError(err.message || 'Failed to analyze text. Please try again.')
     } finally {
       setLoading(false)
+      // CRITICAL: Refresh usage counter after each analysis attempt
+      // This ensures the UI reflects the updated remaining uses
+      await refreshUsageStatus()
     }
   }
 

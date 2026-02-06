@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { Crown, Zap, AlertCircle, Infinity } from 'lucide-react'
+import { Crown, Gift, AlertCircle, Infinity } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
@@ -48,7 +48,7 @@ export default function UsageCounter({
           href="/auth"
           className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-900/30 border border-purple-500/30 rounded-full hover:bg-purple-900/50 transition-all"
         >
-          <Zap className="w-4 h-4 text-purple-400" />
+          <Gift className="w-4 h-4 text-purple-400" />
           <span className="text-sm text-gray-300">
             {language === 'ar' ? 'سجل دخول للتتبع' : 'Sign in to track usage'}
           </span>
@@ -101,7 +101,7 @@ export default function UsageCounter({
           {isLimitReached ? (
             <AlertCircle className="w-4 h-4 text-red-400 animate-pulse" />
           ) : (
-            <Zap className={`w-4 h-4 ${isLow ? 'text-yellow-400' : 'text-purple-400'}`} />
+            <Gift className={`w-4 h-4 ${isLow ? 'text-yellow-400' : 'text-purple-400'}`} />
           )}
           
           {/* Usage count with label */}
@@ -155,7 +155,7 @@ export default function UsageCounter({
           {isLimitReached ? (
             <AlertCircle className="w-5 h-5 text-red-400" />
           ) : (
-            <Zap className={`w-5 h-5 ${isLow ? 'text-yellow-400' : 'text-purple-400'}`} />
+            <Gift className={`w-5 h-5 ${isLow ? 'text-yellow-400' : 'text-purple-400'}`} />
           )}
           <span className={`font-medium ${
             isLimitReached ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'

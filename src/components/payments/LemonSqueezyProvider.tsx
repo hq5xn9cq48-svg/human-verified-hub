@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { useEffect, createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react'
 
 interface LemonSqueezyContextType {
   isReady: boolean
   openCheckout: (url: string, options?: CheckoutOptions) => void
+  isActivating: boolean // True while polling for Pro activation after payment
 }
 
 interface CheckoutOptions {
@@ -16,7 +17,8 @@ interface CheckoutOptions {
 
 const LemonSqueezyContext = createContext<LemonSqueezyContextType>({
   isReady: false,
-  openCheckout: () => {}
+  openCheckout: () => {},
+  isActivating: false
 })
 
 export function useLemonSqueezy() {
@@ -27,8 +29,78 @@ interface LemonSqueezyProviderProps {
   children: ReactNode
 }
 
+/**
+ * Poll the refresh-pro endpoint until Pro status is activated
+ * This handles the delay between payment and webhook processing
+ */
+async function pollForProActivation(maxAttempts: number = 15, intervalMs: number = 3000): Promise<boolean> {
+  console.log('[LemonSqueezy] Starting Pro activation polling...')
+  
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`[LemonSqueezy] Polling attempt ${attempt}/${maxAttempts}`)
+      
+      // Get fresh session token
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.access_token) {
+        console.log('[LemonSqueezy] No session token available')
+        await new Promise(resolve => setTimeout(resolve, intervalMs))
+        continue
+      }
+      
+      // Call refresh-pro endpoint to check and activate Pro
+      const response = await fetch('/api/user/refresh-pro', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      })
+      
+      const data = await response.json()
+      console.log(`[LemonSqueezy] Poll result:`, { isPro: data.isPro, activated: data.activated })
+      
+      if (data.isPro === true) {
+        console.log('[LemonSqueezy] Pro activation confirmed!')
+        return true
+      }
+      
+      // Also check usage endpoint as fallback
+      const usageResponse = await fetch(`/api/user/usage?force=true&t=${Date.now()}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Cache-Control': 'no-cache'
+        }
+      })
+      const usageData = await usageResponse.json()
+      
+      if (usageData.isPro === true) {
+        console.log('[LemonSqueezy] Pro confirmed via usage endpoint!')
+        return true
+      }
+      
+    } catch (err) {
+      console.error(`[LemonSqueezy] Poll error:`, err)
+    }
+    
+    // Wait before next attempt
+    if (attempt < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, intervalMs))
+    }
+  }
+  
+  console.log('[LemonSqueezy] Pro activation polling timed out')
+  return false
+}
+
 export function LemonSqueezyProvider({ children }: LemonSqueezyProviderProps) {
   const [isReady, setIsReady] = useState(false)
+  const [isActivating, setIsActivating] = useState(false)
+  const pollingRef = useRef(false)
 
   useEffect(() => {
     // Load LemonSqueezy.js script
@@ -59,7 +131,7 @@ export function LemonSqueezyProvider({ children }: LemonSqueezyProviderProps) {
 
     // Cleanup
     return () => {
-      // LemonSqueezy doesn't require cleanup
+      pollingRef.current = false
     }
   }, [])
 
@@ -93,11 +165,42 @@ export function LemonSqueezyProvider({ children }: LemonSqueezyProviderProps) {
         document.body.style.overflow = 'hidden'
         
         // Listen for close event
-        const handleMessage = (event: MessageEvent) => {
+        const handleMessage = async (event: MessageEvent) => {
           if (event.data === 'Checkout.Success') {
-            options?.onSuccess?.()
             document.body.style.overflow = ''
             window.removeEventListener('message', handleMessage)
+            
+            // IMPORTANT: Don't just reload - poll for Pro activation first
+            // The webhook may take a few seconds to process
+            console.log('[LemonSqueezy] Payment successful! Starting Pro activation polling...')
+            setIsActivating(true)
+            pollingRef.current = true
+            
+            try {
+              const activated = await pollForProActivation(15, 3000) // 15 attempts, 3s interval = ~45s max
+              
+              if (activated) {
+                console.log('[LemonSqueezy] Pro activated! Refreshing page...')
+                // Call onSuccess callback first
+                options?.onSuccess?.()
+                // Small delay then reload to show Pro status
+                setTimeout(() => {
+                  window.location.reload()
+                }, 500)
+              } else {
+                console.log('[LemonSqueezy] Pro not yet activated after polling, reloading anyway...')
+                options?.onSuccess?.()
+                // Reload anyway - user can manually refresh later
+                window.location.reload()
+              }
+            } catch (err) {
+              console.error('[LemonSqueezy] Polling error:', err)
+              options?.onSuccess?.()
+              window.location.reload()
+            } finally {
+              setIsActivating(false)
+              pollingRef.current = false
+            }
           } else if (event.data === 'Checkout.Close') {
             options?.onClose?.()
             document.body.style.overflow = ''
@@ -117,7 +220,7 @@ export function LemonSqueezyProvider({ children }: LemonSqueezyProviderProps) {
   }, [isReady])
 
   return (
-    <LemonSqueezyContext.Provider value={{ isReady, openCheckout }}>
+    <LemonSqueezyContext.Provider value={{ isReady, openCheckout, isActivating }}>
       {children}
     </LemonSqueezyContext.Provider>
   )

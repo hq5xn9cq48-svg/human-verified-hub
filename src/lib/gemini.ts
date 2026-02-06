@@ -21,11 +21,28 @@ export interface AnalysisResult {
   }[]
 }
 
-export async function analyzeText(text: string): Promise<AnalysisResult> {
+export async function analyzeText(text: string, language: string = 'en'): Promise<AnalysisResult> {
+  // Build headers with auth token if available
+  const headers: HeadersInit = { 'Content-Type': 'application/json' }
+  
+  // Get auth token from Supabase session to identify the user
+  // This is CRITICAL for usage tracking - without it, the API treats the user as a guest
+  try {
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+  } catch (e) {
+    // If Supabase is not configured, continue without auth
+    console.log('[analyzeText] Could not get auth token:', e)
+  }
+
   const response = await fetch('/api/analyze', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    headers,
+    body: JSON.stringify({ text, language }),
   })
 
   if (!response.ok) {

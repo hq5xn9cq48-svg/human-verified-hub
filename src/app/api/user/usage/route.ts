@@ -147,6 +147,18 @@ export async function GET(request: NextRequest) {
           subscriptionStatus = profile.subscription_status
           dailyUsageCount = profile.daily_usage_count || 0
           
+          // Check if 24h window has passed and reset count accordingly
+          const lastTimestamp = profile.last_usage_timestamp
+          if (lastTimestamp && !directIsPro) {
+            const lastUse = new Date(lastTimestamp)
+            const now = new Date()
+            const hoursSinceLastUse = (now.getTime() - lastUse.getTime()) / (1000 * 60 * 60)
+            if (hoursSinceLastUse >= 24) {
+              // 24h passed, usage should be reset
+              dailyUsageCount = 0
+            }
+          }
+          
           // Use database values directly for usage
           usedToday = dailyUsageCount
           remaining = directIsPro ? -1 : Math.max(0, 2 - dailyUsageCount)

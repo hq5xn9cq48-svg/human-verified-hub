@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { 
   Crown, Check, X, Zap, Shield, Clock, FileText, 
   Image, Wand2, History, Download, ArrowRight, Sparkles,
-  Infinity
+  Infinity, Loader2
 } from 'lucide-react'
 
 // Lemon Squeezy checkout URLs - use environment variables
@@ -104,7 +104,7 @@ const features: PlanFeature[] = [
 export default function PricingPage() {
   const { language, isRTL, isLoaded } = useLanguage()
   const { user, usageStatus } = useAuth()
-  const { openCheckout, isReady } = useLemonSqueezy()
+  const { openCheckout, isReady, isActivating } = useLemonSqueezy()
   const router = useRouter()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
 
@@ -146,6 +146,38 @@ export default function PricingPage() {
         console.log('[Checkout] User closed the checkout overlay')
       }
     })
+  }
+
+  // Show activation overlay when payment is being processed
+  if (isActivating) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center p-8 max-w-md"
+        >
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full animate-ping opacity-20" />
+            <div className="relative w-20 h-20 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
+              <Loader2 className="w-10 h-10 text-white animate-spin" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">
+            {language === 'ar' ? 'جاري تفعيل اشتراك Pro...' : 'Activating Pro Subscription...'}
+          </h2>
+          <p className="text-gray-400 mb-4">
+            {language === 'ar' 
+              ? 'شكراً لك! نقوم بتفعيل حسابك الآن. يرجى الانتظار قليلاً...'
+              : 'Thank you! We are activating your account now. Please wait a moment...'}
+          </p>
+          <div className="flex items-center justify-center gap-2 text-purple-400 text-sm">
+            <Crown className="w-4 h-4" />
+            <span>{language === 'ar' ? 'تتم المعالجة...' : 'Processing...'}</span>
+          </div>
+        </motion.div>
+      </div>
+    )
   }
 
   return (

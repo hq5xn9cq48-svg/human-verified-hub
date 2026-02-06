@@ -25,6 +25,7 @@ import {
   BookOpen,
   Crown,
   Zap,
+  Gift,
   AlertCircle,
   Star
 } from 'lucide-react'
@@ -137,7 +138,7 @@ export default function Navbar() {
                 {usageStatus.remaining <= 0 ? (
                   <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
                 ) : (
-                  <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
+                  <Gift className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
                 )}
                 <span className={`text-xs sm:text-sm font-bold ${usageStatus.remaining <= 0 ? 'text-red-400' : usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-white'}`}>
                   {usageStatus.remaining}/{usageStatus.limit}
@@ -399,7 +400,7 @@ export default function Navbar() {
                               {usageStatus.remaining <= 0 ? (
                                 <AlertCircle className="w-4 h-4 text-red-400" />
                               ) : (
-                                <Zap className={`w-4 h-4 ${usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
+                                <Gift className={`w-4 h-4 ${usageStatus.remaining <= 1 ? 'text-yellow-400' : 'text-purple-400'}`} />
                               )}
                               <span className="text-sm text-gray-300">
                                 {language === 'ar' ? 'الاستخدام المتبقي' : 'Free Uses'}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { updateUserToPro, downgradeUserFromPro } from '@/lib/freemium'
+import { createServerClient, isServerSupabaseConfigured } from '@/lib/supabase/server'
 
 // ============================================================================
 // CONFIGURATION
@@ -238,7 +239,26 @@ export async function POST(request: NextRequest) {
           if (success) {
             logWebhook('✅ User upgraded to Pro successfully', { userEmail })
           } else {
-            logError('❌ Failed to upgrade user', { userEmail, subscriptionId })
+            logError('❌ Failed to upgrade user via profile, saving pending activation', { userEmail, subscriptionId })
+            // Ensure we save a pending activation so polling can find it
+            if (userEmail && isServerSupabaseConfigured()) {
+              try {
+                const serverSb = createServerClient()
+                if (serverSb) {
+                  await serverSb
+                    .from('pending_pro_activations')
+                    .upsert({
+                      email: userEmail.toLowerCase().trim(),
+                      subscription_id: subscriptionId || '',
+                      customer_id: customerId || '',
+                      created_at: new Date().toISOString()
+                    }, { onConflict: 'email' })
+                  logWebhook('✅ Saved pending activation for email', { userEmail })
+                }
+              } catch (pendingErr) {
+                logError('Failed to save pending activation', pendingErr)
+              }
+            }
           }
         } else {
           logWebhook('Skipping activation - status not active', { status })
@@ -299,7 +319,26 @@ export async function POST(request: NextRequest) {
           if (success) {
             logWebhook('✅ User upgraded to Pro via order', { orderEmail, orderId })
           } else {
-            logError('❌ Failed to upgrade user via order', { orderEmail, orderId })
+            logError('❌ Failed to upgrade user via order, saving pending activation', { orderEmail, orderId })
+            // Save pending activation so polling can find it
+            if (orderEmail && isServerSupabaseConfigured()) {
+              try {
+                const serverSb = createServerClient()
+                if (serverSb) {
+                  await serverSb
+                    .from('pending_pro_activations')
+                    .upsert({
+                      email: orderEmail.toLowerCase().trim(),
+                      subscription_id: `order_${orderId}`,
+                      customer_id: orderCustomerId || `customer_${orderId}`,
+                      created_at: new Date().toISOString()
+                    }, { onConflict: 'email' })
+                  logWebhook('✅ Saved pending activation for order email', { orderEmail })
+                }
+              } catch (pendingErr) {
+                logError('Failed to save pending activation for order', pendingErr)
+              }
+            }
           }
         }
         break

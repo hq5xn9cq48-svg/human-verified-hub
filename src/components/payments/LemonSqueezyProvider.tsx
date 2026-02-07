@@ -32,8 +32,9 @@ interface LemonSqueezyProviderProps {
 /**
  * Poll the refresh-pro endpoint until Pro status is activated
  * This handles the delay between payment and webhook processing
+ * Uses progressive interval: starts fast (2s), then slows down (3s, then 5s)
  */
-async function pollForProActivation(maxAttempts: number = 15, intervalMs: number = 3000): Promise<boolean> {
+async function pollForProActivation(maxAttempts: number = 20): Promise<boolean> {
   console.log('[LemonSqueezy] Starting Pro activation polling...')
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -47,7 +48,7 @@ async function pollForProActivation(maxAttempts: number = 15, intervalMs: number
       
       if (!session?.access_token) {
         console.log('[LemonSqueezy] No session token available')
-        await new Promise(resolve => setTimeout(resolve, intervalMs))
+        await new Promise(resolve => setTimeout(resolve, 2000))
         continue
       }
       
@@ -57,7 +58,8 @@ async function pollForProActivation(maxAttempts: number = 15, intervalMs: number
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
       })
       
@@ -65,15 +67,16 @@ async function pollForProActivation(maxAttempts: number = 15, intervalMs: number
       console.log(`[LemonSqueezy] Poll result:`, { isPro: data.isPro, activated: data.activated })
       
       if (data.isPro === true) {
-        console.log('[LemonSqueezy] Pro activation confirmed!')
+        console.log('[LemonSqueezy] Pro activation confirmed via refresh-pro!')
         return true
       }
       
-      // Also check usage endpoint as fallback
+      // Also check usage endpoint as fallback (webhook may have updated profile directly)
       const usageResponse = await fetch(`/api/user/usage?force=true&t=${Date.now()}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
         }
       })
       const usageData = await usageResponse.json()
@@ -87,9 +90,11 @@ async function pollForProActivation(maxAttempts: number = 15, intervalMs: number
       console.error(`[LemonSqueezy] Poll error:`, err)
     }
     
-    // Wait before next attempt
+    // Progressive interval: first 5 attempts = 2s, next 5 = 3s, rest = 5s
+    // Total max time: ~5*2 + 5*3 + 10*5 = 10+15+50 = 75s
     if (attempt < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, intervalMs))
+      const interval = attempt <= 5 ? 2000 : attempt <= 10 ? 3000 : 5000
+      await new Promise(resolve => setTimeout(resolve, interval))
     }
   }
   
@@ -177,7 +182,7 @@ export function LemonSqueezyProvider({ children }: LemonSqueezyProviderProps) {
             pollingRef.current = true
             
             try {
-              const activated = await pollForProActivation(15, 3000) // 15 attempts, 3s interval = ~45s max
+              const activated = await pollForProActivation(20) // 20 attempts with progressive intervals (~75s max)
               
               if (activated) {
                 console.log('[LemonSqueezy] Pro activated! Refreshing page...')

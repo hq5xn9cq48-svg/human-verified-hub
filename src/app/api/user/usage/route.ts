@@ -148,14 +148,23 @@ export async function GET(request: NextRequest) {
           dailyUsageCount = profile.daily_usage_count || 0
           
           // Check if 24h window has passed and reset count accordingly
+          // IMPORTANT: If last_usage_timestamp is null/undefined, treat usage as reset (new user or no usage yet)
           const lastTimestamp = profile.last_usage_timestamp
-          if (lastTimestamp && !directIsPro) {
-            const lastUse = new Date(lastTimestamp)
-            const now = new Date()
-            const hoursSinceLastUse = (now.getTime() - lastUse.getTime()) / (1000 * 60 * 60)
-            if (hoursSinceLastUse >= 24) {
-              // 24h passed, usage should be reset
+          if (!directIsPro) {
+            if (!lastTimestamp) {
+              // No last usage timestamp means user hasn't used the service yet or data was cleared
+              // Reset count to 0 - they should have full quota
+              console.log(`[USER-USAGE] No last_usage_timestamp - resetting count to 0`)
               dailyUsageCount = 0
+            } else {
+              const lastUse = new Date(lastTimestamp)
+              const now = new Date()
+              const hoursSinceLastUse = (now.getTime() - lastUse.getTime()) / (1000 * 60 * 60)
+              if (hoursSinceLastUse >= 24) {
+                // 24h passed, usage should be reset
+                console.log(`[USER-USAGE] 24h passed since last use (${hoursSinceLastUse.toFixed(1)}h) - resetting count`)
+                dailyUsageCount = 0
+              }
             }
           }
           
@@ -169,7 +178,12 @@ export async function GET(request: NextRequest) {
           console.log(`  - subscription_status: ${subscriptionStatus}`)
           console.log(`  - daily_usage_count: ${dailyUsageCount}`)
         } else {
-          console.log(`[USER-USAGE] No profile found for user - will use defaults`)
+          console.log(`[USER-USAGE] No profile found for user - using fresh defaults (2/2 remaining)`)
+          // No profile means the user is new and hasn't used the service yet
+          // They should have full quota (2/2)
+          usedToday = 0
+          remaining = 2
+          dailyUsageCount = 0
         }
       }
     }

@@ -36,7 +36,7 @@ interface PromptResult {
 function ImageToPromptContent() {
   const router = useRouter()
   const { language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus, updateUsageFromResponse } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [mounted, setMounted] = useState(false)
   
@@ -123,7 +123,11 @@ function ImageToPromptContent() {
         throw new Error(data.error || 'Generation failed')
       }
       
-      // Refresh usage status after successful analysis
+      // INSTANT UI UPDATE: Use usage status from API response
+      if (data.usageStatus) {
+        updateUsageFromResponse(data.usageStatus)
+      }
+      // Background refresh for consistency
       refreshUsageStatus()
 
       setResult(data)

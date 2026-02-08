@@ -4,7 +4,11 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { analyzeText, type AnalysisResult } from '@/lib/gemini'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { Loader2, BarChart3, Check, X, AlertCircle, RefreshCw, FileSearch } from 'lucide-react'
+import { 
+  Loader2, BarChart3, Check, X, AlertCircle, RefreshCw, FileSearch,
+  Shield, Brain, Sparkles, Bot, User, TrendingUp, TrendingDown, Minus,
+  Activity, FileText, Zap
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -18,7 +22,7 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const { refreshUsageStatus } = useAuth()
+  const { refreshUsageStatus, updateUsageFromResponse } = useAuth()
   const { language } = useLanguage()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,6 +39,11 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
     try {
       const analysisResult = await analyzeText(text, language)
       setResult(analysisResult)
+
+      // INSTANT UI UPDATE: Use usage status from API response
+      if (analysisResult.usageStatus) {
+        updateUsageFromResponse(analysisResult.usageStatus)
+      }
 
       // Save to database if Supabase is configured
       if (isSupabaseConfigured()) {
@@ -58,34 +67,44 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
       setError(err.message || 'Failed to analyze text. Please try again.')
     } finally {
       setLoading(false)
-      // CRITICAL: Refresh usage counter after each analysis attempt
-      // This ensures the UI reflects the updated remaining uses
+      // Background refresh for full consistency
       await refreshUsageStatus()
     }
   }
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-400'
-    if (score >= 50) return 'text-yellow-400'
+    if (score >= 61) return 'text-green-400'
+    if (score >= 31) return 'text-yellow-400'
     return 'text-red-400'
   }
 
   const getScoreLabel = (score: number) => {
-    if (score >= 80) return 'Likely Human Written'
-    if (score >= 50) return 'Mixed Signals'
-    return 'Likely AI Generated'
+    if (language === 'ar') {
+      if (score >= 61) return 'كتابة بشرية'
+      if (score >= 31) return 'إشارات مختلطة'
+      return 'مُنشأ بالذكاء الاصطناعي'
+    }
+    if (score >= 61) return 'Human Written'
+    if (score >= 31) return 'Mixed Signals'
+    return 'AI Generated'
   }
 
   const getScoreGradient = (score: number) => {
-    if (score >= 80) return 'from-green-500 to-emerald-500'
-    if (score >= 50) return 'from-yellow-500 to-orange-500'
+    if (score >= 61) return 'from-green-500 to-emerald-500'
+    if (score >= 31) return 'from-yellow-500 to-orange-500'
     return 'from-red-500 to-rose-500'
   }
 
   const getScoreBg = (score: number) => {
-    if (score >= 80) return 'bg-green-500/10 border-green-500/30'
-    if (score >= 50) return 'bg-yellow-500/10 border-yellow-500/30'
-    return 'bg-red-500/10 border-red-500/30'
+    if (score >= 61) return 'from-green-500 to-emerald-600'
+    if (score >= 31) return 'from-yellow-500 to-orange-600'
+    return 'from-red-500 to-rose-600'
+  }
+
+  const getScoreIcon = (score: number) => {
+    if (score >= 61) return <User className="w-5 h-5" />
+    if (score >= 31) return <Minus className="w-5 h-5" />
+    return <Bot className="w-5 h-5" />
   }
 
   return (
@@ -152,97 +171,180 @@ export default function VerificationForm({ userId, onNewVerification }: Verifica
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="space-y-6"
+            className="space-y-5"
           >
-            {/* Score Display */}
-            <div className="bg-black/50 border border-purple-900/30 rounded-xl p-8">
-              <div className="text-center mb-6">
-                <motion.div
-                  className={`text-6xl font-bold ${getScoreColor(result.humanScore)}`}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                >
-                  {result.humanScore}%
-                </motion.div>
-                <motion.div
-                  className={`text-lg font-medium mt-2 px-4 py-1.5 rounded-full inline-block border ${getScoreBg(result.humanScore)} ${getScoreColor(result.humanScore)}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  {getScoreLabel(result.humanScore)}
-                </motion.div>
+            {/* Premium Report Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 border border-purple-500/30"
+            >
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-5">
+                <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px'}} />
               </div>
+              
+              {/* Header Banner */}
+              <div className="relative bg-gradient-to-r from-purple-600/40 via-purple-500/30 to-purple-600/40 px-5 py-3 border-b border-purple-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30">
+                    <Shield className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-semibold text-white">
+                      {language === 'ar' ? 'تقرير التحليل الجنائي' : 'Forensic Analysis Report'}
+                    </h2>
+                    <p className="text-xs text-purple-300/70">Human Verified Hub</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Score Section */}
+              <div className="relative p-6">
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  {/* Score Circle */}
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+                    className="relative"
+                  >
+                    <div className={`relative w-32 h-32 rounded-full p-1 bg-gradient-to-br ${getScoreBg(result.humanScore)}`}>
+                      <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className={`text-4xl font-bold ${getScoreColor(result.humanScore)}`}>
+                            {result.humanScore}
+                          </div>
+                          <div className="text-sm text-gray-400">%</div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Badge */}
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full shadow-lg bg-gradient-to-r ${getScoreGradient(result.humanScore)} text-white`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {getScoreIcon(result.humanScore)}
+                        <span className="text-xs font-semibold">{getScoreLabel(result.humanScore)}</span>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                  
+                  {/* Verdict */}
+                  <div className="flex-1 text-center sm:text-start">
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <h3 className={`text-xl font-bold mb-2 ${getScoreColor(result.humanScore)}`}>
+                        {getScoreLabel(result.humanScore)}
+                      </h3>
+                    </motion.div>
+                    
+                    {/* Progress Bar */}
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4 }}
+                      className="mt-4"
+                    >
+                      <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${result.humanScore}%` }}
+                          transition={{ duration: 1, delay: 0.5 }}
+                          className={`h-full bg-gradient-to-r ${getScoreGradient(result.humanScore)} rounded-full relative`}
+                        >
+                          <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                        </motion.div>
+                      </div>
+                      <div className="flex justify-between mt-1.5 text-[10px] text-gray-500">
+                        <span className="flex items-center gap-1"><Bot className="w-3 h-3" /> AI (0%)</span>
+                        <span>{language === 'ar' ? 'هجين' : 'Mixed'} (50%)</span>
+                        <span className="flex items-center gap-1"><User className="w-3 h-3" /> {language === 'ar' ? 'بشري' : 'Human'} (100%)</span>
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
 
-              {/* Progress Bar */}
-              <div className="relative h-4 bg-gray-800 rounded-full overflow-hidden">
-                <motion.div
-                  className={`h-full bg-gradient-to-r ${getScoreGradient(result.humanScore)} rounded-full`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${result.humanScore}%` }}
-                  transition={{ duration: 1, ease: 'easeOut' }}
-                />
-              </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-500">
-                <span>AI Generated</span>
-                <span>Human Written</span>
-              </div>
-            </div>
-
-            {/* Analysis */}
-            <div className="bg-black/50 border border-purple-900/30 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-purple-400" />
-                Detailed Analysis
+            {/* Analysis Summary */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="p-5 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50"
+            >
+              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-purple-500/20">
+                  <Brain className="w-4 h-4 text-purple-400" />
+                </div>
+                {language === 'ar' ? 'التحليل المفصل' : 'Detailed Analysis'}
               </h3>
-              <p className="text-gray-300 leading-relaxed">{result.analysis}</p>
-            </div>
+              <p className="text-gray-300 text-sm leading-relaxed">{result.analysis}</p>
+            </motion.div>
 
             {/* Indicators */}
             {result.indicators && result.indicators.length > 0 && (
-              <div className="bg-black/50 border border-purple-900/30 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <FileSearch className="w-5 h-5 text-purple-400" />
-                  Key Indicators
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="p-5 bg-gradient-to-br from-purple-900/20 to-slate-900/50 rounded-xl border border-purple-500/20"
+              >
+                <h3 className="text-sm font-semibold text-purple-300 mb-4 flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-purple-500/20">
+                    <Sparkles className="w-4 h-4 text-purple-400" />
+                  </div>
+                  {language === 'ar' ? 'المؤشرات الرئيسية' : 'Key Indicators'}
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {result.indicators.map((indicator, index) => (
                     <motion.div
                       key={index}
-                      className={`flex items-start gap-3 p-3 rounded-lg ${
+                      className={`flex items-start gap-3 p-3 rounded-lg border ${
                         indicator.type === 'human'
-                          ? 'bg-green-500/10 border border-green-500/20'
-                          : 'bg-red-500/10 border border-red-500/20'
+                          ? 'bg-green-900/20 border-green-500/20'
+                          : 'bg-red-900/20 border-red-500/20'
                       }`}
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
+                      transition={{ delay: 0.7 + index * 0.1 }}
                     >
                       {indicator.type === 'human' ? (
-                        <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
+                        <div className="p-1 rounded bg-green-500/20 mt-0.5">
+                          <TrendingUp className="w-3 h-3 text-green-400" />
+                        </div>
                       ) : (
-                        <X className="w-5 h-5 text-red-400 flex-shrink-0" />
+                        <div className="p-1 rounded bg-red-500/20 mt-0.5">
+                          <TrendingDown className="w-3 h-3 text-red-400" />
+                        </div>
                       )}
-                      <span className="text-gray-300 text-sm">{indicator.description}</span>
+                      <span className="text-gray-300 text-sm flex-1">{indicator.description}</span>
                     </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* New Analysis Button */}
             <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
               onClick={() => {
                 setText('')
                 setResult(null)
               }}
-              className="w-full py-3 px-4 rounded-xl border border-purple-900/50 text-gray-300 hover:text-white hover:border-purple-500/50 transition-all flex items-center justify-center gap-2"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              className="w-full py-3.5 px-6 rounded-xl border border-slate-700 text-gray-300 hover:text-white hover:border-purple-500/50 hover:bg-purple-900/10 transition-all flex items-center justify-center gap-3 group"
             >
-              <RefreshCw className="w-4 h-4" />
-              Analyze New Text
+              <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+              {language === 'ar' ? 'تحليل نص جديد' : 'Analyze New Text'}
             </motion.button>
           </motion.div>
         )}

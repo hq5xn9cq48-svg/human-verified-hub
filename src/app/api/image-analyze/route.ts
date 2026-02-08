@@ -493,7 +493,7 @@ export async function POST(req: Request) {
       else verdict = 'Authentic Photo';
     }
 
-    const finalResult = {
+    const finalResult: Record<string, unknown> = {
       aiProbability: aiProb,
       verdict,
       confidenceLevel: ['high', 'medium', 'low'].includes(result.confidenceLevel as string) 
@@ -508,10 +508,20 @@ export async function POST(req: Request) {
     };
 
     logStep('=== ANALYSIS COMPLETE ===', { 
-      aiProbability: finalResult.aiProbability, 
-      verdict: finalResult.verdict,
-      model: finalResult.modelUsed
+      aiProbability: finalResult.aiProbability as number, 
+      verdict: finalResult.verdict as string,
+      model: finalResult.modelUsed as string
     });
+    
+    // Include usage status in response for instant UI update
+    if (usageStatus) {
+      finalResult.usageStatus = {
+        remaining: usageStatus.remaining,
+        usedToday: usageStatus.usedToday,
+        limit: usageStatus.limit,
+        isPro: usageStatus.isPro
+      }
+    }
     
     return NextResponse.json(finalResult);
 

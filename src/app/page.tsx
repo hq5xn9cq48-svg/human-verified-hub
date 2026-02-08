@@ -83,7 +83,7 @@ const loadingMessages = [
 export default function HomePage() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, usageStatus, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, usageStatus, refreshUsageStatus, updateUsageFromResponse } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [text, setText] = useState('')
   const [url, setUrl] = useState('')
@@ -171,8 +171,16 @@ export default function HomePage() {
         throw new Error(data.error || 'Analysis failed')
       }
 
-      refreshUsageStatus()
       setResult(data)
+
+      // INSTANT UI UPDATE: Use usage status from API response if available
+      if (data.usageStatus) {
+        console.log('[HomePage] Updating usage from file analysis response:', data.usageStatus)
+        updateUsageFromResponse(data.usageStatus)
+      }
+      
+      // Also do a background refresh for consistency
+      refreshUsageStatus()
 
     } catch (err: any) {
       setError(err.message || (language === 'ar' ? 'حدث خطأ' : 'An error occurred'))
@@ -292,10 +300,16 @@ export default function HomePage() {
         throw new Error(data.error || 'Analysis failed')
       }
       
-      // Refresh usage status after successful analysis
-      refreshUsageStatus()
-
       setResult(data)
+
+      // INSTANT UI UPDATE: Use usage status from API response if available
+      if (data.usageStatus) {
+        console.log('[HomePage] Updating usage from API response:', data.usageStatus)
+        updateUsageFromResponse(data.usageStatus)
+      }
+      
+      // Also do a background refresh to ensure full consistency
+      refreshUsageStatus()
 
       // Save to history (all features free in beta)
       if (user && isSupabaseConfigured()) {

@@ -19,6 +19,12 @@ export interface AnalysisResult {
     type: 'human' | 'ai'
     description: string
   }[]
+  usageStatus?: {
+    remaining: number
+    usedToday: number
+    limit: number
+    isPro: boolean
+  }
 }
 
 export async function analyzeText(text: string, language: string = 'en'): Promise<AnalysisResult> {
@@ -50,21 +56,28 @@ export async function analyzeText(text: string, language: string = 'en'): Promis
     throw new Error(errorData.error || 'Failed to analyze text')
   }
 
-  const data: ApiAnalyzeResponse = await response.json()
+  const data: any = await response.json()
   
   // Transform API response to match AnalysisResult interface
-  return {
+  const result: AnalysisResult = {
     humanScore: data.humanScore ?? 50,
     analysis: data.summary ?? 'Analysis completed.',
     indicators: [
-      ...(data.aiIndicators ?? []).map((i) => ({ 
+      ...(data.aiIndicators ?? []).map((i: ApiIndicator) => ({ 
         type: 'ai' as const, 
         description: i.description || i.pattern || 'AI indicator detected' 
       })),
-      ...(data.humanIndicators ?? []).map((i) => ({ 
+      ...(data.humanIndicators ?? []).map((i: ApiIndicator) => ({ 
         type: 'human' as const, 
         description: i.description || i.pattern || 'Human indicator detected' 
       })),
     ],
   }
+  
+  // Pass through usage status if available
+  if (data.usageStatus) {
+    result.usageStatus = data.usageStatus
+  }
+  
+  return result
 }

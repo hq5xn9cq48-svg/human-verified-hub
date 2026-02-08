@@ -60,7 +60,7 @@ const loadingMessagesAr = [
 function HumanizerContent() {
   const router = useRouter()
   const { t, language, isRTL, isLoaded } = useLanguage()
-  const { user, loading: authLoading, refreshUsageStatus } = useAuth()
+  const { user, loading: authLoading, refreshUsageStatus, updateUsageFromResponse } = useAuth()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')
@@ -145,7 +145,11 @@ function HumanizerContent() {
         throw new Error(data.error || 'Humanization failed')
       }
       
-      // Refresh usage status after successful analysis
+      // INSTANT UI UPDATE: Use usage status from API response
+      if (data.usageStatus) {
+        updateUsageFromResponse(data.usageStatus)
+      }
+      // Background refresh for consistency
       refreshUsageStatus()
 
       setOutputText(data.humanizedText || '')

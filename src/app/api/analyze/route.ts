@@ -811,6 +811,17 @@ export async function POST(req: Request) {
     result = normalizeResult(result, analysisText);
 
     logStep('=== ANALYSIS COMPLETE ===', { humanScore: result.humanScore, verdict: result.verdict });
+    
+    // Include usage status in response so client can update UI immediately
+    if (usageStatus) {
+      result.usageStatus = {
+        remaining: usageStatus.remaining,
+        usedToday: usageStatus.usedToday,
+        limit: usageStatus.limit,
+        isPro: usageStatus.isPro
+      }
+    }
+    
     return NextResponse.json(result);
 
   } catch (error: any) {

@@ -271,7 +271,18 @@ export async function POST(req: Request) {
     }
 
     logStep('Humanization complete', { outputLength: cleaned.length });
-    return NextResponse.json({ humanizedText: cleaned });
+    
+    // Include usage status in response for instant UI update
+    const responseData: any = { humanizedText: cleaned }
+    if (usageStatus) {
+      responseData.usageStatus = {
+        remaining: usageStatus.remaining,
+        usedToday: usageStatus.usedToday,
+        limit: usageStatus.limit,
+        isPro: usageStatus.isPro
+      }
+    }
+    return NextResponse.json(responseData);
 
   } catch (error: any) {
     logError("Unhandled error", error);

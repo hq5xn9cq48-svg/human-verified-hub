@@ -410,6 +410,16 @@ export async function POST(req: Request) {
 
     logStep('Analysis complete', { humanScore: normalizedResult.humanScore });
 
+    // Include usage status in response for instant UI update
+    if (usageStatus) {
+      normalizedResult.usageStatus = {
+        remaining: usageStatus.remaining,
+        usedToday: usageStatus.usedToday,
+        limit: usageStatus.limit,
+        isPro: usageStatus.isPro
+      }
+    }
+
     return NextResponse.json(normalizedResult);
 
   } catch (error: any) {

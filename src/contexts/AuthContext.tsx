@@ -25,6 +25,7 @@ interface AuthContextType {
   verifyOTP: (email: string, token: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshUsageStatus: () => Promise<void>
+  updateUsageFromResponse: (usageData: { remaining: number; usedToday: number; limit: number; isPro: boolean }) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -112,8 +113,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     console.log('[AuthContext] Session for refresh:', !!session)
-    await fetchUsageStatus(session, true) // Force refresh
+    await fetchUsageStatus(session, true) // Force refresh from DB
   }, [fetchUsageStatus])
+
+  // Update usage status directly from API response data (instant UI update)
+  const updateUsageFromResponse = useCallback((usageData: { remaining: number; usedToday: number; limit: number; isPro: boolean }) => {
+    console.log('[AuthContext] updateUsageFromResponse called with:', usageData)
+    setUsageStatus(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        remaining: usageData.remaining,
+        usedToday: usageData.usedToday,
+        limit: usageData.limit,
+        isPro: usageData.isPro
+      }
+    })
+  }, [])
 
   useEffect(() => {
     // Skip auth initialization if Supabase is not configured
@@ -282,7 +298,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithGoogle,
       verifyOTP, 
       signOut,
-      refreshUsageStatus
+      refreshUsageStatus,
+      updateUsageFromResponse
     }}>
       {children}
     </AuthContext.Provider>

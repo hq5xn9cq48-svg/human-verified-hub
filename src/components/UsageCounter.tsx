@@ -58,11 +58,12 @@ export default function UsageCounter({
   }
 
   // Free users see their remaining uses
-  const remaining = usageStatus.remaining
-  const limit = usageStatus.limit
+  const remaining = usageStatus.remaining ?? 2
+  const limit = usageStatus.limit ?? 2
+  const usedToday = usageStatus.usedToday ?? 0
   const isLimitReached = remaining <= 0
-  const isLow = remaining <= 1 && remaining > 0
-  const usagePercentage = ((limit - remaining) / limit) * 100
+  const isLow = remaining === 1
+  const usagePercentage = limit > 0 ? (usedToday / limit) * 100 : 0
 
   if (variant === 'compact') {
     return (
@@ -104,21 +105,27 @@ export default function UsageCounter({
             <Gift className={`w-4 h-4 ${isLow ? 'text-yellow-400' : 'text-purple-400'}`} />
           )}
           
-          {/* Usage count with label */}
+          {/* Usage count with label - Show remaining out of limit */}
           <div className="flex items-baseline gap-1.5 relative z-10">
             <span className={`text-base font-bold tabular-nums ${
               isLimitReached ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-white'
             }`}>
               {remaining}
             </span>
-            <span className="text-gray-400 text-xs">/</span>
-            <span className="text-gray-400 text-xs font-medium">{limit}</span>
+            <span className="text-gray-400 text-xs font-medium">
+              {language === 'ar' ? 'متبقي' : 'left'}
+            </span>
           </div>
           
-          <span className={`text-xs font-medium relative z-10 ${
-            isLimitReached ? 'text-red-300' : isLow ? 'text-yellow-300' : 'text-purple-200'
+          {/* Show used/limit for context */}
+          <span className={`text-xs font-medium relative z-10 px-2 py-0.5 rounded-full ${
+            isLimitReached 
+              ? 'bg-red-500/20 text-red-300' 
+              : isLow 
+                ? 'bg-yellow-500/20 text-yellow-300' 
+                : 'bg-purple-500/20 text-purple-200'
           }`}>
-            {language === 'ar' ? 'متبقي' : 'free'}
+            {usedToday}/{limit}
           </span>
         </motion.div>
         
@@ -163,18 +170,23 @@ export default function UsageCounter({
             {language === 'ar' ? 'الاستخدام اليومي' : 'Daily Usage'}
           </span>
         </div>
-        <span className={`text-2xl font-bold ${
-          isLimitReached ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-purple-400'
-        }`}>
-          {remaining}/{limit}
-        </span>
+        <div className="flex flex-col items-end">
+          <span className={`text-2xl font-bold ${
+            isLimitReached ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-purple-400'
+          }`}>
+            {remaining}
+          </span>
+          <span className="text-xs text-gray-400">
+            {language === 'ar' ? `${usedToday}/${limit} مستخدم` : `${usedToday}/${limit} used`}
+          </span>
+        </div>
       </div>
 
       {/* Progress bar */}
       <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden mb-3">
         <motion.div 
           initial={{ width: 0 }}
-          animate={{ width: `${((limit - remaining) / limit) * 100}%` }}
+          animate={{ width: `${usagePercentage}%` }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
           className={`h-full rounded-full ${
             isLimitReached 

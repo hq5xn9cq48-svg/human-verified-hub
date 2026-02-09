@@ -681,8 +681,8 @@ export default function HomePage() {
                   <Shield className="w-3 h-3 text-purple-400" />
                   <span className="text-gray-300 text-xs font-medium">
                     {language === 'ar' 
-                      ? 'الخطة المجانية: تحليل النص فقط (2/يوم)' 
-                      : 'Free Plan: Text Analysis Only (2/day)'}
+                      ? 'تجربة مجانية: تحليل النص فقط' 
+                      : 'Free Trial: Text Analysis Only'}
                   </span>
                 </>
               )}
@@ -1174,7 +1174,7 @@ export default function HomePage() {
               )}
             </form>
           ) : (
-            /* Results Section - Premium Professional Report Display */
+            /* Results Section - Neon Purple Premium Report Display */
             (() => {
               // Detect input text language for result display
               const inputText = text || url || ''
@@ -1210,34 +1210,44 @@ export default function HomePage() {
                 verificationId: resultLang === 'ar' ? 'رقم التحقق' : 'Verification ID',
                 analyzedAt: resultLang === 'ar' ? 'تاريخ التحليل' : 'Analyzed',
               }
+
+              // Neon glow color based on score
+              const neonScoreGlow = result.humanScore >= 61 
+                ? 'shadow-[0_0_30px_rgba(34,197,94,0.15)]' 
+                : result.humanScore >= 31 
+                  ? 'shadow-[0_0_30px_rgba(234,179,8,0.15)]' 
+                  : 'shadow-[0_0_30px_rgba(239,68,68,0.15)]'
               
               return (
-            <div className="space-y-6" dir={isResultRTL ? 'rtl' : 'ltr'}>
-              {/* Premium Report Header Card */}
+            <div className="space-y-5" dir={isResultRTL ? 'rtl' : 'ltr'}>
+              {/* Premium Neon Purple Report Header Card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 border border-purple-500/30"
+                className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-black via-purple-950/30 to-black border border-purple-500/40 ${neonScoreGlow}`}
               >
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-5">
-                  <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px'}} />
+                {/* Animated Background Pattern */}
+                <div className="absolute inset-0 opacity-[0.03]">
+                  <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(168,85,247,0.8) 1px, transparent 0)', backgroundSize: '40px 40px'}} />
                 </div>
                 
-                {/* Header Banner */}
-                <div className="relative bg-gradient-to-r from-purple-600/40 via-purple-500/30 to-purple-600/40 px-6 py-4 border-b border-purple-500/30">
+                {/* Neon Top Line */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+                
+                {/* Header Banner with Neon Glow */}
+                <div className="relative bg-gradient-to-r from-purple-600/30 via-purple-500/20 to-purple-600/30 px-6 py-4 border-b border-purple-500/30 backdrop-blur-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30">
+                      <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
                         <Shield className="w-5 h-5 text-purple-400" />
                       </div>
                       <div>
                         <h2 className="text-base font-semibold text-white">{labels.reportTitle}</h2>
-                        <p className="text-xs text-purple-300/70">Human Verified Hub • {new Date().toLocaleDateString(resultLang === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                        <p className="text-xs text-purple-300/60">Human Verified Hub &bull; {new Date().toLocaleDateString(resultLang === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                       </div>
                     </div>
                     <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
-                      <span className="px-2 py-1 rounded bg-purple-900/50 border border-purple-500/20">Gemini 1.5 Flash</span>
+                      <span className="px-2.5 py-1 rounded-lg bg-purple-900/50 border border-purple-500/30 text-purple-300/80">Gemini Flash</span>
                     </div>
                   </div>
                 </div>
@@ -1245,21 +1255,21 @@ export default function HomePage() {
                 {/* Main Score Section */}
                 <div className="relative p-8">
                   <div className="flex flex-col md:flex-row items-center gap-8">
-                    {/* Score Circle */}
+                    {/* Score Circle with Neon Glow */}
                     <motion.div
                       initial={{ scale: 0, rotate: -180 }}
                       animate={{ scale: 1, rotate: 0 }}
                       transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
                       className="relative"
                     >
-                      {/* Outer Ring */}
-                      <div className={`relative w-40 h-40 rounded-full p-1 ${result.humanScore >= 61 ? 'bg-gradient-to-br from-green-500 to-emerald-600' : result.humanScore >= 31 ? 'bg-gradient-to-br from-yellow-500 to-orange-600' : 'bg-gradient-to-br from-red-500 to-rose-600'}`}>
-                        <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                      {/* Outer Neon Ring */}
+                      <div className={`relative w-40 h-40 rounded-full p-1 ${result.humanScore >= 61 ? 'bg-gradient-to-br from-green-500 to-emerald-600 shadow-[0_0_40px_rgba(34,197,94,0.4)]' : result.humanScore >= 31 ? 'bg-gradient-to-br from-yellow-500 to-orange-600 shadow-[0_0_40px_rgba(234,179,8,0.4)]' : 'bg-gradient-to-br from-red-500 to-rose-600 shadow-[0_0_40px_rgba(239,68,68,0.4)]'}`}>
+                        <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
                           <div className="text-center">
-                            <div className={`text-5xl font-bold ${getScoreColor(result.humanScore)}`}>
+                            <div className={`text-5xl font-bold ${getScoreColor(result.humanScore)}`} style={{ textShadow: result.humanScore >= 61 ? '0 0 20px rgba(34,197,94,0.5)' : result.humanScore >= 31 ? '0 0 20px rgba(234,179,8,0.5)' : '0 0 20px rgba(239,68,68,0.5)' }}>
                               {result.humanScore}
                             </div>
-                            <div className="text-lg text-gray-400">%</div>
+                            <div className="text-lg text-gray-500">%</div>
                           </div>
                         </div>
                       </div>
@@ -1268,11 +1278,11 @@ export default function HomePage() {
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ delay: 0.5 }}
-                        className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full shadow-lg ${result.humanScore >= 61 ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' : result.humanScore >= 31 ? 'bg-gradient-to-r from-yellow-600 to-orange-600 text-white' : 'bg-gradient-to-r from-red-600 to-rose-600 text-white'}`}
+                        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full ${result.humanScore >= 61 ? 'bg-gradient-to-r from-green-600 to-emerald-600 shadow-[0_0_20px_rgba(34,197,94,0.5)] text-white' : result.humanScore >= 31 ? 'bg-gradient-to-r from-yellow-600 to-orange-600 shadow-[0_0_20px_rgba(234,179,8,0.5)] text-white' : 'bg-gradient-to-r from-red-600 to-rose-600 shadow-[0_0_20px_rgba(239,68,68,0.5)] text-white'}`}
                       >
                         <div className="flex items-center gap-2">
                           {getScoreIcon(result.humanScore)}
-                          <span className="text-sm font-semibold">{result.humanScore >= 61 ? (resultLang === 'ar' ? 'بشري' : 'Human') : result.humanScore >= 31 ? (resultLang === 'ar' ? 'هجين' : 'Mixed') : (resultLang === 'ar' ? 'آلي' : 'AI')}</span>
+                          <span className="text-sm font-bold">{result.humanScore >= 61 ? (resultLang === 'ar' ? 'بشري' : 'Human') : result.humanScore >= 31 ? (resultLang === 'ar' ? 'هجين' : 'Mixed') : (resultLang === 'ar' ? 'آلي' : 'AI')}</span>
                         </div>
                       </motion.div>
                     </motion.div>
@@ -1284,38 +1294,38 @@ export default function HomePage() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.3 }}
                       >
-                        <h3 className={`text-2xl md:text-3xl font-bold mb-2 ${getScoreColor(result.humanScore)}`}>
+                        <h3 className={`text-2xl md:text-3xl font-bold mb-3 ${getScoreColor(result.humanScore)}`} style={{ textShadow: result.humanScore >= 61 ? '0 0 15px rgba(34,197,94,0.3)' : result.humanScore >= 31 ? '0 0 15px rgba(234,179,8,0.3)' : '0 0 15px rgba(239,68,68,0.3)' }}>
                           {result.verdict}
                         </h3>
                         {result.confidence && (
-                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/80 border border-slate-700">
-                            <div className={`w-2 h-2 rounded-full ${result.confidence === 'high' ? 'bg-green-400' : result.confidence === 'medium' ? 'bg-yellow-400' : 'bg-orange-400'} animate-pulse`} />
-                            <span className="text-sm text-gray-300">{labels.confidenceLevel}:</span>
-                            <span className={`text-sm font-medium capitalize ${result.confidence === 'high' ? 'text-green-400' : result.confidence === 'medium' ? 'text-yellow-400' : 'text-orange-400'}`}>
+                          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 border border-purple-500/30 backdrop-blur-sm">
+                            <div className={`w-2 h-2 rounded-full ${result.confidence === 'high' ? 'bg-green-400 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : result.confidence === 'medium' ? 'bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]'} animate-pulse`} />
+                            <span className="text-sm text-gray-400">{labels.confidenceLevel}:</span>
+                            <span className={`text-sm font-semibold capitalize ${result.confidence === 'high' ? 'text-green-400' : result.confidence === 'medium' ? 'text-yellow-400' : 'text-orange-400'}`}>
                               {result.confidence === 'high' ? (resultLang === 'ar' ? 'عالي' : 'High') : result.confidence === 'medium' ? (resultLang === 'ar' ? 'متوسط' : 'Medium') : (resultLang === 'ar' ? 'منخفض' : 'Low')}
                             </span>
                           </div>
                         )}
                       </motion.div>
                       
-                      {/* Progress Bar */}
+                      {/* Progress Bar with Neon */}
                       <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.4 }}
                         className="mt-6"
                       >
-                        <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                        <div className="relative h-4 bg-black/60 rounded-full overflow-hidden border border-purple-500/20">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${result.humanScore}%` }}
-                            transition={{ duration: 1, delay: 0.5 }}
+                            transition={{ duration: 1.2, delay: 0.5, ease: 'easeOut' }}
                             className={`h-full bg-gradient-to-r ${getScoreBg(result.humanScore)} rounded-full relative`}
                           >
-                            <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
                           </motion.div>
                         </div>
-                        <div className="flex justify-between mt-2 text-xs text-gray-500">
+                        <div className="flex justify-between mt-2 text-xs text-gray-600">
                           <span className="flex items-center gap-1"><Bot className="w-3 h-3" /> {labels.ai} (0%)</span>
                           <span>{labels.hybrid} (50%)</span>
                           <span className="flex items-center gap-1"><User className="w-3 h-3" /> {labels.human} (100%)</span>
@@ -1324,9 +1334,12 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
+                
+                {/* Neon Bottom Line */}
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
               </motion.div>
 
-              {/* Action Buttons Row */}
+              {/* Action Buttons Row - Neon Style */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <motion.button
                   initial={{ opacity: 0, y: 10 }}
@@ -1334,7 +1347,7 @@ export default function HomePage() {
                   transition={{ delay: 0.6 }}
                   onClick={downloadReport}
                   disabled={certificateLoading}
-                  className={`flex-1 py-3.5 px-6 rounded-xl font-medium flex items-center justify-center gap-3 transition-all ${usageStatus?.isPro ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg shadow-purple-500/25' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-300'}`}
+                  className={`flex-1 py-3.5 px-6 rounded-xl font-medium flex items-center justify-center gap-3 transition-all ${usageStatus?.isPro ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 border border-purple-500/30' : 'bg-black/60 hover:bg-purple-900/20 border border-purple-500/20 hover:border-purple-500/40 text-gray-300'}`}
                 >
                   {certificateLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : usageStatus?.isPro ? <Download className="w-5 h-5" /> : <Crown className="w-5 h-5 text-yellow-400" />}
                   {labels.downloadReport}
@@ -1349,7 +1362,7 @@ export default function HomePage() {
                     transition={{ delay: 0.7 }}
                     onClick={generateCertificate}
                     disabled={certificateLoading}
-                    className={`flex-1 py-3.5 px-6 rounded-xl font-medium flex items-center justify-center gap-3 transition-all ${usageStatus?.isPro ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg shadow-green-500/25' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-300'}`}
+                    className={`flex-1 py-3.5 px-6 rounded-xl font-medium flex items-center justify-center gap-3 transition-all ${usageStatus?.isPro ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg shadow-green-500/25 hover:shadow-green-500/40 border border-green-500/30' : 'bg-black/60 hover:bg-green-900/20 border border-green-500/20 hover:border-green-500/40 text-gray-300'}`}
                   >
                     {certificateLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : usageStatus?.isPro ? <Award className="w-5 h-5" /> : <Crown className="w-5 h-5 text-yellow-400" />}
                     {usageStatus?.isPro ? labels.downloadCert : labels.upgradeCert}
@@ -1358,15 +1371,15 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Summary Card */}
+              {/* Summary Card - Neon Glass */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="p-5 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50"
+                className="p-5 bg-gradient-to-br from-purple-950/40 to-black/80 rounded-xl border border-purple-500/20 backdrop-blur-sm shadow-[0_0_20px_rgba(168,85,247,0.08)]"
               >
                 <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-purple-500/20">
+                  <div className="p-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30">
                     <Zap className="w-4 h-4 text-purple-400" />
                   </div>
                   {labels.summary}
@@ -1374,28 +1387,28 @@ export default function HomePage() {
                 <p className="text-gray-300 text-sm leading-relaxed">{result.summary}</p>
               </motion.div>
 
-              {/* Smart Analysis Breakdown */}
+              {/* Smart Analysis Breakdown - Neon Style */}
               {result.smartBreakdown && result.smartBreakdown.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 }}
-                  className="p-5 bg-gradient-to-br from-purple-900/20 to-slate-900/50 rounded-xl border border-purple-500/20"
+                  className="p-5 bg-gradient-to-br from-purple-950/30 to-black/80 rounded-xl border border-purple-500/25 shadow-[0_0_20px_rgba(168,85,247,0.08)]"
                 >
                   <h3 className="text-base font-semibold text-purple-300 mb-4 flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-purple-500/20">
+                    <div className="p-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30">
                       <Brain className="w-4 h-4 text-purple-400" />
                     </div>
                     {labels.smartAnalysis}
                   </h3>
-                  <div className="grid gap-3">
+                  <div className="grid gap-2.5">
                     {result.smartBreakdown.map((item, i) => (
                       <motion.div
                         key={i}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.7 + i * 0.1 }}
-                        className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50"
+                        className="flex items-start gap-3 p-3 bg-black/40 rounded-lg border border-purple-500/10 hover:border-purple-500/30 transition-colors"
                       >
                         <div className="p-1 rounded bg-purple-500/20 mt-0.5">
                           <Sparkles className="w-3 h-3 text-purple-400" />
@@ -1407,7 +1420,7 @@ export default function HomePage() {
                 </motion.div>
               )}
 
-              {/* Metrics Grid */}
+              {/* Metrics Grid - Neon Cards */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1415,55 +1428,55 @@ export default function HomePage() {
                 className="grid grid-cols-2 md:grid-cols-4 gap-3"
               >
                 {[
-                  { label: labels.wordCount, value: result.analysisMetadata?.wordCount || '-', icon: FileText, color: 'text-blue-400', bg: 'from-blue-500/20' },
-                  { label: labels.sentences, value: result.analysisMetadata?.sentenceCount || '-', icon: Activity, color: 'text-cyan-400', bg: 'from-cyan-500/20' },
-                  { label: labels.perplexity, value: result.analysisMetadata?.perplexityLevel || '-', icon: Brain, color: 'text-purple-400', bg: 'from-purple-500/20' },
-                  { label: labels.burstiness, value: result.analysisMetadata?.burstinessScore || '-', icon: Zap, color: 'text-yellow-400', bg: 'from-yellow-500/20' },
+                  { label: labels.wordCount, value: result.analysisMetadata?.wordCount || '-', icon: FileText, color: 'text-blue-400', border: 'border-blue-500/20 hover:border-blue-500/40', glow: 'shadow-[0_0_15px_rgba(59,130,246,0.08)]' },
+                  { label: labels.sentences, value: result.analysisMetadata?.sentenceCount || '-', icon: Activity, color: 'text-cyan-400', border: 'border-cyan-500/20 hover:border-cyan-500/40', glow: 'shadow-[0_0_15px_rgba(34,211,238,0.08)]' },
+                  { label: labels.perplexity, value: result.analysisMetadata?.perplexityLevel || '-', icon: Brain, color: 'text-purple-400', border: 'border-purple-500/20 hover:border-purple-500/40', glow: 'shadow-[0_0_15px_rgba(168,85,247,0.08)]' },
+                  { label: labels.burstiness, value: result.analysisMetadata?.burstinessScore || '-', icon: Zap, color: 'text-yellow-400', border: 'border-yellow-500/20 hover:border-yellow-500/40', glow: 'shadow-[0_0_15px_rgba(234,179,8,0.08)]' },
                 ].map((metric, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.8 + i * 0.1 }}
-                    className={`p-4 rounded-xl bg-gradient-to-br ${metric.bg} to-slate-900/50 border border-slate-700/50 text-center`}
+                    className={`p-4 rounded-xl bg-black/50 border ${metric.border} ${metric.glow} text-center transition-all`}
                   >
                     <metric.icon className={`w-5 h-5 ${metric.color} mx-auto mb-2`} />
-                    <div className="text-xs text-gray-400 mb-1">{metric.label}</div>
+                    <div className="text-xs text-gray-500 mb-1">{metric.label}</div>
                     <div className="text-lg font-semibold text-white capitalize">{metric.value}</div>
                   </motion.div>
                 ))}
               </motion.div>
 
-              {/* Forensic Details */}
+              {/* Forensic Details - Neon Glass */}
               {result.forensicDetails && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8 }}
-                  className="p-5 bg-slate-800/50 rounded-xl border border-slate-700/50"
+                  className="p-5 bg-black/50 rounded-xl border border-purple-500/15 shadow-[0_0_15px_rgba(168,85,247,0.05)]"
                 >
                   <h3 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-slate-700">
-                      <Search className="w-4 h-4 text-gray-400" />
+                    <div className="p-1.5 rounded-lg bg-purple-500/15 border border-purple-500/20">
+                      <Search className="w-4 h-4 text-purple-400" />
                     </div>
                     {labels.forensicDetails}
                   </h3>
-                  <div className="grid md:grid-cols-3 gap-4">
+                  <div className="grid md:grid-cols-3 gap-3">
                     {[
                       { label: labels.syntaxAnalysis, value: result.forensicDetails.syntaxAnalysis },
                       { label: labels.lexicalRichness, value: result.forensicDetails.lexicalRichness },
                       { label: labels.predictability, value: result.forensicDetails.predictability },
                     ].map((detail, i) => (
-                      <div key={i} className="p-3 bg-slate-900/50 rounded-lg border border-slate-700/30">
-                        <div className="text-xs text-gray-500 mb-1">{detail.label}</div>
-                        <div className="text-sm text-gray-200 font-medium">{detail.value}</div>
+                      <div key={i} className="p-3 bg-black/40 rounded-lg border border-purple-500/10 hover:border-purple-500/25 transition-colors">
+                        <div className="text-xs text-purple-400/60 mb-1 font-medium">{detail.label}</div>
+                        <div className="text-sm text-gray-200">{detail.value}</div>
                       </div>
                     ))}
                   </div>
                 </motion.div>
               )}
 
-              {/* Indicators Grid */}
+              {/* Indicators Grid - Neon Style */}
               <div className="grid md:grid-cols-2 gap-4">
                 {/* AI Indicators */}
                 {result.aiIndicators && result.aiIndicators.length > 0 && (
@@ -1471,21 +1484,21 @@ export default function HomePage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.9 }}
-                    className="p-5 bg-gradient-to-br from-red-900/20 to-slate-900/50 rounded-xl border border-red-500/20"
+                    className="p-5 bg-gradient-to-br from-red-950/30 to-black/80 rounded-xl border border-red-500/25 shadow-[0_0_20px_rgba(239,68,68,0.06)]"
                   >
                     <h3 className="text-base font-semibold text-red-400 mb-4 flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-red-500/20">
+                      <div className="p-1.5 rounded-lg bg-red-500/20 border border-red-500/30">
                         <TrendingDown className="w-4 h-4" />
                       </div>
                       {labels.aiIndicators}
-                      <span className="ms-auto px-2 py-0.5 text-xs rounded-full bg-red-500/20 text-red-300">{result.aiIndicators.length}</span>
+                      <span className="ms-auto px-2.5 py-0.5 text-xs rounded-full bg-red-500/15 border border-red-500/20 text-red-300">{result.aiIndicators.length}</span>
                     </h3>
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {result.aiIndicators.map((item, i) => (
-                        <div key={i} className="p-3 rounded-lg bg-slate-900/50 border border-red-500/10 hover:border-red-500/30 transition-colors">
+                        <div key={i} className="p-3 rounded-lg bg-black/40 border border-red-500/10 hover:border-red-500/30 transition-colors">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-red-300 font-medium text-sm">{item.pattern}</span>
-                            {item.penalty && <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-300">-{item.penalty}</span>}
+                            {item.penalty && <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/20 text-red-300">-{item.penalty}</span>}
                           </div>
                           <p className="text-gray-400 text-xs leading-relaxed">{item.description}</p>
                         </div>
@@ -1500,21 +1513,21 @@ export default function HomePage() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.9 }}
-                    className="p-5 bg-gradient-to-br from-green-900/20 to-slate-900/50 rounded-xl border border-green-500/20"
+                    className="p-5 bg-gradient-to-br from-green-950/30 to-black/80 rounded-xl border border-green-500/25 shadow-[0_0_20px_rgba(34,197,94,0.06)]"
                   >
                     <h3 className="text-base font-semibold text-green-400 mb-4 flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-green-500/20">
+                      <div className="p-1.5 rounded-lg bg-green-500/20 border border-green-500/30">
                         <TrendingUp className="w-4 h-4" />
                       </div>
                       {labels.humanIndicators}
-                      <span className="ms-auto px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-300">{result.humanIndicators.length}</span>
+                      <span className="ms-auto px-2.5 py-0.5 text-xs rounded-full bg-green-500/15 border border-green-500/20 text-green-300">{result.humanIndicators.length}</span>
                     </h3>
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {result.humanIndicators.map((item, i) => (
-                        <div key={i} className="p-3 rounded-lg bg-slate-900/50 border border-green-500/10 hover:border-green-500/30 transition-colors">
+                        <div key={i} className="p-3 rounded-lg bg-black/40 border border-green-500/10 hover:border-green-500/30 transition-colors">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-green-300 font-medium text-sm">{item.pattern}</span>
-                            {item.bonus && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-300">+{item.bonus}</span>}
+                            {item.bonus && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/20 text-green-300">+{item.bonus}</span>}
                           </div>
                           <p className="text-gray-400 text-xs leading-relaxed">{item.description}</p>
                         </div>
@@ -1524,13 +1537,13 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Reset Button */}
+              {/* Reset Button - Neon Purple */}
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
                 onClick={resetAnalysis}
-                className="w-full py-4 px-6 rounded-xl border border-slate-700 text-gray-300 hover:text-white hover:border-purple-500/50 hover:bg-purple-900/10 transition-all flex items-center justify-center gap-3 group"
+                className="w-full py-4 px-6 rounded-xl border border-purple-500/25 text-gray-300 hover:text-white hover:border-purple-500/60 hover:bg-purple-900/15 hover:shadow-[0_0_25px_rgba(168,85,247,0.15)] transition-all flex items-center justify-center gap-3 group"
               >
                 <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
                 {labels.newAnalysis}

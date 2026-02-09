@@ -390,34 +390,37 @@ function ImageDetectorContent() {
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Premium Report Header - Matches Main Page Design */}
+            <div className="space-y-5">
+              {/* Premium Neon Purple Report Header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 border border-purple-500/30"
+                className={`relative overflow-hidden rounded-2xl bg-gradient-to-br from-black via-purple-950/30 to-black border border-purple-500/40 ${(100 - result.aiProbability) >= 61 ? 'shadow-[0_0_30px_rgba(34,197,94,0.15)]' : (100 - result.aiProbability) >= 31 ? 'shadow-[0_0_30px_rgba(234,179,8,0.15)]' : 'shadow-[0_0_30px_rgba(239,68,68,0.15)]'}`}
               >
-                {/* Background Pattern */}
-                <div className="absolute inset-0 opacity-5">
-                  <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px'}} />
+                {/* Animated Background Pattern */}
+                <div className="absolute inset-0 opacity-[0.03]">
+                  <div className="absolute inset-0" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(168,85,247,0.8) 1px, transparent 0)', backgroundSize: '40px 40px'}} />
                 </div>
                 
-                {/* Header Banner */}
-                <div className="relative bg-gradient-to-r from-purple-600/40 via-purple-500/30 to-purple-600/40 px-6 py-4 border-b border-purple-500/30">
+                {/* Neon Top Line */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500 to-transparent" />
+                
+                {/* Header Banner with Neon Glow */}
+                <div className="relative bg-gradient-to-r from-purple-600/30 via-purple-500/20 to-purple-600/30 px-6 py-4 border-b border-purple-500/30 backdrop-blur-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30">
+                      <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
                         <Shield className="w-5 h-5 text-purple-400" />
                       </div>
                       <div>
                         <h2 className="text-base font-semibold text-white">
                           {language === 'ar' ? 'تقرير التحليل الجنائي للصور' : 'Image Forensic Report'}
                         </h2>
-                        <p className="text-xs text-purple-300/70">Human Verified Hub &bull; {new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                        <p className="text-xs text-purple-300/60">Human Verified Hub &bull; {new Date().toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
                       </div>
                     </div>
                     <div className="hidden sm:flex items-center gap-2 text-xs text-gray-400">
-                      {result.modelUsed && <span className="px-2 py-1 rounded bg-purple-900/50 border border-purple-500/20">{result.modelUsed}</span>}
+                      {result.modelUsed && <span className="px-2.5 py-1 rounded-lg bg-purple-900/50 border border-purple-500/30 text-purple-300/80">{result.modelUsed}</span>}
                     </div>
                   </div>
                 </div>
@@ -432,6 +435,9 @@ function ImageDetectorContent() {
                       const scoreColor = authenticity >= 61 ? 'text-green-400' : authenticity >= 31 ? 'text-yellow-400' : 'text-red-400'
                       const scoreBg = authenticity >= 61 ? 'bg-gradient-to-br from-green-500 to-emerald-600' : authenticity >= 31 ? 'bg-gradient-to-br from-yellow-500 to-orange-600' : 'bg-gradient-to-br from-red-500 to-rose-600'
                       const scoreGradient = authenticity >= 61 ? 'from-green-600 to-emerald-600' : authenticity >= 31 ? 'from-yellow-600 to-orange-600' : 'from-red-600 to-rose-600'
+                      const scoreNeonGlow = authenticity >= 61 ? 'shadow-[0_0_40px_rgba(34,197,94,0.4)]' : authenticity >= 31 ? 'shadow-[0_0_40px_rgba(234,179,8,0.4)]' : 'shadow-[0_0_40px_rgba(239,68,68,0.4)]'
+                      const badgeNeonGlow = authenticity >= 61 ? 'shadow-[0_0_20px_rgba(34,197,94,0.5)]' : authenticity >= 31 ? 'shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'shadow-[0_0_20px_rgba(239,68,68,0.5)]'
+                      const textNeonGlow = authenticity >= 61 ? '0 0 20px rgba(34,197,94,0.5)' : authenticity >= 31 ? '0 0 20px rgba(234,179,8,0.5)' : '0 0 20px rgba(239,68,68,0.5)'
                       return (
                         <>
                           <motion.div
@@ -440,13 +446,13 @@ function ImageDetectorContent() {
                             transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
                             className="relative"
                           >
-                            <div className={`relative w-40 h-40 rounded-full p-1 ${scoreBg}`}>
-                              <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                            <div className={`relative w-40 h-40 rounded-full p-1 ${scoreBg} ${scoreNeonGlow}`}>
+                              <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
                                 <div className="text-center">
-                                  <div className={`text-5xl font-bold ${scoreColor}`}>
+                                  <div className={`text-5xl font-bold ${scoreColor}`} style={{ textShadow: textNeonGlow }}>
                                     {authenticity}
                                   </div>
-                                  <div className="text-lg text-gray-400">%</div>
+                                  <div className="text-lg text-gray-500">%</div>
                                 </div>
                               </div>
                             </div>
@@ -454,11 +460,11 @@ function ImageDetectorContent() {
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               transition={{ delay: 0.5 }}
-                              className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full shadow-lg bg-gradient-to-r ${scoreGradient} text-white`}
+                              className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-gradient-to-r ${scoreGradient} text-white ${badgeNeonGlow}`}
                             >
                               <div className="flex items-center gap-2">
                                 <verdictInfo.icon className="w-4 h-4" />
-                                <span className="text-sm font-semibold">{verdictInfo.label}</span>
+                                <span className="text-sm font-bold">{verdictInfo.label}</span>
                               </div>
                             </motion.div>
                           </motion.div>
@@ -470,15 +476,15 @@ function ImageDetectorContent() {
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: 0.3 }}
                             >
-                              <h3 className={`text-2xl md:text-3xl font-bold mb-2 ${verdictInfo.color}`}>
+                              <h3 className={`text-2xl md:text-3xl font-bold mb-3 ${verdictInfo.color}`} style={{ textShadow: authenticity >= 61 ? '0 0 15px rgba(34,197,94,0.3)' : authenticity >= 31 ? '0 0 15px rgba(234,179,8,0.3)' : '0 0 15px rgba(239,68,68,0.3)' }}>
                                 {result.verdict}
                               </h3>
                               
                               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                                 {/* AI Probability Badge */}
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/80 border border-slate-700">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 border border-purple-500/30 backdrop-blur-sm">
                                   <Bot className="w-3.5 h-3.5 text-purple-400" />
-                                  <span className="text-sm text-gray-300">{language === 'ar' ? 'احتمالية AI:' : 'AI Probability:'}</span>
+                                  <span className="text-sm text-gray-400">{language === 'ar' ? 'احتمالية AI:' : 'AI Probability:'}</span>
                                   <span className={`text-sm font-bold ${result.aiProbability > 60 ? 'text-red-400' : result.aiProbability > 40 ? 'text-yellow-400' : 'text-green-400'}`}>
                                     {result.aiProbability}%
                                   </span>
@@ -486,10 +492,10 @@ function ImageDetectorContent() {
 
                                 {/* Confidence Badge */}
                                 {result.confidenceLevel && (
-                                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/80 border border-slate-700">
-                                    <div className={`w-2 h-2 rounded-full ${result.confidenceLevel === 'high' ? 'bg-green-400' : result.confidenceLevel === 'medium' ? 'bg-yellow-400' : 'bg-orange-400'} animate-pulse`} />
-                                    <span className="text-sm text-gray-300">{language === 'ar' ? 'الثقة:' : 'Confidence:'}</span>
-                                    <span className={`text-sm font-medium capitalize ${result.confidenceLevel === 'high' ? 'text-green-400' : result.confidenceLevel === 'medium' ? 'text-yellow-400' : 'text-orange-400'}`}>
+                                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 border border-purple-500/30 backdrop-blur-sm">
+                                    <div className={`w-2 h-2 rounded-full ${result.confidenceLevel === 'high' ? 'bg-green-400 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : result.confidenceLevel === 'medium' ? 'bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)]' : 'bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.8)]'} animate-pulse`} />
+                                    <span className="text-sm text-gray-400">{language === 'ar' ? 'الثقة:' : 'Confidence:'}</span>
+                                    <span className={`text-sm font-semibold capitalize ${result.confidenceLevel === 'high' ? 'text-green-400' : result.confidenceLevel === 'medium' ? 'text-yellow-400' : 'text-orange-400'}`}>
                                       {result.confidenceLevel === 'high' ? (language === 'ar' ? 'عالي' : 'High') : result.confidenceLevel === 'medium' ? (language === 'ar' ? 'متوسط' : 'Medium') : (language === 'ar' ? 'منخفض' : 'Low')}
                                     </span>
                                   </div>
@@ -502,7 +508,7 @@ function ImageDetectorContent() {
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   transition={{ delay: 0.6 }}
-                                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-900/20 border border-red-500/30"
+                                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-950/40 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]"
                                 >
                                   <Cpu className="w-4 h-4 text-red-400" />
                                   <span className="text-sm text-red-300">
@@ -513,24 +519,24 @@ function ImageDetectorContent() {
                               )}
                             </motion.div>
                             
-                            {/* Progress Bar */}
+                            {/* Progress Bar with Neon */}
                             <motion.div 
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ delay: 0.4 }}
                               className="mt-6"
                             >
-                              <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                              <div className="relative h-4 bg-black/60 rounded-full overflow-hidden border border-purple-500/20">
                                 <motion.div
                                   initial={{ width: 0 }}
                                   animate={{ width: `${authenticity}%` }}
-                                  transition={{ duration: 1, delay: 0.5 }}
+                                  transition={{ duration: 1.2, delay: 0.5, ease: 'easeOut' }}
                                   className={`h-full bg-gradient-to-r ${authenticity >= 61 ? 'from-green-500 to-emerald-500' : authenticity >= 31 ? 'from-yellow-500 to-orange-500' : 'from-red-500 to-rose-500'} rounded-full relative`}
                                 >
-                                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 animate-shimmer" style={{ backgroundSize: '200% 100%' }} />
                                 </motion.div>
                               </div>
-                              <div className="flex justify-between mt-2 text-xs text-gray-500">
+                              <div className="flex justify-between mt-2 text-xs text-gray-600">
                                 <span className="flex items-center gap-1"><Bot className="w-3 h-3" /> {language === 'ar' ? 'AI (0%)' : 'AI (0%)'}</span>
                                 <span>{language === 'ar' ? 'غير مؤكد' : 'Uncertain'} (50%)</span>
                                 <span className="flex items-center gap-1"><Camera className="w-3 h-3" /> {language === 'ar' ? 'أصلي (100%)' : 'Authentic (100%)'}</span>
@@ -542,9 +548,12 @@ function ImageDetectorContent() {
                     })()}
                   </div>
                   
+                  {/* Neon Bottom Line */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+                  
                   {/* Image Preview - Small inline */}
                   <div className="mt-6 flex justify-center">
-                    <div className="relative rounded-xl overflow-hidden border border-purple-500/20 shadow-lg shadow-purple-500/10">
+                    <div className="relative rounded-xl overflow-hidden border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
                       <img
                         src={image!}
                         alt="Analyzed"
@@ -555,16 +564,16 @@ function ImageDetectorContent() {
                 </div>
               </motion.div>
 
-              {/* Summary Card */}
+              {/* Summary Card - Neon Glass */}
               {result.summary && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="p-5 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50"
+                  className="p-5 bg-gradient-to-br from-purple-950/40 to-black/80 rounded-xl border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.08)]"
                 >
                   <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-purple-500/20">
+                    <div className="p-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30">
                       <Zap className="w-4 h-4 text-purple-400" />
                     </div>
                     {language === 'ar' ? 'ملخص التحليل الجنائي' : 'Forensic Summary'}
@@ -579,10 +588,10 @@ function ImageDetectorContent() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 }}
-                  className="p-5 bg-gradient-to-br from-purple-900/20 to-slate-900/50 rounded-xl border border-purple-500/20"
+                  className="p-5 bg-gradient-to-br from-purple-950/30 to-black/80 rounded-xl border border-purple-500/25 shadow-[0_0_20px_rgba(168,85,247,0.08)]"
                 >
                   <h3 className="text-base font-semibold text-purple-300 mb-4 flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-purple-500/20">
+                    <div className="p-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30">
                       <Microscope className="w-4 h-4 text-purple-400" />
                     </div>
                     {language === 'ar' ? 'التحليل المفصل' : 'Detailed Analysis'}
@@ -605,7 +614,7 @@ function ImageDetectorContent() {
                           key={key} 
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
-                          className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50"
+                          className="p-4 bg-black/40 rounded-xl border border-purple-500/10 hover:border-purple-500/30 transition-colors"
                         >
                           <div className="flex items-center gap-2 mb-2">
                             <div className="p-1 rounded bg-purple-500/20">
@@ -627,14 +636,14 @@ function ImageDetectorContent() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7 }}
-                  className="p-5 bg-gradient-to-br from-orange-900/15 to-slate-900/50 rounded-xl border border-orange-500/20"
+                  className="p-5 bg-gradient-to-br from-orange-950/30 to-black/80 rounded-xl border border-orange-500/25 shadow-[0_0_20px_rgba(249,115,22,0.06)]"
                 >
                   <h3 className="text-base font-semibold text-orange-400 mb-4 flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-orange-500/20">
+                    <div className="p-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30">
                       <AlertTriangle className="w-4 h-4 text-orange-400" />
                     </div>
                     {language === 'ar' ? 'الأدلة المكتشفة' : 'Detected Artifacts'}
-                    <span className="ms-auto px-2 py-0.5 text-xs rounded-full bg-orange-500/20 text-orange-300">{result.artifacts.length}</span>
+                    <span className="ms-auto px-2.5 py-0.5 text-xs rounded-full bg-orange-500/15 border border-orange-500/20 text-orange-300">{result.artifacts.length}</span>
                   </h3>
                   <div className="space-y-2 max-h-72 overflow-y-auto">
                     {result.artifacts.map((artifact, index) => {
@@ -645,7 +654,7 @@ function ImageDetectorContent() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.8 + index * 0.08 }}
-                          className="p-3 rounded-lg bg-slate-900/50 border border-orange-500/10 hover:border-orange-500/30 transition-colors"
+                          className="p-3 rounded-lg bg-black/40 border border-orange-500/10 hover:border-orange-500/30 transition-colors"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
@@ -675,10 +684,10 @@ function ImageDetectorContent() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8 }}
-                  className="p-5 bg-gradient-to-br from-slate-800/80 to-slate-900/80 rounded-xl border border-slate-700/50"
+                  className="p-5 bg-gradient-to-br from-green-950/30 to-black/80 rounded-xl border border-green-500/20 shadow-[0_0_20px_rgba(34,197,94,0.06)]"
                 >
                   <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-green-500/20">
+                    <div className="p-1.5 rounded-lg bg-green-500/20 border border-green-500/30">
                       <CheckCircle className="w-4 h-4 text-green-400" />
                     </div>
                     {language === 'ar' ? 'نصائح التحقق' : 'Verification Tips'}
@@ -693,7 +702,7 @@ function ImageDetectorContent() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.9 }}
                 onClick={resetForm}
-                className="w-full py-4 px-6 rounded-xl border border-slate-700 text-gray-300 hover:text-white hover:border-purple-500/50 hover:bg-purple-900/10 transition-all flex items-center justify-center gap-3 group"
+                className="w-full py-4 px-6 rounded-xl border border-purple-500/25 text-gray-300 hover:text-white hover:border-purple-500/60 hover:bg-purple-900/15 hover:shadow-[0_0_25px_rgba(168,85,247,0.15)] transition-all flex items-center justify-center gap-3 group"
               >
                 <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
                 {language === 'ar' ? 'تحليل صورة أخرى' : 'Analyze Another Image'}
